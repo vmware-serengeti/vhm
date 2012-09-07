@@ -1,0 +1,20 @@
+#!/bin/sh
+# 
+# Set the hostname of this host to its Fully Qualified Domain Name
+#
+# Description: This information is obtained from the java library:
+# java.net.InetAddr.getLocalHost().getCanonicalHostname()
+
+HOSTNAMEFILE="/etc/myhostname"
+JARFILE="/etc/GetHostname.jar"
+JAVA="/usr/local/jdk/bin/java"
+
+cd $(dirname $0)
+
+# Get hostname
+$JAVA -jar $JARFILE > $HOSTNAMEFILE
+
+# Set hostname
+if [ -s $HOSTNAMEFILE ]; then
+    hostname -F $HOSTNAMEFILE
+fi
