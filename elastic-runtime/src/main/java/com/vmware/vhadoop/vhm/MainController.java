@@ -19,6 +19,7 @@ import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.MQActions;
 import com.vmware.vhadoop.external.VCActions;
 import com.vmware.vhadoop.util.LogFormatter;
+import com.vmware.vhadoop.vhm.edpolicy.EDP_DeRecommissionTTs;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_JustPowerTTOnOff;
 import com.vmware.vhadoop.vhm.edpolicy.EnableDisableTTPolicy;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_DumbVMChooser;
@@ -54,9 +55,6 @@ public class MainController {
              properties.getProperty("vCenterUser"),
              properties.getProperty("vCenterPwd")));
        
-       VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
-       EnableDisableTTPolicy enableDisablePolicy = new EDP_JustPowerTTOnOff(vc);
-       
        MQActions mq = new RabbitAdaptor(
              new SimpleRabbitCredentials(
                    properties.getProperty("msgHostName"),
@@ -69,6 +67,9 @@ public class MainController {
              new JTConfig(
                    properties.getProperty("vHadoopHome"),
                    properties.getProperty("vHadoopExcludeTTFile")));
+       
+       VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
+       EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
        
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
 
