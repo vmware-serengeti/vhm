@@ -1,6 +1,4 @@
 <settings>
-  .
-  .
   <proxies>
    <proxy>
       <active>true</active>
@@ -17,7 +15,5 @@
       <nonProxyHosts>*.vmware.com</nonProxyHosts>
     </proxy>
   </proxies>
-  .
-  .
 </settings>
 
