@@ -40,7 +40,6 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
    }
 
    @Override
-   /* TODO: return a one element array to work around future requirement */
    public String[] getTTFolderNames() {
       return _ttFolderNames;
    }
