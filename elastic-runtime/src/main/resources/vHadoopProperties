@@ -1,0 +1,9 @@
+vCenterId=10.141.7.65
+vCenterUser=Administrator
+vCenterPwd=ca$hc0w
+vHadoopUser=hduser
+vHadoopPwd=had00p
+vHadoopHome=/usr/local/hadoop/hadoop-0.20.203.0
+vHadoopExcludeTTFile=/usr/local/hadoop/hadoop-0.20.203.0/conf/excludeTTs
+exchangeName=bdd.runtime
+msgHostName=localhost
