@@ -6,7 +6,7 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
    private String _clusterName;
    private int _targetTTs;
    private String _jobTracker;
-   private String _ttFolderName;
+   private String[] _ttFolderNames;
    
    public VHMSimpleInputMessage(byte[] data) {
       _data = data;
@@ -16,7 +16,7 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
       _clusterName = tokens[0];
       _targetTTs = Integer.parseInt(tokens[2]);
       _jobTracker = tokens[3];
-      _ttFolderName = tokens[4];
+      _ttFolderNames = tokens[4].split(",");
    }
 
    @Override
@@ -42,7 +42,7 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
    @Override
    /* TODO: return a one element array to work around future requirement */
    public String[] getTTFolderNames() {
-      return new String[]{_ttFolderName};
+      return _ttFolderNames;
    }
 
 }
