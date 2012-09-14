@@ -64,7 +64,7 @@ public class EmbeddedVHM extends VHMProcess {
          while (_running) {
             _log.log(Level.INFO, "Waiting for message");
             VHMInputMessage input = (VHMInputMessage)_mq.blockAndReceive();
-            if (input == null && _running) {
+            if (((input == null) || (input.getClusterName() == null)) && _running) {
                _log.log(Level.WARNING, "Failed to receive message");
                continue;
             }
@@ -118,14 +118,16 @@ public class EmbeddedVHM extends VHMProcess {
             if (initialSuccess) {
                completedSuccess = edPolicy.testForSuccess(ttsToDisable, false);
             }
+         } else {
+            initialSuccess = true;
+            completedSuccess = true;
          }
 
          if (delta != 0) {
             _log.log(Level.INFO, "Result: Initial Success = "+initialSuccess+" Completed Success = "+completedSuccess);
          }
 
-         /* TODO: Determine and return the actual number enabled, rather than just the target number */
-         return new VHMSimpleReturnMessage(new Integer(input.getTargetTTs()).toString());
+         return new VHMJsonReturnMessage(completedSuccess);
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM", e);
       }

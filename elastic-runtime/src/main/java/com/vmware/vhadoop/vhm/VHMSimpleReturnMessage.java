@@ -3,16 +3,20 @@ package com.vmware.vhadoop.vhm;
 import com.vmware.vhadoop.vhm.EmbeddedVHM.VHMReturnMessage;
 
 public class VHMSimpleReturnMessage implements VHMReturnMessage {
-   String _numTTs;
+   boolean _success;
    
-   public VHMSimpleReturnMessage(String numTTs) {
-      _numTTs = numTTs;
+   public VHMSimpleReturnMessage(boolean completedSuccess) {
+      _success = completedSuccess;
    }
    
    /* TODO: Implement some sort of return message format */
    @Override
    public byte[] getRawPayload() {
-      return _numTTs.getBytes();
+      if (true == _success) {
+         return "success".getBytes();
+      } else {
+         return "failure".getBytes();
+      }
    }
 
 }

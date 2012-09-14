@@ -6,7 +6,7 @@ import java.util.logging.Logger;
 import com.rabbitmq.client.QueueingConsumer;
 import com.vmware.vhadoop.adaptor.rabbit.RabbitConnection.RabbitCredentials;
 import com.vmware.vhadoop.external.MQActions;
-import com.vmware.vhadoop.vhm.VHMSimpleInputMessage;
+import com.vmware.vhadoop.vhm.VHMJsonInputMessage;
 
 /**
  * Message queue client implementation for RabbitMQ
@@ -27,7 +27,7 @@ public class RabbitAdaptor implements MQActions {
    public MessagePayload blockAndReceive() {
       try {
          QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
-         return new VHMSimpleInputMessage(delivery.getBody());
+         return new VHMJsonInputMessage(delivery.getBody());
       } catch (InterruptedException e) {
          _log.log(Level.INFO, "Message Queue interrupted");
       }

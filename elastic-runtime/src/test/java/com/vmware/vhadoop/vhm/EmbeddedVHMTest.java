@@ -40,7 +40,8 @@ public class EmbeddedVHMTest {
    
    @Test
    public void testWithFakeQueue() {
-      VHMInputMessage input = new VHMSimpleInputMessage("DataComputeSplit0.20 foo 2 10.140.109.105 TTVMs".getBytes());
+      String jsonMsg = "{\"version\":1,\"cluster_name\":\"DataComputeSplit0.20\",\"jobtracker\":\"10.140.109.105\",\"instance_num\":2,\"node_groups\":[\"TTVMs\"]}";
+      VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
       VHMReturnMessage output = _test.setNumTTVMsForCluster(input);
    }
    
