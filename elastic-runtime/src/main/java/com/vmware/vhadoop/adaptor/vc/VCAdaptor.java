@@ -75,12 +75,11 @@ public class VCAdaptor extends AbstractVCAdaptor {
    }
 
    @Override
-   /* Note this uses the cached host from the VMDTO. We assume this is recently obtained. May want to add failover? */
    public Future<VMDTO> powerOnVM(VMDTO vm) {
       ManagedObjectReference futureTaskResult = null;
       try {
          futureTaskResult = _connection.getVimPort().powerOnVMTask(
-               (ManagedObjectReference)vm._moId, (ManagedObjectReference)vm.getStateProperty("runtime.host"));
+               (ManagedObjectReference)vm._moId, null);
       } catch (Exception e) {
          return null;
       }
