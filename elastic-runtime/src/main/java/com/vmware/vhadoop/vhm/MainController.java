@@ -30,6 +30,7 @@ import com.vmware.vhadoop.vhm.vmcalgorithm.VMChooserAlgorithm;
 public class MainController {
    static Properties properties = null;
    static String vhmConfigFileName = "vHadoopProperties";
+   static String vhmLogFileName = "vHadoop.log";
    
    public static void readPropertiesFile(String fileName) {
        try {
@@ -57,21 +58,22 @@ public class MainController {
 	   }
    }
    
-   public static String getConfigFileName() {
+   public static String getVHMFileName(String subdir, String fileName) {
        String homeDir = System.getProperties().getProperty("serengeti.home.dir");
 	   StringBuilder builder = new StringBuilder();
        if (homeDir != null && homeDir.length() > 0) {
-    	   builder.append(homeDir).append(File.separator).append("conf").append(File.separator).append(vhmConfigFileName);
+    	   builder.append(homeDir).append(File.separator).append(subdir).append(File.separator).append(fileName);
        } else {
-    	   builder.append("/tmp").append(File.separator).append(vhmConfigFileName);
+    	   builder.append("/tmp").append(File.separator).append(fileName);
        }
 	   String configFileName = builder.toString();
 	   return configFileName;
    }
 
    public static void main(String[] args) {
-	   setupLogger("/tmp/vHadoop.log");
-	   String configFileName = getConfigFileName();
+	   String logFileName = getVHMFileName("logs", vhmLogFileName);
+	   setupLogger(logFileName);
+	   String configFileName = getVHMFileName("conf", vhmConfigFileName);
        readPropertiesFile(configFileName);
        
        /* TODO: As we build these subsystems, we should be checking that they're operational
