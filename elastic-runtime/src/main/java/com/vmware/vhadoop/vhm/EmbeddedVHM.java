@@ -31,6 +31,7 @@ public class EmbeddedVHM extends VHMProcess {
 
    public interface VHMInputMessage extends MessagePayload {
       public String getClusterName();
+      public String getSerengetiRootFolder();
       public String getJobTrackerAddress();
       public String[] getTTFolderNames();
       public int getTargetTTs();

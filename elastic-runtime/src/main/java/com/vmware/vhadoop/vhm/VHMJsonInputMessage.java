@@ -18,6 +18,7 @@ public class VHMJsonInputMessage implements VHMInputMessage {
       String jobtracker;
       int instance_num;
       String[] node_groups;
+      String serengeti_instance;
    }
 
    private VHMCommandMessage _command; 
@@ -63,6 +64,11 @@ public class VHMJsonInputMessage implements VHMInputMessage {
    @Override
    public String[] getTTFolderNames() {
       return _command.node_groups;
+   }
+
+   @Override
+   public String getSerengetiRootFolder() {
+      return _command.serengeti_instance;
    }
 
 }

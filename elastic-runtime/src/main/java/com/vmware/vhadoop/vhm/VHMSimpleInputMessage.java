@@ -7,6 +7,7 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
    private int _targetTTs;
    private String _jobTracker;
    private String[] _ttFolderNames;
+   private String _rootFolder;
    
    public VHMSimpleInputMessage(byte[] data) {
       _data = data;
@@ -17,6 +18,7 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
       _targetTTs = Integer.parseInt(tokens[2]);
       _jobTracker = tokens[3];
       _ttFolderNames = tokens[4].split(",");
+      _rootFolder = tokens[5];
    }
 
    @Override
@@ -42,6 +44,11 @@ public class VHMSimpleInputMessage implements EmbeddedVHM.VHMInputMessage {
    @Override
    public String[] getTTFolderNames() {
       return _ttFolderNames;
+   }
+
+   @Override
+   public String getSerengetiRootFolder() {
+      return _rootFolder;
    }
 
 }
