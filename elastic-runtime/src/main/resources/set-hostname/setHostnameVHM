@@ -6,11 +6,13 @@
 # java.net.InetAddr.getLocalHost().getCanonicalHostname()
 
 HOSTNAMEFILE="/etc/myhostname"
+JARFILE="/etc/GetHostname.jar"
+JAVA="/usr/local/jdk/bin/java"
 
 cd $(dirname $0)
 
 # Get hostname
-/usr/local/jdk/bin/java -jar /etc/GetHostname.jar > $HOSTNAMEFILE
+$JAVA -jar $JARFILE > $HOSTNAMEFILE
 
 # Set hostname
 if [ -s $HOSTNAMEFILE ]; then
