@@ -92,7 +92,8 @@ public class EmbeddedVHM extends VHMProcess {
          
          _log.log(Level.INFO, "Getting folders...");
          FolderDTO rootFolder = _vc.getRootFolder().get();
-         FolderDTO clusterFolder = _vc.getFolderForName(rootFolder, input.getClusterName()).get();
+         FolderDTO serengetiRootFolder = _vc.getFolderForName(rootFolder, input.getSerengetiRootFolder()).get();
+         FolderDTO clusterFolder = _vc.getFolderForName(serengetiRootFolder, input.getClusterName()).get();
          VMDTO[] allTTs = getAllTTsForAllHosts(input.getTTFolderNames(), clusterFolder);
          
          TTStatesForHost[] ttStatesForHosts = _config._enableDisablePolicy.getStateForTTs(allTTs);
