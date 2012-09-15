@@ -88,7 +88,9 @@ public class MainController {
        MQActions mq = new RabbitAdaptor(
              new SimpleRabbitCredentials(
                    properties.getProperty("msgHostName"),
-                   properties.getProperty("exchangeName")));
+                   properties.getProperty("exchangeName"),
+                   properties.getProperty("routeKeyCommand"),
+                   properties.getProperty("routeKeyStatus")));
 
        HadoopActions hd = new HadoopAdaptor(
              new SimpleHadoopCredentials(

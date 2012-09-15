@@ -16,6 +16,7 @@ public class RabbitConnection {
    interface RabbitCredentials {
       public String getHostName();
       public String getExchangeName();
+      public String getRouteKeyCommand();
    }
 
    private ConnectionFactory _connectionFactory;
@@ -36,7 +37,7 @@ public class RabbitConnection {
          String exchangeName = _credentials.getExchangeName();
          channel.exchangeDeclare(exchangeName, "direct", true, false, null); /* TODO: Externalize? */
          String queueName = channel.queueDeclare().getQueue();
-         channel.queueBind(queueName, exchangeName, "");
+         channel.queueBind(queueName, exchangeName, _credentials.getRouteKeyCommand());
 
          QueueingConsumer consumer = new QueueingConsumer(channel);
          channel.basicConsume(queueName, true, consumer);
