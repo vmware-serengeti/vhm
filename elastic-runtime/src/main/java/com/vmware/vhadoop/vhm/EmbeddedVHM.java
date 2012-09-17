@@ -71,7 +71,9 @@ public class EmbeddedVHM extends VHMProcess {
             }
             _log.log(Level.INFO, "Processing message...");
             VHMReturnMessage output = setNumTTVMsForCluster(input);
-            _mq.sendMessage(output.getRawPayload());
+            if (output != null) {
+               _mq.sendMessage(output.getRawPayload());
+            }
          }
       } else {
          _log.log(Level.SEVERE, "VHM is not initialized!");
