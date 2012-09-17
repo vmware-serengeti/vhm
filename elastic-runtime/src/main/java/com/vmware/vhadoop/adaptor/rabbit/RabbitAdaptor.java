@@ -40,4 +40,8 @@ public class RabbitAdaptor implements MQActions {
        * This is going to be important for clean shutdown */ 
    }
 
+   @Override
+   public void sendMessage(byte[] data) {
+      _connection.sendMessage(data);
+   }
 }

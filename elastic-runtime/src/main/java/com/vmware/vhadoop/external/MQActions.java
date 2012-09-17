@@ -7,6 +7,7 @@ public interface MQActions {
    }
    
    public MessagePayload blockAndReceive();
+   public void sendMessage(byte[] data);
    
    public void interrupt();
 

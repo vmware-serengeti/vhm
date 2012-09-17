@@ -34,4 +34,9 @@ public class SimpleRabbitCredentials implements RabbitCredentials {
       return _routeKeyCommand;
    }
 
+   @Override
+   public String getRouteKeyStatus() {
+      return _routeKeyStatus;
+   }
+
 }
