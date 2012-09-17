@@ -71,9 +71,7 @@ public class EmbeddedVHM extends VHMProcess {
             }
             _log.log(Level.INFO, "Processing message...");
             VHMReturnMessage output = setNumTTVMsForCluster(input);
-            if (output != null) {
-               _mq.sendMessage(output.getRawPayload());
-            }
+            _mq.sendMessage(output.getRawPayload());
          }
       } else {
          _log.log(Level.SEVERE, "VHM is not initialized!");
@@ -134,8 +132,8 @@ public class EmbeddedVHM extends VHMProcess {
          return new VHMJsonReturnMessage(completedSuccess);
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM", e);
+         return new VHMJsonReturnMessage(false);
       }
-      return null;
    }
    
    private VMDTO[] getAllTTsForAllHosts(String[] folderNames, FolderDTO clusterFolder) throws ExecutionException, InterruptedException {
