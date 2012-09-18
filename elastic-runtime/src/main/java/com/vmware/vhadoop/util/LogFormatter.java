@@ -1,5 +1,7 @@
 package com.vmware.vhadoop.util;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.IllegalFormatConversionException;
 import java.util.UnknownFormatConversionException;
 import java.util.logging.Formatter;
@@ -22,6 +24,11 @@ public class LogFormatter extends Formatter {
          }
       }
       StringBuilder result = new StringBuilder();
+
+      // timestamp prefix (e.g. 2012 Sep 17 17:20:20.852)
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyy MMM dd HH:mm:ss.S");
+      result.append(sdf.format(new Date()));
+
       result.append(" [").append(record.getThreadID()).append("-").append(name);
       /* Fine logging is for method entry/exit so we add the method name */
       if (record.getLevel().equals(Level.FINE) || record.getLevel().equals(Level.FINER)
