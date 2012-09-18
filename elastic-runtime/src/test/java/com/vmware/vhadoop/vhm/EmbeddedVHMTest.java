@@ -30,14 +30,19 @@ public class EmbeddedVHMTest {
    public void init() {
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
       VCUtils.trustAllHttpsCertificates();
-      VCActions vc = new VCAdaptor(new SimpleVCCredentials("10.141.7.65", "Administrator", "ca$hc0w"));
-
-      MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("10.141.7.151", "bdd.runtime", "command", "status"));
+      
+      //Our WDC VC/mq
+      //VCActions vc = new VCAdaptor(new SimpleVCCredentials("10.141.7.65", "Administrator", "ca$hc0w"));
+      //MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("10.141.7.151", "bdd.runtime", "command", "status"));
+      
+      VCActions vc = new VCAdaptor(new SimpleVCCredentials("10.138.121.121", "Administrator", "ca$hc0w"));
+      MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("10.141.73.207", "bdd.runtime.exchange", "command", "status"));
+      
       //HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("hduser", "had00p"), 
             //new JTConfig("/usr/local/hadoop/hadoop-0.20.203.0", "/usr/local/hadoop/hadoop-0.20.203.0/conf/excludeTTs"));
 
       HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("root", "password"), 
-              new JTConfig("/usr/lib/hadoop", "/usr/lib/hadoop/conf/excludeTTs"));
+              new JTConfig("/usr/lib/hadoop", "/usr/lib/hadoop/conf/mapred.hosts.exclude"));
       VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
       _test.init(vhmc, vc, mq, hd);
    }
@@ -47,7 +52,11 @@ public class EmbeddedVHMTest {
 
       //String jsonMsg = "{\"version\":1,\"cluster_name\":\"DataComputeSplit0.20\",\"jobtracker\":\"10.140.109.105\",\"instance_num\":1,\"node_groups\":[\"TTVMs\"],\"serengeti_instance\":\"SERENGETI-0c4de1b1-79e6-4277-971e-e1ab2e2fe098\"}";
 
-      String jsonMsg = "{\"version\":1,\"cluster_name\":\"cds3\",\"jobtracker\":\"10.140.109.128\",\"instance_num\":1,\"node_groups\":[\"TTVMs\"],\"serengeti_instance\":\"SERENGETI-0c4de1b1-79e6-4277-971e-e1ab2e2fe098\"}";
+	   //String jsonMsg = "{\"version\":1,\"cluster_name\":\"cds3\",\"jobtracker\":\"10.140.109.128\",\"instance_num\":1,\"node_groups\":[\"TTVMs\"],\"serengeti_instance\":\"SERENGETI-0c4de1b1-79e6-4277-971e-e1ab2e2fe098\"}";
+
+      //String jsonMsg = "{\"version\":1,\"cluster_name\":\"cds_static\",\"jobtracker\":\"10.140.108.160\",\"instance_num\":0,\"node_groups\":[\"TTVMs\"],\"serengeti_instance\":\"SERENGETI-0c4de1b1-79e6-4277-971e-e1ab2e2fe098\"}";
+
+      String jsonMsg = "{\"version\":1,\"cluster_name\":\"computeOnly3\",\"jobtracker\":\"10.141.72.149\",\"instance_num\":0,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-2dcd00fb-ed3a-4ee0-a02e-4b20bbf15a93\"}";
 
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
       VHMReturnMessage output = _test.setNumTTVMsForCluster(input);

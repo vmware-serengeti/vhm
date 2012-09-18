@@ -34,21 +34,23 @@ public class NonThreadSafeSshUtils implements SshUtils {
    @Override
    public ChannelExec createChannel(Logger logger, final HadoopCredentials credentials, String host, int port) {
       try {
+    	 
          Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
 
          session.setPassword(credentials.getSshPassword());
          UserInfo ui = new SSHUserInfo(credentials.getSshPassword());
          session.setUserInfo(ui);
 
+
          java.util.Properties config = new java.util.Properties();
          config.put("StrictHostKeyChecking", "no");        /* TODO: Necessary? Hack? Security hole?? */
          session.setConfig(config);
-
+        
          // JG: Adding session timeout...
          session.setTimeout(15000);
-
+        
          session.connect();
-
+        
          return (ChannelExec)session.openChannel("exec");
       } catch (JSchException e) {
          logger.log(Level.SEVERE, "Could not create channel on host "+host, e);
