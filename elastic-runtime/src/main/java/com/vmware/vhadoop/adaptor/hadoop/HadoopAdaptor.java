@@ -158,7 +158,10 @@ public class HadoopAdaptor implements HadoopActions {
       for (int i=0; i<2; i++) {
          rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs);
          if (rc == ERROR_COMMAND_NOT_FOUND) {
-            byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
+        	 //Changed this to accommodate using jar file...
+        	String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();            
+            //byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
+        	byte[] scriptData = loadLocalScript(fullLocalPath);
             if ((scriptData != null) && 
                   (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
                continue;

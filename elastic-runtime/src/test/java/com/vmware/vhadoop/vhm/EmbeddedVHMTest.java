@@ -56,7 +56,7 @@ public class EmbeddedVHMTest {
 
       //String jsonMsg = "{\"version\":1,\"cluster_name\":\"cds_static\",\"jobtracker\":\"10.140.108.160\",\"instance_num\":0,\"node_groups\":[\"TTVMs\"],\"serengeti_instance\":\"SERENGETI-0c4de1b1-79e6-4277-971e-e1ab2e2fe098\"}";
 
-      String jsonMsg = "{\"version\":1,\"cluster_name\":\"computeOnly3\",\"jobtracker\":\"10.141.72.149\",\"instance_num\":0,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-2dcd00fb-ed3a-4ee0-a02e-4b20bbf15a93\"}";
+      String jsonMsg = "{\"version\":1,\"cluster_name\":\"computeOnly3\",\"jobtracker\":\"10.141.72.149\",\"instance_num\":2,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-2dcd00fb-ed3a-4ee0-a02e-4b20bbf15a93\"}";
 
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
       VHMReturnMessage output = _test.setNumTTVMsForCluster(input);
