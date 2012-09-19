@@ -8,6 +8,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -15,11 +16,13 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
 import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.HadoopConnectionProperties;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.HadoopCredentials;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ParamTypes;
 import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.HadoopCluster;
+import org.apache.commons.io.IOUtils;
 
 /**
  * Class which represents the real implementation of HadoopActions
@@ -132,7 +135,24 @@ public class HadoopAdaptor implements HadoopActions {
       setErrorParamValue(ParamTypes.DRSCRIPT, drScript);
       setErrorParamValue(ParamTypes.DRLIST, drList);
    }
-   
+
+   private byte[] loadLocalScript(String fileName) {
+	   InputStream is = HadoopAdaptor.class.getClassLoader().getResourceAsStream(fileName);
+	   if (is == null) {
+		   _log.log(Level.SEVERE, "File "+ fileName + " does not exist!");
+		   return null;
+	   }
+	
+	   byte[] result = null;
+	   try {
+		   result = IOUtils.toByteArray(is);
+	   } catch (IOException e) {
+		   _log.log(Level.SEVERE, "Unexpected error while converting file " + fileName + " to byte array", e);	
+	   }
+	   return result;
+   }
+
+   /*
    private byte[] loadLocalScript(String fullLocalPath) {
       File file = new File(fullLocalPath);
       if (!file.exists()) {
@@ -152,6 +172,7 @@ public class HadoopAdaptor implements HadoopActions {
       }
       return null;
    }
+*/
 
    private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs) {
       int rc = -1;
@@ -159,9 +180,10 @@ public class HadoopAdaptor implements HadoopActions {
          rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs);
          if (rc == ERROR_COMMAND_NOT_FOUND) {
         	 //Changed this to accommodate using jar file...
-        	String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();            
-            //byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
-        	byte[] scriptData = loadLocalScript(fullLocalPath);
+        	//String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();
+        	//byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
+        	//byte[] scriptData = loadLocalScript(fullLocalPath);
+        	byte[] scriptData = loadLocalScript(scriptFileName);
             if ((scriptData != null) && 
                   (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
                continue;
