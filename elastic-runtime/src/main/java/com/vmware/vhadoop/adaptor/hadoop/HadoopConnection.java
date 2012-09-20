@@ -96,7 +96,7 @@ public class HadoopConnection {
    public int executeScript(String scriptFileName, String destinationPath, String[] scriptArgs) {
       int exitStatus = UNKNOWN_ERROR;
 
-      _log.log(Level.INFO, "Executing remote script "+scriptFileName);
+      _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName);
 
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, 
             _hadoopCluster.getJobTrackerName(), _connectionProperties.getSshPort());
@@ -114,7 +114,7 @@ public class HadoopConnection {
       exitStatus = _sshUtils.exec(_log, channel, out, command.toString().trim());
       ps.flush();
       
-      _log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
+      //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
 
       _sshUtils.cleanup(_log, out, channel);
       

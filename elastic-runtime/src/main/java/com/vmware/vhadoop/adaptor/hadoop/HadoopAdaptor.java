@@ -178,7 +178,8 @@ public class HadoopAdaptor implements HadoopActions {
       int rc = -1;
       for (int i=0; i<2; i++) {
          rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs);
-         if (rc == ERROR_COMMAND_NOT_FOUND) {
+         if (i == 0 && rc == ERROR_COMMAND_NOT_FOUND) {
+        	 _log.log(Level.INFO, scriptFileName + " not found...");
         	 //Changed this to accommodate using jar file...
         	//String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();
         	//byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
@@ -239,9 +240,13 @@ public class HadoopAdaptor implements HadoopActions {
       int rc = -1;
       int iterations = 0;
       do {
+    	 if (iterations > 0) {
+         	 _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
+         }
          rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
-               new String[]{""+totalTargetEnabled, connection.getHadoopHome()});
+               new String[]{""+totalTargetEnabled, connection.getHadoopHome()});         
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
+
       return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
    }
 }
