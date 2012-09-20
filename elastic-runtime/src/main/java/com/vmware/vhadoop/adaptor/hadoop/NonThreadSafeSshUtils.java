@@ -62,12 +62,14 @@ public class NonThreadSafeSshUtils implements SshUtils {
    public int exec(Logger logger, ChannelExec channel, OutputStream out, String command) {
       int exitStatus = UNKNOWN_ERROR;
       try {
-         logger.log(Level.FINE, "About to execute: "+command);
+         logger.log(Level.FINE, "About to execute: "+command);   	  
          channel.setCommand(command);
          channel.setOutputStream(out);
          channel.setInputStream(null);         /* TODO: Why? */
          InputStream in = channel.getInputStream();
          channel.connect();
+
+        logger.log(Level.FINE, "Finished channel connection in exec");
 
          if (!testChannel(logger, channel)) {
             return UNKNOWN_ERROR;          /* TODO: Improve */
@@ -92,6 +94,8 @@ public class NonThreadSafeSshUtils implements SshUtils {
       } catch (IOException e) {
          logger.log(Level.SEVERE, "Unexpected IOException executing over SSH", e);
       }
+      
+      logger.log(Level.FINE, "Exit status from exec is: " + exitStatus);
       return exitStatus;
    }
 

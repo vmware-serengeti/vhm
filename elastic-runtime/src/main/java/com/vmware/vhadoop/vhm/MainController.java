@@ -108,7 +108,7 @@ public class MainController {
      
        VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
        EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
-       
+       //EnableDisableTTPolicy enableDisablePolicy = new EDP_JustPowerTTOnOff(vc);
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
 
        EmbeddedVHM vhm = new EmbeddedVHM();

@@ -228,11 +228,18 @@ public class HadoopAdaptor implements HadoopActions {
 
    @Override
    public boolean checkTargetTTsSuccess(int totalTargetEnabled, HadoopCluster cluster) {
+	  String scriptFileName = CHECK_SCRIPT_FILE_NAME;
+      String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
+      String listRemoteFilePath = null;
+      String opDesc = "checkTargetTTsSuccess";
+      
       HadoopConnection connection = getConnectionForCluster(cluster);
+      setErrorParamsForCommand(opDesc, scriptRemoteFilePath, listRemoteFilePath);
+      
       int rc = -1;
       int iterations = 0;
       do {
-         rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, 
+         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
                new String[]{""+totalTargetEnabled, connection.getHadoopHome()});
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
       return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
