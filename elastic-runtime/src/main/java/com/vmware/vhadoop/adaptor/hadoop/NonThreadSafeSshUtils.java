@@ -30,7 +30,8 @@ public class NonThreadSafeSshUtils implements SshUtils {
    private JSch _jsch = new JSch();
 
    private static final String SCP_COMMAND = "scp  -t  ";
-
+   private static final int INPUTSTREAM_TIMEOUT = 100;
+   
    @Override
    public ChannelExec createChannel(Logger logger, final HadoopCredentials credentials, String host, int port) {
       try {
@@ -75,6 +76,7 @@ public class NonThreadSafeSshUtils implements SshUtils {
             return UNKNOWN_ERROR;          /* TODO: Improve */
          }
          
+         int numSecs = 0;
          byte[] tmp = new byte[1024];
          while (true) {
             while (in.available() > 0) {
@@ -87,6 +89,19 @@ public class NonThreadSafeSshUtils implements SshUtils {
                exitStatus = channel.getExitStatus();
                logger.log(Level.SEVERE, "Exit status from exec is: " + channel.getExitStatus());
                break;
+            }
+            
+            try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				logger.log(Level.SEVERE, "Excpetion while sleeping in exec");
+			}
+            
+            numSecs++;
+            
+            if (numSecs == INPUTSTREAM_TIMEOUT) {
+            	logger.log(Level.SEVERE, "No input was received for " + numSecs + "s while running remote exec!");
+            	break;
             }
          }
       } catch (JSchException e) {

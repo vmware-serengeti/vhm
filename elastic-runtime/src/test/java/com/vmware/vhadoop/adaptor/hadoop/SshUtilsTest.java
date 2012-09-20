@@ -41,7 +41,7 @@ public class SshUtilsTest {
       }
    }
 
-//   @Test
+   @Test
    public void testSSH() {
      SshUtils test = new NonThreadSafeSshUtils();
      ChannelExec channel = test.createChannel(_log, new SimpleHadoopCredentials("hduser", "had00p"), "10.140.109.105", 22);
@@ -49,12 +49,12 @@ public class SshUtilsTest {
      PrintStream ps = new PrintStream(baos);
      int retVal = test.exec(_log, channel, ps, "/tmp/wibble.sh");
      ps.flush();
-     new HadoopErrorCodes().interpretErrorCode(_log, retVal, _paramValues);
+     //new HadoopErrorCodes().interpretErrorCode(_log, retVal, _paramValues);
      _log.log(Level.INFO, "Process output = \"" + baos.toString().trim() + "\"");
      test.cleanup(_log, ps, channel);
    }
 
-   @Test
+   // @Test
    public void testSCP() {
      SshUtils test = new NonThreadSafeSshUtils();
      ChannelExec channel = test.createChannel(_log, new SimpleHadoopCredentials("hduser", "had00p"), "10.140.109.105", 22);
