@@ -129,6 +129,7 @@ public class EmbeddedVHM extends VHMProcess {
             _log.log(Level.INFO, "Result: Initial Success = "+initialSuccess+" Completed Success = "+completedSuccess);
          }
 
+         // _vc.dropConnection(); // Temporary testing code TODO replace with junit test
          return new VHMJsonReturnMessage(completedSuccess);
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM", e);

@@ -14,6 +14,8 @@ import com.vmware.vhadoop.external.VCActionDTOTypes.VMPowerState;
 public interface VCActions {
 
    public boolean testConnection();
+   
+   public void dropConnection();  // Used for testing
 
    public String getVMHostname(VMDTO vm);
 

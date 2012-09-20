@@ -2,12 +2,14 @@ package com.vmware.vhadoop.adaptor.vc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 
@@ -127,9 +129,26 @@ public class VCConnection {
       _credentials = credentials;
    }
 
-   private boolean testConnection() {
-      /* Test the connection */
-      return (getServiceContent().getRootFolder() != null);
+   @SuppressWarnings("finally")
+private boolean testConnection() {
+	  if (!_connected) {
+		 return false;
+	  }
+      /* Test the operation of the current connection using the standard simple call for this purpose.
+       * Note: Don't use getVimPort() which would recursively try to test the connection.
+       * */
+      XMLGregorianCalendar vcTime = null;
+      try {
+         ManagedObjectReference svcInstRef = new ManagedObjectReference();
+         svcInstRef.setType("ServiceInstance");
+         svcInstRef.setValue("ServiceInstance");
+         vcTime = _vimPort.currentTime(svcInstRef);
+      } finally {
+    	 if (vcTime == null) {
+    		 _log.log(Level.SEVERE, "testConnection found VC connection dropped; caller will reconnect");
+    	 }
+    	 return vcTime != null;
+      }
    }
 
    private String getWsURL() {
@@ -148,7 +167,7 @@ public class VCConnection {
             return true;
          } else {
             /* Refresh */
-            disconnect();
+            _connected = false;
          }
       }
 
@@ -178,21 +197,29 @@ public class VCConnection {
       return testConnection();
    }
    
-   /* TODO: Retry should be encapsulated here. We should always hand back a valid service content or null */
+   /* Retry is encapsulated here. We always hand back a valid service content or null */
    protected ServiceContent getServiceContent() {
-      return _serviceContent;
+	  if (connect()) {
+         return _serviceContent;
+	  }
+	  return null;
    }
    
-   /* TODO: Retry should be encapsulated here. We should always hand back a valid vim port or null */
+   /* Retry is encapsulated here. We always hand back a valid vim port or null */
    protected VimPortType getVimPort() {
-      return _vimPort;
+	  if (connect()) {
+         return _vimPort;
+	  }
+	  return null;
    }
    
-   public void disconnect() throws SOAPFaultException {
+   public void disconnect(boolean testAsyncDrop) throws SOAPFaultException {
       if (_connected) {
          try {
             getVimPort().logout(getServiceContent().getSessionManager());
-            _connected = false;
+            if (!testAsyncDrop) { // for testing connection drop asynchronous to VHM operation.
+               _connected = false;
+            }
          } catch (RuntimeFaultFaultMsg e) {
             throw new RuntimeException("Unexpected Disconnect Exception", e);
          }
