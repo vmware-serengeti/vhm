@@ -5,7 +5,7 @@ import com.vmware.vhadoop.vhm.EmbeddedVHM.VHMReturnMessage;
 public class VHMSimpleReturnMessage implements VHMReturnMessage {
    boolean _success;
    
-   public VHMSimpleReturnMessage(boolean completedSuccess) {
+   public VHMSimpleReturnMessage(boolean completedSuccess, String msg) {
       _success = completedSuccess;
    }
    

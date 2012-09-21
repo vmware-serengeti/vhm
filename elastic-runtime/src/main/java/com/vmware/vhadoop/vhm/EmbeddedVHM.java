@@ -128,11 +128,11 @@ public class EmbeddedVHM extends VHMProcess {
          if (delta != 0) {
             _log.log(Level.INFO, "Result: Initial Success = "+initialSuccess+" Completed Success = "+completedSuccess);
          }
-
-         return new VHMJsonReturnMessage(completedSuccess);
+         
+         return new VHMJsonReturnMessage(completedSuccess, null);
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM", e);
-         return new VHMJsonReturnMessage(false);
+         return new VHMJsonReturnMessage(false, e.getMessage());
       }
    }
    

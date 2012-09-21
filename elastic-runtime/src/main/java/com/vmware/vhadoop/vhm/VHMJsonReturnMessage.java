@@ -16,13 +16,13 @@ public class VHMJsonReturnMessage implements VHMReturnMessage {
 
    private VHMStatusMessage _msg;
    
-   public VHMJsonReturnMessage(boolean completedSuccess) {
+   public VHMJsonReturnMessage(boolean completedSuccess, String msg) {
       _msg = new VHMStatusMessage();
       _msg.finished = true;
       _msg.succeed = completedSuccess;
       _msg.progress = 100;
       _msg.error_code = 0;
-      _msg.error_msg = null;
+      _msg.error_msg = msg;
    }
    
    
