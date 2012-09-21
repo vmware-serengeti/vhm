@@ -63,7 +63,8 @@ public class EmbeddedVHMTest {
       String jsonMsg = "{\"version\":1,\"cluster_name\":\"dcsplit\",\"jobtracker\":\"10.141.73.231\",\"instance_num\":6,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-3bf8edd1-30f6-4ac0-9950-5f5571c22c6f\"}";
 
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
-      VHMReturnMessage output = _test.setNumTTVMsForCluster(input);
+      VHMProgressUpdater progressUpdater = new VHMProgressUpdater(null);
+      _test.setNumTTVMsForCluster(input, progressUpdater);
    }
    
 //   @Test

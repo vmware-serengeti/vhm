@@ -69,9 +69,10 @@ public class EmbeddedVHM extends VHMProcess {
                _log.log(Level.WARNING, "Failed to receive message");
                continue;
             }
+
+            VHMProgressUpdater progressUpdater = new VHMProgressUpdater(_mq);
             _log.log(Level.INFO, "Processing message...");
-            VHMReturnMessage output = setNumTTVMsForCluster(input);
-            _mq.sendMessage(output.getRawPayload());
+            setNumTTVMsForCluster(input, progressUpdater);
          }
       } else {
          _log.log(Level.SEVERE, "VHM is not initialized!");
@@ -84,11 +85,13 @@ public class EmbeddedVHM extends VHMProcess {
       _mq.interrupt();
    }
 
-   protected VHMReturnMessage setNumTTVMsForCluster(VHMInputMessage input) {
+   protected void setNumTTVMsForCluster(VHMInputMessage input, VHMProgressUpdater progressUpdater) {
       try {
          HadoopCluster cluster = new HadoopCluster(input.getClusterName(), input.getJobTrackerAddress());
          EnableDisableTTPolicy edPolicy = _config._enableDisablePolicy;
          VMChooserAlgorithm vmChooser = _config._vmChooser;
+         
+         progressUpdater.setPercentDone(10);
          
          _log.log(Level.INFO, "Getting folders...");
          FolderDTO rootFolder = _vc.getRootFolder().get();
@@ -103,6 +106,8 @@ public class EmbeddedVHM extends VHMProcess {
          }
          int delta = (input.getTargetTTs() - totalEnabled);
          _log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
+
+         progressUpdater.setPercentDone(30);
 
          boolean initialSuccess = false;
          boolean completedSuccess = false;
@@ -130,10 +135,14 @@ public class EmbeddedVHM extends VHMProcess {
          }
 
          // _vc.dropConnection(); // Temporary testing code TODO replace with junit test
-         return new VHMJsonReturnMessage(completedSuccess, null);
+         if (completedSuccess) {
+            progressUpdater.succeeded();
+         } else {
+            progressUpdater.error(null);
+         }
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM", e);
-         return new VHMJsonReturnMessage(false, e.getMessage());
+         progressUpdater.error(e.getMessage());
       }
    }
    
