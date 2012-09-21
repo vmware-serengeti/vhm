@@ -33,41 +33,18 @@ WARN_TT_ACTIVE=201
 isActive()
 {
     ttList=("${!1}")
-
-    # Determine if argument is ip addr or hostname
-    if [[ $2 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-	isIPAddr=1
-	tt=$2
-    else
-	isIPAddr=0
-	tt=tracker_"$2"
-    fi
-
-    flagLocalHost=0
-
+    tt=tracker_"$2"
+    
     for ttData in ${ttList[@]}; do	
-	if [ $isIPAddr -eq 1 ]; then
-	    activeTT=`echo $ttData | cut -d: -f2 | cut -d'/' -f2`
-	    if [ "$activeTT" = "127.0.0.1" ]; then
-		echo "WARNING: Comparing $tt with localhost!"
-		flagLocalHost=1
-		continue
-	    fi
-	else
-	    activeTT=`echo $ttData | cut -d: -f1`
-	fi
-
+	activeTT=`echo $ttData | cut -d: -f1`	
 	if [ "$activeTT" = "$tt" ]; then
 		return 1
 	fi
     done
 
-    if [ $flagLocalHost -eq 1 ]; then
-	return 2
-    else
-	return 0
-    fi
+    return 0
 }
+
 
 # Parse the error file generated for JobTracker
 
@@ -201,7 +178,7 @@ main()
 
 		isActive arrActiveTTs[@] $ttRecommission
 		returnVal=$?
-		if [ $returnVal -eq 0 ] || [ $returnVal -eq 2 ]; then
+		if [ $returnVal -eq 0 ]; then
 		    numToRecommission=$((numToRecommission+1))
 		else
 		    echo "WARNING: $ttRecommission is currently active!"
