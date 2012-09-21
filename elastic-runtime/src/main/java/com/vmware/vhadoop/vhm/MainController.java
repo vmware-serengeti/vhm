@@ -8,8 +8,12 @@ import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import sun.rmi.runtime.Log;
 
 import com.vmware.vhadoop.adaptor.hadoop.HadoopAdaptor;
+import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection;
 import com.vmware.vhadoop.adaptor.hadoop.JTConfig;
 import com.vmware.vhadoop.adaptor.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.adaptor.rabbit.RabbitAdaptor;
@@ -94,15 +98,17 @@ public class MainController {
 
        HadoopActions hd = new HadoopAdaptor(
              new SimpleHadoopCredentials(
-                   properties.getProperty("vHadoopId"), 
+                   properties.getProperty("vHadoopUser"), 
                    properties.getProperty("vHadoopPwd")), 
              new JTConfig(
                    properties.getProperty("vHadoopHome"),
                    properties.getProperty("vHadoopExcludeTTFile")));
        
+       Logger logger = Logger.getLogger(HadoopConnection.class.getName());
+     
        VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
        EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
-       
+       //EnableDisableTTPolicy enableDisablePolicy = new EDP_JustPowerTTOnOff(vc);
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
 
        EmbeddedVHM vhm = new EmbeddedVHM();

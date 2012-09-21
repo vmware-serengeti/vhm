@@ -30,25 +30,28 @@ public class NonThreadSafeSshUtils implements SshUtils {
    private JSch _jsch = new JSch();
 
    private static final String SCP_COMMAND = "scp  -t  ";
-
+   private static final int INPUTSTREAM_TIMEOUT = 100;
+   
    @Override
    public ChannelExec createChannel(Logger logger, final HadoopCredentials credentials, String host, int port) {
       try {
+    	 
          Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
 
          session.setPassword(credentials.getSshPassword());
          UserInfo ui = new SSHUserInfo(credentials.getSshPassword());
          session.setUserInfo(ui);
 
+
          java.util.Properties config = new java.util.Properties();
          config.put("StrictHostKeyChecking", "no");        /* TODO: Necessary? Hack? Security hole?? */
          session.setConfig(config);
-
+        
          // JG: Adding session timeout...
          session.setTimeout(15000);
-
+        
          session.connect();
-
+        
          return (ChannelExec)session.openChannel("exec");
       } catch (JSchException e) {
          logger.log(Level.SEVERE, "Could not create channel on host "+host, e);
@@ -60,17 +63,20 @@ public class NonThreadSafeSshUtils implements SshUtils {
    public int exec(Logger logger, ChannelExec channel, OutputStream out, String command) {
       int exitStatus = UNKNOWN_ERROR;
       try {
-         logger.log(Level.FINE, "About to execute: "+command);
+         logger.log(Level.FINE, "About to execute: "+command);   	  
          channel.setCommand(command);
          channel.setOutputStream(out);
          channel.setInputStream(null);         /* TODO: Why? */
          InputStream in = channel.getInputStream();
          channel.connect();
 
+        logger.log(Level.FINE, "Finished channel connection in exec");
+
          if (!testChannel(logger, channel)) {
             return UNKNOWN_ERROR;          /* TODO: Improve */
          }
          
+         int numSecs = 0;
          byte[] tmp = new byte[1024];
          while (true) {
             while (in.available() > 0) {
@@ -84,12 +90,27 @@ public class NonThreadSafeSshUtils implements SshUtils {
                logger.log(Level.SEVERE, "Exit status from exec is: " + channel.getExitStatus());
                break;
             }
+            
+            try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				logger.log(Level.SEVERE, "Excpetion while sleeping in exec");
+			}
+            
+            numSecs++;
+            
+            if (numSecs == INPUTSTREAM_TIMEOUT) {
+            	logger.log(Level.SEVERE, "No input was received for " + numSecs + "s while running remote exec!");
+            	break;
+            }
          }
       } catch (JSchException e) {
          logger.log(Level.SEVERE, "Unexpected JSch exception executing over SSH", e);
       } catch (IOException e) {
          logger.log(Level.SEVERE, "Unexpected IOException executing over SSH", e);
       }
+      
+      logger.log(Level.FINE, "Exit status from exec is: " + exitStatus);
       return exitStatus;
    }
 

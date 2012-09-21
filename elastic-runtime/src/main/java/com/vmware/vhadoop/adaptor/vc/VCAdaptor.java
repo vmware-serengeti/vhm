@@ -2,6 +2,7 @@ package com.vmware.vhadoop.adaptor.vc;
 
 import java.util.List;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.adaptor.vc.VCConnection.MoRefAndProps;
@@ -50,6 +51,12 @@ public class VCAdaptor extends AbstractVCAdaptor {
    @Override
    public boolean testConnection() {
       return _connection.connect();
+   }
+   
+   // Used for testing, forces log out of vc without orderly VHM disconnect.
+   public void dropConnection() {
+	  _log.log(Level.SEVERE, "Forcing drop of VC connection for testing");
+      _connection.disconnect(true);
    }
    
    @Override

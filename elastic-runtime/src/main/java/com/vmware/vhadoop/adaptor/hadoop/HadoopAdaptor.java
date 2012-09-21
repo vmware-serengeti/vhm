@@ -8,6 +8,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -15,11 +16,13 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
 import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.HadoopConnectionProperties;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.HadoopCredentials;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ParamTypes;
 import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.HadoopCluster;
+import org.apache.commons.io.IOUtils;
 
 /**
  * Class which represents the real implementation of HadoopActions
@@ -106,16 +109,21 @@ public class HadoopAdaptor implements HadoopActions {
          _log.log(Level.SEVERE, "Error: Length of the TT list is 0!");
          return false;
       }
-      Set<String> temp = new TreeSet<String>();
+
+      _log.log(Level.INFO, "TTs length: " + tts.length);
+ 
+	  Set<String> temp = new TreeSet<String>();
       for (String tt : tts) {
-         if (!temp.add(tt)) {
-            break;
-         }
+    	 if (tt == null) {
+    		  _log.log(Level.SEVERE, "Erro: Null TT found while de/recommisioning");
+    		  return false;
+    	 }
+		 if (!temp.add(tt)) {
+			 _log.log(Level.SEVERE, "Error: TT list contains duplicates!");
+			 return false;	
+		 }
       }
-      if (temp.size() < tts.length) {
-         _log.log(Level.SEVERE, "Error: TT list contains duplicates!");
-         return false;
-      }
+
       return true;
    }
 
@@ -132,7 +140,24 @@ public class HadoopAdaptor implements HadoopActions {
       setErrorParamValue(ParamTypes.DRSCRIPT, drScript);
       setErrorParamValue(ParamTypes.DRLIST, drList);
    }
-   
+
+   private byte[] loadLocalScript(String fileName) {
+	   InputStream is = HadoopAdaptor.class.getClassLoader().getResourceAsStream(fileName);
+	   if (is == null) {
+		   _log.log(Level.SEVERE, "File "+ fileName + " does not exist!");
+		   return null;
+	   }
+	
+	   byte[] result = null;
+	   try {
+		   result = IOUtils.toByteArray(is);
+	   } catch (IOException e) {
+		   _log.log(Level.SEVERE, "Unexpected error while converting file " + fileName + " to byte array", e);	
+	   }
+	   return result;
+   }
+
+   /*
    private byte[] loadLocalScript(String fullLocalPath) {
       File file = new File(fullLocalPath);
       if (!file.exists()) {
@@ -152,13 +177,19 @@ public class HadoopAdaptor implements HadoopActions {
       }
       return null;
    }
+*/
 
    private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs) {
       int rc = -1;
       for (int i=0; i<2; i++) {
          rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs);
-         if (rc == ERROR_COMMAND_NOT_FOUND) {
-            byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
+         if (i == 0 && rc == ERROR_COMMAND_NOT_FOUND) {
+        	 _log.log(Level.INFO, scriptFileName + " not found...");
+        	 //Changed this to accommodate using jar file...
+        	//String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();
+        	//byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
+        	//byte[] scriptData = loadLocalScript(fullLocalPath);
+        	byte[] scriptData = loadLocalScript(scriptFileName);
             if ((scriptData != null) && 
                   (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
                continue;
@@ -203,13 +234,24 @@ public class HadoopAdaptor implements HadoopActions {
 
    @Override
    public boolean checkTargetTTsSuccess(int totalTargetEnabled, HadoopCluster cluster) {
+	  String scriptFileName = CHECK_SCRIPT_FILE_NAME;
+      String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
+      String listRemoteFilePath = null;
+      String opDesc = "checkTargetTTsSuccess";
+      
       HadoopConnection connection = getConnectionForCluster(cluster);
+      setErrorParamsForCommand(opDesc, scriptRemoteFilePath, listRemoteFilePath);
+      
       int rc = -1;
       int iterations = 0;
       do {
-         rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, 
-               new String[]{""+totalTargetEnabled, connection.getHadoopHome()});
+    	 if (iterations > 0) {
+         	 _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
+         }
+         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
+               new String[]{""+totalTargetEnabled, connection.getHadoopHome()});         
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
+
       return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
    }
 }
