@@ -109,16 +109,21 @@ public class HadoopAdaptor implements HadoopActions {
          _log.log(Level.SEVERE, "Error: Length of the TT list is 0!");
          return false;
       }
-      Set<String> temp = new TreeSet<String>();
+
+      _log.log(Level.INFO, "TTs length: " + tts.length);
+ 
+	  Set<String> temp = new TreeSet<String>();
       for (String tt : tts) {
-         if (!temp.add(tt)) {
-            break;
-         }
+    	 if (tt == null) {
+    		  _log.log(Level.SEVERE, "Erro: Null TT found while de/recommisioning");
+    		  return false;
+    	 }
+		 if (!temp.add(tt)) {
+			 _log.log(Level.SEVERE, "Error: TT list contains duplicates!");
+			 return false;	
+		 }
       }
-      if (temp.size() < tts.length) {
-         _log.log(Level.SEVERE, "Error: TT list contains duplicates!");
-         return false;
-      }
+
       return true;
    }
 
