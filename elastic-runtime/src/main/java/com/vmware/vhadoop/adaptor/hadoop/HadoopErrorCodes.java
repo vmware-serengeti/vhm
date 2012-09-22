@@ -70,7 +70,7 @@ public class HadoopErrorCodes {
       addErrorCode(ERROR_JT_UNKNOWN, true, "Unknown error connecting to %s while running %s", JOBTRACKER, DRSCRIPT);
       addErrorCode(ERROR_FAIL_DERECOMMISSION, true, "Failed to %s one or more TTs while running %s", COMMAND, DRSCRIPT);
       addErrorCode(ERROR_FEWER_TTS, true, "# Active TTs < Target number of TTs -- checked by %s", DRSCRIPT);
-      addErrorCode(ERROR_EXCESS_TTS, true, "# Acrive TTs > Target number of TTs -- checked by %s", DRSCRIPT);
+      addErrorCode(ERROR_EXCESS_TTS, true, "# Active TTs > Target number of TTs -- checked by %s", DRSCRIPT);
       addErrorCode(ERROR_COMMAND_NOT_EXECUTABLE, true, "%s script %s is not an executable", COMMAND, DRSCRIPT);
       addErrorCode(ERROR_COMMAND_NOT_FOUND, true, "Error in specifiying %s script %s", COMMAND, DRSCRIPT);
       addErrorCode(WARN_TT_EXCLUDESFILE, false, "One/More TTs were already %sed as per the excludes file %s while executing %s", COMMAND, EXCLUDE_FILE, DRSCRIPT);
