@@ -105,6 +105,7 @@ public class EmbeddedVHM extends VHMProcess {
             totalEnabled += ttStatesForHost.getEnabled().length;
          }
          int delta = (input.getTargetTTs() - totalEnabled);
+         _log.log(Level.INFO, "Total TT VMs = "+allTTs.length+", total powered-on TT VMs = "+totalEnabled+", target powered-on TT VMs = "+input.getTargetTTs());
          _log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
 
          progressUpdater.setPercentDone(30);

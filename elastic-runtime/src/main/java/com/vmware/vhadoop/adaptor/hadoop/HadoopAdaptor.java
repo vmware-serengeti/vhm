@@ -115,7 +115,7 @@ public class HadoopAdaptor implements HadoopActions {
 	  Set<String> temp = new TreeSet<String>();
       for (String tt : tts) {
     	 if (tt == null) {
-    		  _log.log(Level.SEVERE, "Erro: Null TT found while de/recommisioning");
+    		  _log.log(Level.SEVERE, "Error: Null TT found while de/recommisioning");
     		  return false;
     	 }
 		 if (!temp.add(tt)) {
