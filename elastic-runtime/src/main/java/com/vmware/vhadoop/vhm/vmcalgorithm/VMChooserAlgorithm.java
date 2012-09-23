@@ -5,7 +5,7 @@ import com.vmware.vhadoop.vhm.TTStatesForHost;
 
 public interface VMChooserAlgorithm {
    
-   VMDTO[] chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int delta);
+   VMDTO[] chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta);
 
-   VMDTO[] chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int delta);
+   VMDTO[] chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta);
 }

@@ -80,8 +80,8 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
       for (String hostName : results.keySet()) {
          EnabledDisabledVMLists lists = results.get(hostName);
          TTStatesForHost ttStates = new TTStatesForHost(lists._host,
-               lists._enabledVMs.toArray(new VMDTO[0]),
-               lists._disabledVMs.toArray(new VMDTO[0]));
+               lists._enabledVMs,
+               lists._disabledVMs);
          returnVal[cntr++] = ttStates;
       }
       

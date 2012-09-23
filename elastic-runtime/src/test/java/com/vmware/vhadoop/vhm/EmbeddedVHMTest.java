@@ -21,6 +21,7 @@ import com.vmware.vhadoop.vhm.EmbeddedVHM.VHMInputMessage;
 import com.vmware.vhadoop.vhm.EmbeddedVHM.VHMReturnMessage;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_DeRecommissionTTs;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_JustPowerTTOnOff;
+import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_DumbVMChooser;
 
 public class EmbeddedVHMTest {
@@ -43,7 +44,8 @@ public class EmbeddedVHMTest {
 
       HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("root", "password"), 
               new JTConfig("/usr/lib/hadoop", "/usr/lib/hadoop/conf/mapred.hosts.exclude"));
-      VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
+      VHMConfig vhmc = new VHMConfig(new VMCA_BalancedVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
+      //VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
       //VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_JustPowerTTOnOff(vc));
 
       _test.init(vhmc, vc, mq, hd);
@@ -60,7 +62,7 @@ public class EmbeddedVHMTest {
 
       //String jsonMsg = "{\"version\":1,\"cluster_name\":\"computeOnly1\",\"jobtracker\":\"10.141.73.4\",\"instance_num\":1,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-2dcd00fb-ed3a-4ee0-a02e-4b20bbf15a93\"}";
 
-      String jsonMsg = "{\"version\":1,\"cluster_name\":\"dcsplit\",\"jobtracker\":\"10.141.73.231\",\"instance_num\":6,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-3bf8edd1-30f6-4ac0-9950-5f5571c22c6f\"}";
+      String jsonMsg = "{\"version\":1,\"cluster_name\":\"dcsplit\",\"jobtracker\":\"10.141.73.231\",\"instance_num\":5,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-3bf8edd1-30f6-4ac0-9950-5f5571c22c6f\"}";
 
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
       VHMProgressUpdater progressUpdater = new VHMProgressUpdater(null);

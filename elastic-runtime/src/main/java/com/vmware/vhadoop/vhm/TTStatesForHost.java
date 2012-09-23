@@ -1,14 +1,16 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.List;
+
 import com.vmware.vhadoop.external.VCActionDTOTypes.HostDTO;
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
 
 public class TTStatesForHost {
    private HostDTO _host;
-   private VMDTO[] _enabled;
-   private VMDTO[] _disabled;
+   private List<VMDTO>_enabled;
+   private List<VMDTO> _disabled;
 
-   public TTStatesForHost(HostDTO host, VMDTO[] enabled, VMDTO[] disabled) {
+   public TTStatesForHost(HostDTO host, List<VMDTO> enabled, List<VMDTO> disabled) {
       this._host = host;
       this._enabled = enabled;
       this._disabled = disabled;
@@ -16,10 +18,10 @@ public class TTStatesForHost {
    public HostDTO getHost() {
       return _host;
    }
-   public VMDTO[] getEnabled() {
+   public List<VMDTO> getEnabled() {
       return _enabled;
    }
-   public VMDTO[] getDisabled() {
+   public List<VMDTO> getDisabled() {
       return _disabled;
    }
 }

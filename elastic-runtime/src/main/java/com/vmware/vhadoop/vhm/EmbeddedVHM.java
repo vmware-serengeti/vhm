@@ -102,7 +102,7 @@ public class EmbeddedVHM extends VHMProcess {
          TTStatesForHost[] ttStatesForHosts = _config._enableDisablePolicy.getStateForTTs(allTTs);
          int totalEnabled = 0;
          for (TTStatesForHost ttStatesForHost : ttStatesForHosts) {
-            totalEnabled += ttStatesForHost.getEnabled().length;
+            totalEnabled += ttStatesForHost.getEnabled().size();
          }
          int delta = (input.getTargetTTs() - totalEnabled);
          _log.log(Level.INFO, "Total TT VMs = "+allTTs.length+", total powered-on TT VMs = "+totalEnabled+", target powered-on TT VMs = "+input.getTargetTTs());
@@ -113,14 +113,14 @@ public class EmbeddedVHM extends VHMProcess {
          boolean initialSuccess = false;
          boolean completedSuccess = false;
          if (delta > 0) {
-            VMDTO[] ttsToEnable = vmChooser.chooseVMsToEnable(ttStatesForHosts, delta);
+            VMDTO[] ttsToEnable = vmChooser.chooseVMsToEnable(ttStatesForHosts, allTTs.length, delta);
             /* The expectation is that enableVMs is blocking */
             initialSuccess = edPolicy.enableTTs(ttsToEnable, (ttsToEnable.length + totalEnabled), cluster);
             if (initialSuccess) {
                completedSuccess = edPolicy.testForSuccess(ttsToEnable, true);
             }
          } else if (delta < 0) {
-            VMDTO[] ttsToDisable = vmChooser.chooseVMsToDisable(ttStatesForHosts, 0 - delta);
+            VMDTO[] ttsToDisable = vmChooser.chooseVMsToDisable(ttStatesForHosts, allTTs.length, 0 - delta);
             /* The expectation is that disableVMs is blocking */
             initialSuccess = edPolicy.disableTTs(ttsToDisable, (totalEnabled - ttsToDisable.length), cluster);
             if (initialSuccess) {

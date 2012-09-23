@@ -28,6 +28,7 @@ import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_DeRecommissionTTs;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_JustPowerTTOnOff;
 import com.vmware.vhadoop.vhm.edpolicy.EnableDisableTTPolicy;
+import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_DumbVMChooser;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMChooserAlgorithm;
 
@@ -106,7 +107,8 @@ public class MainController {
        
        Logger logger = Logger.getLogger(HadoopConnection.class.getName());
      
-       VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
+       VMChooserAlgorithm vmChooser = new VMCA_BalancedVMChooser();
+       // VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
        EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
        //EnableDisableTTPolicy enableDisablePolicy = new EDP_JustPowerTTOnOff(vc);
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
