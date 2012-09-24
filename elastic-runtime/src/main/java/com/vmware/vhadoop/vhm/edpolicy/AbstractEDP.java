@@ -108,10 +108,21 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
       List<Future<VMDTO>> powerOnTasks = new ArrayList<Future<VMDTO>>();
       for (VMDTO vm : toPowerOn) {
          _log.log(Level.INFO, "Enabling VM "+vm._name+" ...");
-         powerOnTasks.add(getVC().powerOnVM(vm));
+         try {
+             VMPowerState vmp = getVC().getPowerState(vm, true).get();
+             if (!vmp.equals(VMPowerState.POWERED_ON)) {
+                 powerOnTasks.add(getVC().powerOnVM(vm));
+             }
+         } catch (Exception e) {
+        	 _log.log(Level.SEVERE, "Problem determining current power state of vm"+vm._name);
+         }
       }
       _log.log(Level.INFO, "Waiting for completion...");
-      allSucceeded = blockOnVMTaskCompletion(powerOnTasks); /* Currently blocking */
+      if (powerOnTasks.size() > 0) {
+          allSucceeded = blockOnVMTaskCompletion(powerOnTasks); /* Currently blocking */
+      } else {
+    	  allSucceeded = true;
+      }
       _log.log(Level.INFO, "Done");
       return allSucceeded;
    }

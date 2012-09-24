@@ -86,6 +86,19 @@ public class EmbeddedVHM extends VHMProcess {
       _running = false;
       _mq.interrupt();
    }
+   
+   protected VMDTO[] chooseAllTTVMs(TTStatesForHost[] hostAndVMs) {
+	  List<VMDTO> toEnable = new ArrayList<VMDTO>();
+      for (TTStatesForHost hostAndVM : hostAndVMs) {
+          for (VMDTO vm: hostAndVM.getEnabled()) {
+              toEnable.add(vm);
+          }
+          for (VMDTO vm: hostAndVM.getDisabled()) {
+              toEnable.add(vm);
+          }
+       }
+	  return toEnable.toArray(new VMDTO[0]);
+   }
 
    protected void setNumTTVMsForCluster(VHMInputMessage input, VHMProgressUpdater progressUpdater) {
       try {
@@ -115,13 +128,20 @@ public class EmbeddedVHM extends VHMProcess {
          }
          int delta = (targetTTs - totalEnabled);
          _log.log(Level.INFO, "Total TT VMs = "+allTTs.length+", total powered-on TT VMs = "+totalEnabled+", target powered-on TT VMs = "+targetTTs);
-         _log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
 
          progressUpdater.setPercentDone(30);
 
          boolean initialSuccess = false;
          boolean completedSuccess = false;
-         if (delta > 0) {
+         if (input.getTargetTTs() == UNLIMIT_CMD) {
+        	 VMDTO[] ttsToEnable = chooseAllTTVMs(ttStatesForHosts);
+             /* The expectation is that enableVMs is blocking */
+             initialSuccess = edPolicy.enableTTs(ttsToEnable, (ttsToEnable.length + totalEnabled), cluster);
+             if (initialSuccess) {
+               completedSuccess = edPolicy.testForSuccess(ttsToEnable, true);
+             }
+         } else if (delta > 0) {
+        	_log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
             VMDTO[] ttsToEnable = vmChooser.chooseVMsToEnable(ttStatesForHosts, allTTs.length, delta);
             /* The expectation is that enableVMs is blocking */
             initialSuccess = edPolicy.enableTTs(ttsToEnable, (ttsToEnable.length + totalEnabled), cluster);
@@ -129,6 +149,7 @@ public class EmbeddedVHM extends VHMProcess {
                completedSuccess = edPolicy.testForSuccess(ttsToEnable, true);
             }
          } else if (delta < 0) {
+        	_log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
             VMDTO[] ttsToDisable = vmChooser.chooseVMsToDisable(ttStatesForHosts, allTTs.length, 0 - delta);
             /* The expectation is that disableVMs is blocking */
             initialSuccess = edPolicy.disableTTs(ttsToDisable, (totalEnabled - ttsToDisable.length), cluster);
@@ -140,9 +161,7 @@ public class EmbeddedVHM extends VHMProcess {
             completedSuccess = true;
          }
 
-         if (delta != 0) {
-            _log.log(Level.INFO, "Result: Initial Success = "+initialSuccess+" Completed Success = "+completedSuccess);
-         }
+         _log.log(Level.INFO, "Result: Initial Success = "+initialSuccess+" Completed Success = "+completedSuccess);
 
          // _vc.dropConnection(); // Temporary testing code TODO replace with junit test
          if (completedSuccess) {
