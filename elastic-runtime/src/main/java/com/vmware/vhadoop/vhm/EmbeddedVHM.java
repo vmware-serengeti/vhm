@@ -49,6 +49,8 @@ public class EmbeddedVHM extends VHMProcess {
    private MQActions _mq;
    private HadoopActions _hd;
    
+   private final int UNLIMIT_CMD = -1;
+   
    /* TODO: Do we want to be able to change the VHMConfig? */
    public void init(VHMConfig config, VCActions vc, MQActions mq, HadoopActions hd) {
       _config = config;
@@ -104,8 +106,15 @@ public class EmbeddedVHM extends VHMProcess {
          for (TTStatesForHost ttStatesForHost : ttStatesForHosts) {
             totalEnabled += ttStatesForHost.getEnabled().size();
          }
-         int delta = (input.getTargetTTs() - totalEnabled);
-         _log.log(Level.INFO, "Total TT VMs = "+allTTs.length+", total powered-on TT VMs = "+totalEnabled+", target powered-on TT VMs = "+input.getTargetTTs());
+         int targetTTs = 0;
+         if (input.getTargetTTs() == UNLIMIT_CMD) {
+        	_log.log(Level.INFO, "Request to unlimit TT VMs");
+        	targetTTs = allTTs.length;
+         } else {
+            targetTTs = input.getTargetTTs();
+         }
+         int delta = (targetTTs - totalEnabled);
+         _log.log(Level.INFO, "Total TT VMs = "+allTTs.length+", total powered-on TT VMs = "+totalEnabled+", target powered-on TT VMs = "+targetTTs);
          _log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
 
          progressUpdater.setPercentDone(30);
