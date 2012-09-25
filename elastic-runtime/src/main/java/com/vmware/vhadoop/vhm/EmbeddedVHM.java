@@ -136,7 +136,7 @@ public class EmbeddedVHM extends VHMProcess {
          if (input.getTargetTTs() == UNLIMIT_CMD) {
         	 VMDTO[] ttsToEnable = chooseAllTTVMs(ttStatesForHosts);
              /* The expectation is that enableVMs is blocking */
-             initialSuccess = edPolicy.enableTTs(ttsToEnable, (ttsToEnable.length + totalEnabled), cluster);
+             initialSuccess = edPolicy.enableTTs(ttsToEnable, ttsToEnable.length, cluster);
              if (initialSuccess) {
                completedSuccess = edPolicy.testForSuccess(ttsToEnable, true);
              }
