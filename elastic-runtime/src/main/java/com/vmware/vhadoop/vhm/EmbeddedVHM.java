@@ -75,6 +75,8 @@ public class EmbeddedVHM extends VHMProcess {
             VHMProgressUpdater progressUpdater = new VHMProgressUpdater(_mq);
             _log.log(Level.INFO, "Processing message...");
             setNumTTVMsForCluster(input, progressUpdater);
+            
+            progressUpdater.verifyCompletionStatus(true);
          }
       } else {
          _log.log(Level.SEVERE, "VHM is not initialized!");
