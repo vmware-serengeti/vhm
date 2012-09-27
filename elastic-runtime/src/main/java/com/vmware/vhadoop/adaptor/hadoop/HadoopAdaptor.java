@@ -3,12 +3,15 @@ package com.vmware.vhadoop.adaptor.hadoop;
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_FOUND;
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
+import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.SUCCESS;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -183,10 +186,10 @@ public class HadoopAdaptor implements HadoopActions {
    }
 */
 
-   private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs) {
+   private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs, OutputStream out) {
       int rc = -1;
       for (int i=0; i<2; i++) {
-         rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs);
+         rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs, out);
          if (i == 0 && rc == ERROR_COMMAND_NOT_FOUND) {
         	 _log.log(Level.INFO, scriptFileName + " not found...");
         	 //Changed this to accommodate using jar file...
@@ -217,11 +220,13 @@ public class HadoopAdaptor implements HadoopActions {
       HadoopConnection connection = getConnectionForCluster(cluster);
       setErrorParamsForCommand(opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
       
+      OutputStream out = new ByteArrayOutputStream();
       String operationList = createVMList(tts);
       int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
       if (rc == 0) {
          rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
-               new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()});
+               new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()},
+               out);
       }
       return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
    }
@@ -237,12 +242,16 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
-   public boolean checkTargetTTsSuccess(int totalTargetEnabled, HadoopCluster cluster) {
+   public boolean checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopCluster cluster) {
 	  String scriptFileName = CHECK_SCRIPT_FILE_NAME;
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
-      
+    
+	  _log.log(Level.INFO, "AffectedTTs:");
+	  for (String tt : affectedTTs) {
+		  _log.log(Level.INFO, tt);
+	  }
       HadoopConnection connection = getConnectionForCluster(cluster);
       setErrorParamsForCommand(opDesc, scriptRemoteFilePath, listRemoteFilePath);
       
@@ -251,11 +260,55 @@ public class HadoopAdaptor implements HadoopActions {
       do {
     	 if (iterations > 0) {
          	 _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
+         }    	 
+
+         OutputStream out = new ByteArrayOutputStream();
+    	 rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
+               new String[]{""+totalTargetEnabled, connection.getHadoopHome()},
+               out); 
+         try {
+             out.flush();
+          } catch (IOException e) {
+             _log.log(Level.WARNING, "Unexpected exception in SSH OutputStream", e);
+          }
+
+         //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
+
+         String[] allActiveTTs = out.toString().split("\n");
+                  
+         if (checkOpSuccess(opType, affectedTTs, allActiveTTs)) {
+        	 _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
+        	 rc = SUCCESS;
+        	 break;
          }
-         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
-               new String[]{""+totalTargetEnabled, connection.getHadoopHome()});         
+         //TODO: out.close()?
+         
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 
       return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
+   }
+
+   private boolean checkOpSuccess(String opType, String[] affectedTTs,
+		   String[] allActiveTTs) {
+	
+	  Set<String> setTTs = new TreeSet<String>();
+
+	  _log.log(Level.INFO, "ActiveTTs:");
+	  for (String tt : allActiveTTs) {
+		  _log.log(Level.INFO, tt);	
+		  if (tt != null) {
+			  setTTs.add(tt); //add if unique...
+		  }
+	   }
+		   
+	   for (String tt : affectedTTs) {		  
+		   if (setTTs.contains(tt) && opType == "Decommission") {
+			   return false;
+		   } else if (!setTTs.contains(tt) && opType == "Recommission") {
+			   return false;
+		   }
+	   }
+
+	   return true;
    }
 }

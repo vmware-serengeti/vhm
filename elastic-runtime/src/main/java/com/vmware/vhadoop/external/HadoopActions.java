@@ -17,5 +17,5 @@ public interface HadoopActions {
 		public boolean recommissionTTs(String[] tts, HadoopCluster cluster);
 
 		
-		public boolean checkTargetTTsSuccess(int totalTargetEnabled, HadoopCluster cluster);
+		public boolean checkTargetTTsSuccess(String opType, String[] tts, int totalTargetEnabled, HadoopCluster cluster);
 }

@@ -110,16 +110,36 @@ checkTargetActiveTTs()
     fi
 }
 
+# Print Active TTs (to be sent back to remote caller)
+printActiveTTs()
+{
+    local loc_hadoopHome=$1
+
+    newActiveTTs=`$loc_hadoopHome/bin/hadoop job -list-active-trackers 2> $JTERRFILE`
+    arrNewActiveTTs=( $newActiveTTs )
+    
+    if [ -s $JTERRFILE ]; then
+	parseJTErrFile $JTERRFILE
+	exit $?
+    fi
+
+
+# List of TT names (after removing initial tracker_)    
+    for tt in ${arrNewActiveTTs[@]}; do	
+	echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement
+    done
+}
+
 main()
 {
 # Remove logfile if present
     rm -f $LOGFILE
 
 # Redirect stdout to a log file
+    exec 6>&1
     exec > $LOGFILE
 
 # Arguments check/set
-
     checkArguments $*
 
     numTargetTTs=$1
@@ -143,14 +163,22 @@ main()
 
     if [[ "$retVal" -eq "0" ]]; then
 	echo "Successfully reached target number of active TTs: $numTargetTTs"
-	exit 0
+	exitVal=0
     elif [[ "$retVal" -eq "1" ]]; then 
  	echo "Number of active TTs is less than the target: $numTargetTTs"
- 	exit $ERROR_FEWER_TTS
+ 	exitVal=$ERROR_FEWER_TTS
     else
  	echo "Number of active TTs is greater than the target: $numTargetTTs"	
- 	exit $ERROR_EXCESS_TTS
+ 	exitVal=$ERROR_EXCESS_TTS
     fi
+
+# Restore stdout
+    exec 1>&6 6>&-
+
+# Print list of ActiveTTs on stdout
+    printActiveTTs $hadoopHome
+
+    exit $exitVal
 }
 
 main $*

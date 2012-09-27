@@ -28,7 +28,7 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
 	   boolean combinedResult = recomSuccess & powerOnVMs(toEnable);
 	   /* TODO: Blocking is conditional on success. That's probably right? */
 	   if (combinedResult) {
-	      return _hc.checkTargetTTsSuccess(totalTargetEnabled, cluster);
+	      return _hc.checkTargetTTsSuccess("Recommission", getHostNamesForVMs(toEnable), totalTargetEnabled, cluster);
 	   }
 	   return combinedResult;
 	}
@@ -39,7 +39,7 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
 	   boolean decomSuccess = _hc.decommissionTTs(getHostNamesForVMs(toDisable), cluster);
 	   boolean checkSuccess = false; 
 	   if (decomSuccess) {
-		      checkSuccess = _hc.checkTargetTTsSuccess(totalTargetEnabled, cluster);
+		      checkSuccess = _hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster);
 	   }
        /* TODO: Should powerOff be conditional? */
 	   return checkSuccess & powerOffVMs(toDisable);

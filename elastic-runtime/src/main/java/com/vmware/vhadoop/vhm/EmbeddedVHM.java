@@ -169,7 +169,8 @@ public class EmbeddedVHM extends VHMProcess {
          if (completedSuccess) {
             progressUpdater.succeeded();
          } else {
-            progressUpdater.error(null);
+        	 //TODO: fix this to show more meaningful error message...
+            progressUpdater.error("VHM operation failed");
          }
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM", e);

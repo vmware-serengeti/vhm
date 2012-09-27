@@ -93,7 +93,7 @@ public class HadoopConnection {
       return exitStatus;
    }
 
-   public int executeScript(String scriptFileName, String destinationPath, String[] scriptArgs) {
+   public int executeScript(String scriptFileName, String destinationPath, String[] scriptArgs, OutputStream out) {
       int exitStatus = UNKNOWN_ERROR;
 
       _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName);
@@ -109,14 +109,16 @@ public class HadoopConnection {
          command.append(scriptArg).append(" ");
       }
 
-      OutputStream out = new ByteArrayOutputStream();
+      //TODO: refactor "out"
+      //OutputStream out = new ByteArrayOutputStream();
       PrintStream ps = new PrintStream(out);
       exitStatus = _sshUtils.exec(_log, channel, out, command.toString().trim());
       ps.flush();
       
       //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
 
-      _sshUtils.cleanup(_log, out, channel);
+      //_sshUtils.cleanup(_log, out, channel);
+      _sshUtils.cleanup(_log, null, channel);
       
       return exitStatus;
    }
