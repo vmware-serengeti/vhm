@@ -34,21 +34,24 @@ import com.vmware.vhadoop.vhm.vmcalgorithm.VMChooserAlgorithm;
 
 public class MainController {
    static Properties properties = null;
-   static String vhmConfigFileName = "vHadoopProperties";
-   static String vhmLogFileName = "vHadoop.log";
+   static String vhmConfigFileName = "vhmProperties";
+   static String legacyVhmConfigFileName = "vHadoopProperties";
+   static String vhmLogFileName = "vhm.xml";
    
-   public static void readPropertiesFile(String fileName) {
+   public static boolean readPropertiesFile(String fileName) {
        try {
            File file = new File(fileName);
            FileInputStream fileInput = new FileInputStream(file);
            properties = new Properties();
            properties.load(fileInput);
            fileInput.close();
+           return true;
        } catch (FileNotFoundException e) {
            e.printStackTrace();
        } catch (IOException e) {
            e.printStackTrace();
        }
+       return false;
    }
    
    public static void setupLogger(String fileName) {
@@ -79,7 +82,10 @@ public class MainController {
 	   String logFileName = getVHMFileName("logs", vhmLogFileName);
 	   setupLogger(logFileName);
 	   String configFileName = getVHMFileName("conf", vhmConfigFileName);
-       readPropertiesFile(configFileName);
+       if (!readPropertiesFile(configFileName)) {
+    	   configFileName = getVHMFileName("conf", legacyVhmConfigFileName);
+    	   readPropertiesFile(configFileName);
+       }
        
        /* TODO: As we build these subsystems, we should be checking that they're operational
         * and putting in decent error handling if they're not */
