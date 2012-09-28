@@ -34,7 +34,7 @@ import com.vmware.vhadoop.vhm.vmcalgorithm.VMChooserAlgorithm;
 
 public class MainController {
    static Properties properties = null;
-   static String vhmConfigFileName = "vhmProperties";
+   static String vhmConfigFileName = "vhm.properties";
    static String legacyVhmConfigFileName = "vHadoopProperties";
    static String vhmLogFileName = "vhm.xml";
    
