@@ -27,6 +27,7 @@ import com.vmware.vhadoop.external.VCActions;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_DeRecommissionTTs;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_JustPowerTTOnOff;
+import com.vmware.vhadoop.vhm.edpolicy.EDP_SoftDeRecommissionTTs;
 import com.vmware.vhadoop.vhm.edpolicy.EnableDisableTTPolicy;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_DumbVMChooser;
@@ -116,6 +117,7 @@ public class MainController {
        VMChooserAlgorithm vmChooser = new VMCA_BalancedVMChooser();
        // VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
        EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
+       //EnableDisableTTPolicy enableDisablePolicy = new EDP_SoftDeRecommissionTTs(vc, hd);
        //EnableDisableTTPolicy enableDisablePolicy = new EDP_JustPowerTTOnOff(vc);
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
 

@@ -79,6 +79,8 @@ public interface VCActions {
    public Future<VMDTO> powerOnVM(VMDTO vm);
 
    public Future<VMDTO> powerOffVM(VMDTO vm);
+   
+   public Future<VMDTO> shutdownGuest(VMDTO vm);
 
    public Future<VMPowerState> getPowerState(VMDTO vm, boolean refresh);
 

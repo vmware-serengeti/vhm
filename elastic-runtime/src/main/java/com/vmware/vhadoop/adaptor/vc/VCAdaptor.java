@@ -80,6 +80,18 @@ public class VCAdaptor extends AbstractVCAdaptor {
       resultsTransformer.addWaitProperty("info.state", "state", new Object[]{TaskInfoState.SUCCESS, TaskInfoState.ERROR});
       return resultsTransformer;
    }
+   
+   @Override
+   public Future<VMDTO> shutdownGuest(VMDTO vm) {
+      try {
+    	 // TODO: shutdownGuest does not return task to track; add task to wait for powerState=off
+         _connection.getVimPort().shutdownGuest((ManagedObjectReference)vm._moId);
+         return null;
+      } catch (Exception e) {
+    	 _log.log(Level.SEVERE, "Exception invoking shutdownGuest; switching to powerOffVM");
+         return powerOffVM(vm);
+      }
+   }
 
    @Override
    public Future<VMDTO> powerOnVM(VMDTO vm) {

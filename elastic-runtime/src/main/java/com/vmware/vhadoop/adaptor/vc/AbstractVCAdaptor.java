@@ -168,6 +168,11 @@ public abstract class AbstractVCAdaptor implements VCActions {
    public Future<VMDTO> powerOffVM(VMDTO vm) {
       throw new RuntimeException("Unimplemented!");
    }
+   
+   @Override
+   public Future<VMDTO> shutdownGuest(VMDTO vm) {
+	  throw new RuntimeException("Unimplemented!");
+   }
 
    @Override
    public Future<VMPowerState> getPowerState(VMDTO vm, boolean refresh) {
