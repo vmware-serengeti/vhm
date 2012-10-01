@@ -32,6 +32,7 @@ import com.vmware.vim25.TraversalSpec;
 import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VimPortType;
 import com.vmware.vim25.VimService;
+import com.vmware.vim25.WaitOptions;
 
 /**
  * Designed to encapsulate a lot of the low level detail of interacting with the JAX-WS VC API
@@ -49,6 +50,8 @@ public class VCConnection {
       public String getUserName();
       public String getPassword();
    }
+   
+   private static final int propertyCollectorTimeout = 300;
    
    /**
     * Represents a property that we're interesting in seeing a change in.
@@ -244,13 +247,14 @@ private boolean testConnection() {
       }
       try {
          ManagedObjectReference propCollector = propFilter.getPropertyCollector();
-         /* TODO: Need some timeout mechanism */
+         WaitOptions waitOptions = new WaitOptions();
+         waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
          propSearch :
          while (true) {
-            UpdateSet updateSet = _vimPort.waitForUpdates(propCollector, version);
-            version = updateSet.getVersion();
+            UpdateSet updateSet = _vimPort.waitForUpdatesEx(propCollector, version, waitOptions);
             
             if (updateSet != null) {
+               version = updateSet.getVersion();
                List<PropertyFilterUpdate> filterSet = updateSet.getFilterSet();
                
                if (filterSet != null) {
