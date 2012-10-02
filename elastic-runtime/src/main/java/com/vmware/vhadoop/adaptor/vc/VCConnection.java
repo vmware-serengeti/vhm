@@ -162,9 +162,8 @@ private boolean testConnection() {
     * Initialize the connection to VC using the credentials provided
     * 
     * @return true if a successful connection is created, false otherwise
-    * @throws SOAPFaultException
     */
-   public boolean connect() throws SOAPFaultException {
+   public boolean connect() {
       if (_connected) {
          if (testConnection()) {
             return true;
@@ -189,12 +188,8 @@ private boolean testConnection() {
          _serviceContent = _vimPort.retrieveServiceContent(svcInstRef);
          _vimPort.login(_serviceContent.getSessionManager(), _credentials.getUserName(), _credentials.getPassword(), null);
          _connected = true;
-      } catch (RuntimeFaultFaultMsg e) {
-         throw new RuntimeException("Unexpected Connect Exception", e);
-      } catch (InvalidLocaleFaultMsg e) {
-         throw new RuntimeException("Unexpected Connect Exception", e);
-      } catch (InvalidLoginFaultMsg e) {
-         throw new RuntimeException("Unexpected Connect Exception", e);
+      } catch (Exception e) {
+         _log.log(Level.SEVERE, "Unexpected exception when trying to connect to vCenter: "+e);
       }
       
       return testConnection();
