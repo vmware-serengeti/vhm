@@ -28,7 +28,7 @@ public class RabbitAdaptor implements MQActions {
       try {
          QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
          return new VHMJsonInputMessage(delivery.getBody());
-      } catch (InterruptedException e) {
+      } catch (Exception e) {
          _log.log(Level.INFO, "Message Queue interrupted");
       }
       return null;

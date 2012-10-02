@@ -60,7 +60,7 @@ public class EmbeddedVHM extends VHMProcess {
       _initialized = true;
    }
    
-   /* Blocking method */
+   /* Method blocks until/unless message queue issue occurs */
    public void start() {
       if (_initialized) {
          _running = true;
@@ -68,7 +68,8 @@ public class EmbeddedVHM extends VHMProcess {
             _log.log(Level.INFO, "Waiting for message");
             VHMInputMessage input = (VHMInputMessage)_mq.blockAndReceive();
             if (((input == null) || (input.getClusterName() == null)) && _running) {
-               _log.log(Level.WARNING, "Failed to receive message");
+               _log.log(Level.SEVERE, "VHM failed to receive message; stopping...");
+               _running = false;
                continue;
             }
 
@@ -173,7 +174,7 @@ public class EmbeddedVHM extends VHMProcess {
             progressUpdater.error("VHM operation failed");
          }
       } catch (Exception e) {
-         _log.log(Level.SEVERE, "Unexpected error in core VHM", e);
+         _log.log(Level.SEVERE, "Unexpected error in core VHM: "+e);
          progressUpdater.error(e.getMessage());
       }
    }

@@ -124,8 +124,5 @@ public class MainController {
        EmbeddedVHM vhm = new EmbeddedVHM();
        vhm.init(vhmc, vc, mq, hd);
        vhm.start();
-       /* TODO: Since start is blocking in an infinite loop, no point having any code here
-        * Consider having the ability to cleanly stop or interrupt vhm in a separate thread
-        * There is already vhm.stop() for that purpose */
    }
 }
