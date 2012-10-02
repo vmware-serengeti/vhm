@@ -17,6 +17,7 @@ import com.vmware.vhadoop.vhm.TTStatesForHost;
 public abstract class AbstractEDP implements EnableDisableTTPolicy {
    private VCActions _vc;
    static final Logger _log = Logger.getLogger(AbstractEDP.class.getName());
+   static final int shutdownGuestTimeOutMs = 30000;
 
    public AbstractEDP(VCActions vc) {
       _vc = vc;
@@ -114,7 +115,7 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
                  powerOnTasks.add(getVC().powerOnVM(vm));
              }
          } catch (Exception e) {
-        	 _log.log(Level.SEVERE, "Problem determining current power state of vm"+vm._name);
+        	 _log.log(Level.SEVERE, "Problem determining current power state of vm "+vm._name);
          }
       }
       _log.log(Level.INFO, "Waiting for completion...");
@@ -141,26 +142,41 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
    }
    
    boolean shutdownGuests(VMDTO[] toShutDown) {
-	  boolean allSucceeded;
+	  boolean allSucceeded = true;
 	  List<Future<VMDTO>> shutDownTasks = new ArrayList<Future<VMDTO>>();
+	  List<VMDTO> shutDownNoTask = new ArrayList<VMDTO>();
 	  for (VMDTO vm : toShutDown) {
 	      _log.log(Level.INFO, "Disabling VM "+vm._name+" ...");
 	      Future<VMDTO> shutDownTask = getVC().shutdownGuest(vm);
 	      if (shutDownTask != null) {
 	          shutDownTasks.add(shutDownTask);
+	      } else {
+	    	  shutDownNoTask.add(vm);
 	      }
 	  }
 	  _log.log(Level.INFO, "Waiting for completion...");
-	  if (shutDownTasks.size() > 0) {
-	      allSucceeded = blockOnVMTaskCompletion(shutDownTasks); /* Currently blocking */
-	  } else {
-		  // If no shutDownTasks to track, introduce delay to allow shutdown.
+	  if (shutDownNoTask.size() > 0) {
+		  // For guest shutdowns w/o tasks, check power status after delay time & force off if not off.
 		  try {
-			  Thread.sleep(10000);
+			  Thread.sleep(shutdownGuestTimeOutMs);
 		  } catch (InterruptedException e) {
 			  e.printStackTrace();
 		  }
-		  allSucceeded = true;
+		  for (VMDTO vm : shutDownNoTask) {
+		      try {
+		          VMPowerState vmp = getVC().getPowerState(vm, true).get();
+		          if (!vmp.equals(VMPowerState.POWERED_OFF)) {
+		        	  _log.log(Level.INFO, "Forcing power-off after guest shutdown of vm "+vm._name);
+		              shutDownTasks.add(getVC().powerOffVM(vm));
+		          }
+		      } catch (Exception e) {
+		          _log.log(Level.SEVERE, "Problem determining current power state of vm "+vm._name);
+		          allSucceeded = false;
+		      }
+		  }
+	  }
+	  if (shutDownTasks.size() > 0) {
+	      allSucceeded = allSucceeded & blockOnVMTaskCompletion(shutDownTasks); /* Currently blocking */
 	  }
 	  _log.log(Level.INFO, "Done");
 	  return allSucceeded;

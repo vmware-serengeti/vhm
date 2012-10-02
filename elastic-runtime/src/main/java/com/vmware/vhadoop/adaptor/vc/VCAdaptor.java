@@ -84,7 +84,7 @@ public class VCAdaptor extends AbstractVCAdaptor {
    @Override
    public Future<VMDTO> shutdownGuest(VMDTO vm) {
       try {
-    	 // TODO: shutdownGuest does not return task to track; add task to wait for powerState=off
+    	 // ShutdownGuest does not return task to track; caller is expected to check/ensure power-off.
          _connection.getVimPort().shutdownGuest((ManagedObjectReference)vm._moId);
          return null;
       } catch (Exception e) {
