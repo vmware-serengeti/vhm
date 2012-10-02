@@ -1,3 +1,18 @@
+/***************************************************************************
+ * Copyright (c) 2012 VMware, Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************/
+
 package com.vmware.vhadoop.adaptor.vc;
 
 import java.util.ArrayList;
@@ -38,8 +53,6 @@ import com.vmware.vim25.WaitOptions;
  * Designed to encapsulate a lot of the low level detail of interacting with the JAX-WS VC API
  * Any particularly verbose utility code can go in VCUtils to keep this tidy
  * 
- * @author bcorrie
- *
  */
 public class VCConnection {
 
@@ -58,8 +71,6 @@ public class VCConnection {
     * Params: The property, the particular attribute of the property we're expecting to change
     * and the expected attribute values that define a change we're looking for.
     * 
-    * @author bcorrie
-    *
     */
    protected class WaitProperty {
       String _propToFilter;
@@ -78,8 +89,6 @@ public class VCConnection {
     * We pass back the original definition of the property we were looking for a change in and
     * then the actual value that it changed to.
     * 
-    * @author bcorrie
-    *
     */
    protected class PropertyChangeResult {
       WaitProperty _property;
@@ -95,8 +104,6 @@ public class VCConnection {
     * Simple encapsulation of a ManagedObjectReference and a set of properties which the caller uses to build a DTO.
     * Nothing in this class knows about the DTOs as the code should be as generic as possible
     * 
-    * @author bcorrie
-    *
     */
    class MoRefAndProps {
       String _name;
@@ -424,8 +431,6 @@ private boolean testConnection() {
     * Properties can then be added to the filter and once that's completed, 
     * retrieveProperties() or getPropertyCollector() can be called, depending on the requirement
     * 
-    * @author bcorrie
-    *
     */
    private class PropertyFilter {
       ManagedObjectReference _propertyCollector;

@@ -1,3 +1,18 @@
+/***************************************************************************
+ * Copyright (c) 2012 VMware, Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************/
+
 package com.vmware.vhadoop.adaptor.vc;
 
 import java.security.KeyManagementException;
@@ -88,7 +103,6 @@ public class VCUtils {
     * This implementation integrates with the WaitProperty implementation so that you
     * can define properties which should have changed before the operation is considered complete
     * 
-    * @author bcorrie
     */
    protected static abstract class ResultTransformer<DTOType> implements Future<DTOType> {
       ManagedObjectReference _waitForPropsOnObj;
@@ -148,7 +162,6 @@ public class VCUtils {
    /**
     * Simple non-waiting utility class for returning synchronous results with just a cast
     * 
-    * @author bcorrie
     */
    protected static class CastingResultTransformer<DTOType> extends ResultTransformer<DTOType> {
       DTOType _toWrap;
@@ -169,7 +182,6 @@ public class VCUtils {
     * The transform method should encapsulate the conversion to the particular DTO type
     * Note that the get() should block if any waits have been specified
     * 
-    * @author bcorrie
     */
    protected static abstract class AsyncResultTransformer<DTOType> extends ResultTransformer<DTOType> {
       MoRefAndProps _toWrap;
@@ -193,7 +205,6 @@ public class VCUtils {
    /**
     * Same as AsyncResultTransformer for dealing with arrays of results
     * 
-    * @author bcorrie
     */
    protected static abstract class AsyncArrayResultTransformer<External> extends ResultTransformer<External[]> {
       MoRefAndProps[] _toWrap;
