@@ -133,6 +133,10 @@ public class VCAdaptor extends AbstractVCAdaptor {
             return newDTO;
          }
       };
+      if (result == null) {
+    	  _log.log(Level.SEVERE, "Could not find VC folder with name "+name);
+    	  return null;
+      }
       return resultsTransformer;
    }
    
