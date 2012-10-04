@@ -151,24 +151,30 @@ public class EmbeddedVHM extends VHMProcess {
          boolean completedSuccess = false;
          if (input.getTargetTTs() == UNLIMIT_CMD) {
         	 VMDTO[] ttsToEnable = chooseAllTTVMs(ttStatesForHosts);
+        	 progressUpdater.setPercentDone(40);
              /* The expectation is that enableVMs is blocking */
              initialSuccess = edPolicy.enableTTs(ttsToEnable, ttsToEnable.length, cluster);
+             progressUpdater.setPercentDone(60);
              if (initialSuccess) {
                completedSuccess = edPolicy.testForSuccess(ttsToEnable, true);
              }
          } else if (delta > 0) {
         	_log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
             VMDTO[] ttsToEnable = vmChooser.chooseVMsToEnable(ttStatesForHosts, allTTs.length, delta);
+            progressUpdater.setPercentDone(40);
             /* The expectation is that enableVMs is blocking */
             initialSuccess = edPolicy.enableTTs(ttsToEnable, (ttsToEnable.length + totalEnabled), cluster);
+            progressUpdater.setPercentDone(60);
             if (initialSuccess) {
                completedSuccess = edPolicy.testForSuccess(ttsToEnable, true);
             }
          } else if (delta < 0) {
         	_log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
             VMDTO[] ttsToDisable = vmChooser.chooseVMsToDisable(ttStatesForHosts, allTTs.length, 0 - delta);
+            progressUpdater.setPercentDone(40);
             /* The expectation is that disableVMs is blocking */
             initialSuccess = edPolicy.disableTTs(ttsToDisable, (totalEnabled - ttsToDisable.length), cluster);
+            progressUpdater.setPercentDone(90);
             if (initialSuccess) {
                completedSuccess = edPolicy.testForSuccess(ttsToDisable, false);
             }
@@ -184,7 +190,7 @@ public class EmbeddedVHM extends VHMProcess {
             progressUpdater.succeeded();
          } else {
         	 //TODO: fix this to show more meaningful error message...
-            progressUpdater.error("VHM operation failed");
+            progressUpdater.error("VHM operation failed;");
          }
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM: "+e);

@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.vhm.edpolicy;
 
+import java.util.logging.Level;
+
 import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.HadoopCluster;
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
@@ -52,12 +54,21 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
 	/* Blocks until completed */
 	public boolean disableTTs(VMDTO[] toDisable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
 	   boolean decomSuccess = _hc.decommissionTTs(getHostNamesForVMs(toDisable), cluster);
+	   if (!decomSuccess) {
+		   _log.log(Level.SEVERE, "Decommission failed. See vhm.log and/or vhm.xml for details");
+	   }
+	   
 	   boolean checkSuccess = false; 
 	   if (decomSuccess) {
-		      checkSuccess = _hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster);
+		   checkSuccess = _hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster);
+		   if (!checkSuccess) {
+			   _log.log(Level.SEVERE, "Decommission check failed. See vhm.log and/or vhm.xml for details");
+		   }
 	   }
-       /* TODO: Should powerOff be conditional? */
-	   return checkSuccess & powerOffVMs(toDisable);
+	   
+	   boolean powerSucess = powerOffVMs(toDisable);
+	   
+	   return checkSuccess & powerSucess;
 	}
 
    @Override

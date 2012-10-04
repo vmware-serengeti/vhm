@@ -79,8 +79,8 @@ public class HadoopErrorCodes {
       addErrorCode(ERROR_EXCLUDES_FILE_NOT_FOUND, true, "Excludes file %s not found while executing %s", EXCLUDE_FILE, DRSCRIPT);
       addErrorCode(ERROR_DRLIST_FILE_NOT_FOUND, true, "%s list file %s not found while executing %s", COMMAND, DRLIST, DRSCRIPT);
       addErrorCode(ERROR_BAD_HADOOP_HOME, true, "HADOOP_HOME %s does not resolve correctly while running %s", HADOOP_HOME, DRSCRIPT);
-      addErrorCode(ERROR_JT_CONNECTION, true, "Unable to connect to %s while running %s", JOBTRACKER, DRSCRIPT);
-      addErrorCode(ERROR_JT_UNKNOWN, true, "Unknown error connecting to %s while running %s", JOBTRACKER, DRSCRIPT);
+      addErrorCode(ERROR_JT_CONNECTION, true, "Unable to connect to jobtracker (%s) while running %s", JOBTRACKER, DRSCRIPT);
+      addErrorCode(ERROR_JT_UNKNOWN, true, "Unknown error connecting to jobtracker (%s) while running %s", JOBTRACKER, DRSCRIPT);
       addErrorCode(ERROR_FAIL_DERECOMMISSION, true, "Failed to %s one or more TTs while running %s", COMMAND, DRSCRIPT);
       addErrorCode(ERROR_FEWER_TTS, true, "# Active TTs < Target number of TTs -- checked by %s", DRSCRIPT);
       addErrorCode(ERROR_EXCESS_TTS, true, "# Active TTs > Target number of TTs -- checked by %s", DRSCRIPT);
