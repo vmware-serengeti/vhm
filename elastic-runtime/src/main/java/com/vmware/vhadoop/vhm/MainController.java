@@ -127,8 +127,6 @@ public class MainController {
                    properties.getProperty("vHadoopHome"),
                    properties.getProperty("vHadoopExcludeTTFile")));
        
-       Logger logger = Logger.getLogger(HadoopConnection.class.getName());
-     
        VMChooserAlgorithm vmChooser = new VMCA_BalancedVMChooser();
        // VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
        EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
@@ -137,7 +135,7 @@ public class MainController {
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
 
        EmbeddedVHM vhm = new EmbeddedVHM();
-       vhm.init(vhmc, vc, mq, hd);
+       vhm.init(vhmc, vc, mq);
        vhm.start();
    }
 }

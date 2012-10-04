@@ -20,14 +20,19 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
+import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ProgressLogger;
 import com.vmware.vhadoop.vhm.TTStatesForHost;
 
 public class VMCA_DumbVMChooser implements VMChooserAlgorithm {
 
-   private static final Logger _log = Logger.getLogger(VMCA_DumbVMChooser.class.getName());
+   private static final String _className = VMCA_DumbVMChooser.class.getName();
+   private static final ProgressLogger _pLog = ProgressLogger.getProgressLogger(_className);
+   private static final Logger _log = _pLog.getLogger();
 
    @Override
-   public VMDTO[] chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+   public VMCAResult chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+      CompoundStatus taskStatus = new CompoundStatus(_className+" enable");     /* TODO: Set the status somewhere */
       List<VMDTO> toEnable = new ArrayList<VMDTO>();
       /* Just cycle through the hosts taking as many VMs as each will give */
       for (TTStatesForHost hostAndVM : hostAndVMs) {
@@ -46,11 +51,12 @@ public class VMCA_DumbVMChooser implements VMChooserAlgorithm {
       if (delta > toEnable.size()) {
          _log.severe("Request to enable more VMs than are available!");
       }
-      return toEnable.toArray(new VMDTO[0]);
+      return new VMCAResult(toEnable.toArray(new VMDTO[0]), taskStatus);
    }
 
    @Override
-   public VMDTO[] chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+   public VMCAResult chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+      CompoundStatus taskStatus = new CompoundStatus(_className+" disable");     /* TODO: Set the status somewhere */
       List<VMDTO> toDisable = new ArrayList<VMDTO>();
       /* Just cycle through the hosts taking as many VMs as each will give */
       for (TTStatesForHost hostAndVM : hostAndVMs) {
@@ -62,14 +68,14 @@ public class VMCA_DumbVMChooser implements VMChooserAlgorithm {
              toDisable.add(vm);
              remaining--;
              if (remaining <= 0) {
-                	break;
+                break;
              }
          }
       }
       if (delta > toDisable.size()) {
          _log.severe("Request to disable more VMs than are available!");
       }
-      return toDisable.toArray(new VMDTO[0]);
+      return new VMCAResult(toDisable.toArray(new VMDTO[0]), taskStatus);
    }
 
 }

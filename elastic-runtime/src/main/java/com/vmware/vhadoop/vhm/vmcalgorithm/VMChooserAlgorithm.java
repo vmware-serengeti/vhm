@@ -16,11 +16,30 @@
 package com.vmware.vhadoop.vhm.vmcalgorithm;
 
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
+import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.vhm.TTStatesForHost;
 
 public interface VMChooserAlgorithm {
    
-   VMDTO[] chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta);
+   public static class VMCAResult {
+      private VMDTO[] _chosenVMs;
+      private CompoundStatus _resultStatus;
+      
+      public VMCAResult(VMDTO[] chosenVMs, CompoundStatus resultStatus) {
+         _chosenVMs = chosenVMs;
+         _resultStatus = resultStatus;
+      }
 
-   VMDTO[] chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta);
+      public VMDTO[] getChosenVMs() {
+         return _chosenVMs;
+      }
+
+      public CompoundStatus getChooserStatus() {
+         return _resultStatus;
+      }
+   }
+   
+   VMCAResult chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta);
+
+   VMCAResult chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta);
 }

@@ -27,12 +27,18 @@ import com.vmware.vhadoop.external.VCActionDTOTypes.HostDTO;
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMPowerState;
 import com.vmware.vhadoop.external.VCActions;
+import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ProgressLogger;
 import com.vmware.vhadoop.vhm.TTStatesForHost;
 
 public abstract class AbstractEDP implements EnableDisableTTPolicy {
    private VCActions _vc;
-   static final Logger _log = Logger.getLogger(AbstractEDP.class.getName());
-   static final int shutdownGuestTimeOutMs = 30000;
+
+   private static final String _className = AbstractEDP.class.getName();
+   static final ProgressLogger _pLog = ProgressLogger.getProgressLogger(_className);
+   static final Logger _log = _pLog.getLogger();
+   
+   private static final int shutdownGuestTimeOutMs = 30000;
 
    public AbstractEDP(VCActions vc) {
       _vc = vc;
@@ -105,22 +111,24 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
    }
    
    /* Return value indicates that all succeeded */
-   boolean blockOnVMTaskCompletion(List<Future<VMDTO>> vmTasks) {
-      boolean allSucceeded = true;
+   CompoundStatus blockOnVMTaskCompletion(List<Future<VMDTO>> vmTasks) {
+      CompoundStatus status = new CompoundStatus("blockOnVMTaskCompletion");
       for (Future<? extends Object> result : vmTasks) {
          try {
             if (result.get() == null) {
-               allSucceeded = false;
+               status.registerTaskFailed(false, "null was unexpectedly returned from a future task");
+            } else {
+               status.registerTaskSucceeded();
             }
          } catch (Exception e) {
             throw new RuntimeException(e);
          }
       }
-      return allSucceeded;
+      return status;
    }
 
-   boolean powerOnVMs(VMDTO[] toPowerOn) {
-      boolean allSucceeded;
+   CompoundStatus powerOnVMs(VMDTO[] toPowerOn) {
+      CompoundStatus status = new CompoundStatus("powerOnVMs");
       List<Future<VMDTO>> powerOnTasks = new ArrayList<Future<VMDTO>>();
       for (VMDTO vm : toPowerOn) {
          _log.log(Level.INFO, "Enabling VM "+vm._name+" ...");
@@ -130,34 +138,36 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
                  powerOnTasks.add(getVC().powerOnVM(vm));
              }
          } catch (Exception e) {
-        	 _log.log(Level.SEVERE, "Problem determining current power state of vm "+vm._name);
+            String errorMsg = "Problem determining current power state of vm "+vm._name;
+        	 _log.log(Level.SEVERE, errorMsg);
+        	 status.registerTaskFailed(false, errorMsg);
          }
       }
       _log.log(Level.INFO, "Waiting for completion...");
       if (powerOnTasks.size() > 0) {
-          allSucceeded = blockOnVMTaskCompletion(powerOnTasks); /* Currently blocking */
+          status.addStatus(blockOnVMTaskCompletion(powerOnTasks)); /* Currently blocking */
       } else {
-    	  allSucceeded = true;
+    	  status.registerTaskSucceeded();
       }
       _log.log(Level.INFO, "Done");
-      return allSucceeded;
+      return status;
    }
    
-   boolean powerOffVMs(VMDTO[] toPowerOff) {
-      boolean allSucceeded;
+   CompoundStatus powerOffVMs(VMDTO[] toPowerOff) {
+      CompoundStatus status = new CompoundStatus("powerOffVMs");
       List<Future<VMDTO>> powerOffTasks = new ArrayList<Future<VMDTO>>();
       for (VMDTO vm : toPowerOff) {
          _log.log(Level.INFO, "Disabling VM "+vm._name+" ...");
          powerOffTasks.add(getVC().powerOffVM(vm));
       }
       _log.log(Level.INFO, "Waiting for completion...");
-      allSucceeded = blockOnVMTaskCompletion(powerOffTasks); /* Currently blocking */
+      status.addStatus(blockOnVMTaskCompletion(powerOffTasks)); /* Currently blocking */
       _log.log(Level.INFO, "Done");
-      return allSucceeded;
+      return status;
    }
    
-   boolean shutdownGuests(VMDTO[] toShutDown) {
-	  boolean allSucceeded = true;
+   CompoundStatus shutdownGuests(VMDTO[] toShutDown) {
+      CompoundStatus status = new CompoundStatus("shutdownGuests");
 	  List<Future<VMDTO>> shutDownTasks = new ArrayList<Future<VMDTO>>();
 	  List<VMDTO> shutDownNoTask = new ArrayList<VMDTO>();
 	  for (VMDTO vm : toShutDown) {
@@ -185,32 +195,36 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
 		              shutDownTasks.add(getVC().powerOffVM(vm));
 		          }
 		      } catch (Exception e) {
-		          _log.log(Level.SEVERE, "Problem determining current power state of vm "+vm._name);
-		          allSucceeded = false;
+		          String errorMsg = "Problem determining current power state of vm "+vm._name;
+		          _log.log(Level.SEVERE, errorMsg);
+		          status.registerTaskFailed(false, errorMsg);
 		      }
 		  }
 	  }
 	  if (shutDownTasks.size() > 0) {
-	      allSucceeded = allSucceeded & blockOnVMTaskCompletion(shutDownTasks); /* Currently blocking */
+	      status.addStatus(blockOnVMTaskCompletion(shutDownTasks)); /* Currently blocking */
 	  }
 	  _log.log(Level.INFO, "Done");
-	  return allSucceeded;
+	  return status;
    }
    
-   boolean testForPowerState(VMDTO[] vms, boolean assertEnabled){
+   CompoundStatus testForPowerState(VMDTO[] vms, boolean assertEnabled){
+      CompoundStatus status = new CompoundStatus("testForPowerState");
       VMPowerState successState = assertEnabled ? VMPowerState.POWERED_ON : VMPowerState.POWERED_OFF;
       for (VMDTO vm : vms) {
          /* "true" will refresh the powerstate and get() will block on getting the result */
          try {
             VMPowerState vmp = getVC().getPowerState(vm, true).get();
             if (!vmp.equals(successState)) {
-               return false;
+               status.registerTaskFailed(false, "VM "+vm._name+" is not the correct power state");
+            } else {
+               status.registerTaskSucceeded();
             }
          } catch (Exception e) {
-            return false;
+            status.registerTaskFailed(false, "Unexpected exception testing power states "+e.getMessage());
          }
       }
-      return true;
+      return status;
    }
    
    VCActions getVC() {

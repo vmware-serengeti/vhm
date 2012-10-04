@@ -19,8 +19,10 @@ import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.HadoopCluster;
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
 import com.vmware.vhadoop.external.VCActions;
+import com.vmware.vhadoop.util.CompoundStatus;
 
 public class EDP_SoftDeRecommissionTTs extends AbstractEDP {
+    private final String _className = this.getClass().getName();
 	HadoopActions _hc;
 	
 	public EDP_SoftDeRecommissionTTs(VCActions vc, HadoopActions hc) {
@@ -37,38 +39,28 @@ public class EDP_SoftDeRecommissionTTs extends AbstractEDP {
 	}
 
 	@Override
-	public boolean enableTTs(VMDTO[] toEnable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
-       boolean recomSuccess = _hc.recommissionTTs(getHostNamesForVMs(toEnable), cluster);
+	public CompoundStatus enableTTs(VMDTO[] toEnable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
+       CompoundStatus finalStatus = new CompoundStatus(_className+" enable");
+       finalStatus.addStatus(_hc.recommissionTTs(getHostNamesForVMs(toEnable), cluster));
        /* TODO: Should powerOn be conditional */
-	   boolean combinedResult = recomSuccess & powerOnVMs(toEnable);
-	   /* TODO: Blocking is conditional on success. That's probably right? */
-	   if (combinedResult) {
-	      return _hc.checkTargetTTsSuccess("Recommission", getHostNamesForVMs(toEnable), totalTargetEnabled, cluster);
-	   }
-	   return combinedResult;
+       finalStatus.addStatus(powerOnVMs(toEnable));
+       /* TODO: Blocking is conditional on success. That's probably right? */
+       if (finalStatus.getFailedTaskCount() == 0) {
+          finalStatus.addStatus(_hc.checkTargetTTsSuccess("Recommission", getHostNamesForVMs(toEnable), totalTargetEnabled, cluster));
+       }
+       return finalStatus;
 	}
 
 	@Override
 	/* Blocks until completed */
-	public boolean disableTTs(VMDTO[] toDisable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
-	   boolean decomSuccess = _hc.decommissionTTs(getHostNamesForVMs(toDisable), cluster);
-	   boolean checkSuccess = false; 
-	   if (decomSuccess) {
-		      checkSuccess = _hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster);
+	public CompoundStatus disableTTs(VMDTO[] toDisable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
+       CompoundStatus finalStatus = new CompoundStatus(_className+" disable");
+       finalStatus.addStatus(_hc.decommissionTTs(getHostNamesForVMs(toDisable), cluster));
+	   if (finalStatus.getFailedTaskCount() == 0) {
+	      finalStatus.addStatus(_hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster));
 	   }
        /* TODO: Should shutdownGuest be conditional? */
-	   return checkSuccess & shutdownGuests(toDisable);
+	   finalStatus.addStatus(shutdownGuests(toDisable));
+	   return finalStatus;
 	}
-
-   @Override
-   public boolean testForSuccess(VMDTO[] vms, boolean assertEnabled) {
-      if (!assertEnabled) {
-         /* In the case where we decommissions, just check that the VMs are powered off for now */
-         return testForPowerState(vms, assertEnabled);
-      } else {
-         /* If we got here, it means that enableTTs returned true, in which case the TTs should all be enabled */
-         /* TODO: While enableTTs is blocking on the check script, what else can we test for here? */
-         return true;
-      }
-   }
 }

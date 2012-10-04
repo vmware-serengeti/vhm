@@ -40,6 +40,8 @@ import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.HadoopCredentials;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ParamTypes;
 import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.HadoopCluster;
+import com.vmware.vhadoop.util.CompoundStatus;
+
 import org.apache.commons.io.IOUtils;
 
 /**
@@ -220,11 +222,15 @@ public class HadoopAdaptor implements HadoopActions {
       return rc;
    }
 
-   private boolean decomRecomTTs(String opDesc, String[] tts, HadoopCluster cluster, 
+   private CompoundStatus decomRecomTTs(String opDesc, String[] tts, HadoopCluster cluster, 
          String scriptFileName, String listFileName) {
+      CompoundStatus status = new CompoundStatus("decomRecomTTs");
+      
       if (!isValidTTList(tts)) {
+         String errorMsg = opDesc+" failed due to bad TT list";
          _log.log(Level.SEVERE, opDesc+" failed due to bad TT list");
-         return false;
+         status.registerTaskFailed(false, errorMsg);
+         return status;
       }
       
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
@@ -241,21 +247,24 @@ public class HadoopAdaptor implements HadoopActions {
                new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()},
                out);
       }
-      return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
+      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, _errorParamValues));
+      return status;
    }
    
    @Override
-   public boolean decommissionTTs(String[] tts, HadoopCluster cluster) {
+   public CompoundStatus decommissionTTs(String[] tts, HadoopCluster cluster) {
       return decomRecomTTs("Decommission", tts, cluster, DECOM_SCRIPT_FILE_NAME, DECOM_LIST_FILE_NAME);
    }
 
    @Override
-   public boolean recommissionTTs(String[] tts, HadoopCluster cluster) {
+   public CompoundStatus recommissionTTs(String[] tts, HadoopCluster cluster) {
       return decomRecomTTs("Recommission", tts, cluster, RECOM_SCRIPT_FILE_NAME, RECOM_LIST_FILE_NAME);
    }
 
    @Override
-   public boolean checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopCluster cluster) {
+   public CompoundStatus checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopCluster cluster) {
+      CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
+      
 	  String scriptFileName = CHECK_SCRIPT_FILE_NAME;
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
       String listRemoteFilePath = null;
@@ -272,7 +281,7 @@ public class HadoopAdaptor implements HadoopActions {
       int iterations = 0;
       do {
     	 if (iterations > 0) {
-         	 _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
+    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
          }    	 
 
          OutputStream out = new ByteArrayOutputStream();
@@ -282,13 +291,15 @@ public class HadoopAdaptor implements HadoopActions {
          try {
              out.flush();
           } catch (IOException e) {
-             _log.log(Level.WARNING, "Unexpected exception in SSH OutputStream", e);
+             String errorMsg = "Unexpected exception in SSH OutputStream ";
+             _log.log(Level.WARNING, errorMsg, e);
+             status.registerTaskFailed(false, errorMsg + e.getMessage());
           }
 
          //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
 
          String[] allActiveTTs = out.toString().split("\n");
-                  
+         
          if (checkOpSuccess(opType, affectedTTs, allActiveTTs)) {
         	 _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
         	 rc = SUCCESS;
@@ -298,7 +309,8 @@ public class HadoopAdaptor implements HadoopActions {
          
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 
-      return _errorCodes.interpretErrorCode(_log, rc, _errorParamValues);
+      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, _errorParamValues));
+      return status;
    }
 
    private boolean checkOpSuccess(String opType, String[] affectedTTs,

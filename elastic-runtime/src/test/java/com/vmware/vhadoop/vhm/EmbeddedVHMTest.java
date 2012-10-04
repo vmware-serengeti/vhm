@@ -33,11 +33,8 @@ import com.vmware.vhadoop.external.MQActions;
 import com.vmware.vhadoop.external.VCActions;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.vhm.EmbeddedVHM.VHMInputMessage;
-import com.vmware.vhadoop.vhm.EmbeddedVHM.VHMReturnMessage;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_DeRecommissionTTs;
-import com.vmware.vhadoop.vhm.edpolicy.EDP_JustPowerTTOnOff;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
-import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_DumbVMChooser;
 
 public class EmbeddedVHMTest {
    EmbeddedVHM _test = new EmbeddedVHM();
@@ -63,7 +60,7 @@ public class EmbeddedVHMTest {
       //VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
       //VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_JustPowerTTOnOff(vc));
 
-      _test.init(vhmc, vc, mq, hd);
+      _test.init(vhmc, vc, mq);
    }
    
    @Test
@@ -80,8 +77,7 @@ public class EmbeddedVHMTest {
       String jsonMsg = "{\"version\":1,\"cluster_name\":\"dcsplit\",\"jobtracker\":\"10.141.73.231\",\"instance_num\":4,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-3bf8edd1-30f6-4ac0-9950-5f5571c22c6f\"}";
 
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
-      VHMProgressUpdater progressUpdater = new VHMProgressUpdater(null);
-      _test.setNumTTVMsForCluster(input, progressUpdater);
+      _test.setNumTTVMsForCluster(input);
    }
    
 //   @Test

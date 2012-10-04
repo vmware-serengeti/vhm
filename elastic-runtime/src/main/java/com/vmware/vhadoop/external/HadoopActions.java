@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.external;
 
+import com.vmware.vhadoop.util.CompoundStatus;
+
 public interface HadoopActions {
 
    /** 
@@ -22,15 +24,15 @@ public interface HadoopActions {
 	 *	@param TaskTrackers that need to be decommissioned
 	 *  @return SUCCESS/FAIL
 	 */
-		public boolean decommissionTTs(String[] tts, HadoopCluster cluster);
+		public CompoundStatus decommissionTTs(String[] tts, HadoopCluster cluster);
 
 	/** 
 	 * 	Recommission a given set of TaskTrackers to a JobTracker 
 	 *	@param TaskTrackers that need to be recommissioned/added
 	 *  @return SUCCESS/FAIL
 	 */
-		public boolean recommissionTTs(String[] tts, HadoopCluster cluster);
+		public CompoundStatus recommissionTTs(String[] tts, HadoopCluster cluster);
 
 		
-		public boolean checkTargetTTsSuccess(String opType, String[] tts, int totalTargetEnabled, HadoopCluster cluster);
+		public CompoundStatus checkTargetTTsSuccess(String opType, String[] tts, int totalTargetEnabled, HadoopCluster cluster);
 }

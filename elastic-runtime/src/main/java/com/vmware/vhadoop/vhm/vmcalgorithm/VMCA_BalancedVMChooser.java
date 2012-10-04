@@ -20,14 +20,19 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.external.VCActionDTOTypes.VMDTO;
+import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ProgressLogger;
 import com.vmware.vhadoop.vhm.TTStatesForHost;
 
 public class VMCA_BalancedVMChooser implements VMChooserAlgorithm {
 
-   private static final Logger _log = Logger.getLogger(VMCA_DumbVMChooser.class.getName());
+   private static final String _className = VMCA_BalancedVMChooser.class.getName();
+   private static final ProgressLogger _pLog = ProgressLogger.getProgressLogger(_className);
+   private static final Logger _log = _pLog.getLogger();
    
    @Override
-   public VMDTO[] chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+   public VMCAResult chooseVMsToEnable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+      CompoundStatus taskStatus = new CompoundStatus(_className+" enable");     /* TODO: Set the status somewhere */
 	  List<VMDTO> toEnable = new ArrayList<VMDTO>();
 	  /* Choose TT VMs for power-on, keeping/improving per host balance by increasing powered-on 
 	   * TT VMs on hosts in order of least to most running VMs.
@@ -57,11 +62,12 @@ public class VMCA_BalancedVMChooser implements VMChooserAlgorithm {
       if (delta > toEnable.size()) {
          _log.severe("Request to enable more VMs than are available!");
       }
-      return toEnable.toArray(new VMDTO[0]);
+      return new VMCAResult(toEnable.toArray(new VMDTO[0]), taskStatus);
    }
 
    @Override
-   public VMDTO[] chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+   public VMCAResult chooseVMsToDisable(TTStatesForHost[] hostAndVMs, int totalTTVMs, int delta) {
+      CompoundStatus taskStatus = new CompoundStatus(_className+" disable");     /* TODO: Set the status somewhere */
       List<VMDTO> toDisable = new ArrayList<VMDTO>();
 	  /* Choose TT VMs for power-off, keeping/improving per host balance by decreasing powered-on 
 	   * TT VMs on hosts in order of most to least running VMs.
@@ -91,7 +97,7 @@ public class VMCA_BalancedVMChooser implements VMChooserAlgorithm {
       if (delta > toDisable.size()) {
          _log.severe("Request to disable more VMs than are available!");
       }
-      return toDisable.toArray(new VMDTO[0]);
+      return new VMCAResult(toDisable.toArray(new VMDTO[0]), taskStatus);
    }
 
 }

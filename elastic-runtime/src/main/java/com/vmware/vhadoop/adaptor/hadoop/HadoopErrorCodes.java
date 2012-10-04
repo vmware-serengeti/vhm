@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.vmware.vhadoop.util.CompoundStatus;
+
 /**
  * Error codes here represent values which can be returned from execution of remote scripts
  * 
@@ -64,13 +66,13 @@ public class HadoopErrorCodes {
    class ErrorCode {
       int _code;
       String _logError;
-      boolean _fatal;
+      boolean _isMajor;
       ParamTypes[] _params;
 
-      public ErrorCode(int code, String logError, boolean fatal, ParamTypes[] params) {
+      public ErrorCode(int code, String logError, boolean isMajor, ParamTypes[] params) {
          _code = code;
          _logError = logError;
-         _fatal = fatal;
+         _isMajor = isMajor;
          _params = params;
       }
    }
@@ -100,7 +102,8 @@ public class HadoopErrorCodes {
       _errorCodes.put(code, new ErrorCode(code, logError, fatal, params));
    }
 
-   public boolean interpretErrorCode(Logger log, int code, Map<ParamTypes, String> paramValuesMap) {
+   public CompoundStatus interpretErrorCode(Logger log, int code, Map<ParamTypes, String> paramValuesMap) {
+      CompoundStatus status = new CompoundStatus("interpretErrorCode");
       ErrorCode rc = _errorCodes.get(code);
       if (rc == null) {
          log.log(Level.WARNING, "Unknown error code!");
@@ -114,6 +117,11 @@ public class HadoopErrorCodes {
             log.log(Level.INFO, rc._logError);
          }
       }
-      return !rc._fatal;
+      if (rc._code == SUCCESS) {
+         status.registerTaskSucceeded();
+      } else if (rc._isMajor) {
+         status.registerTaskFailed(false, rc._logError);
+      }
+      return status;
    }
 }
