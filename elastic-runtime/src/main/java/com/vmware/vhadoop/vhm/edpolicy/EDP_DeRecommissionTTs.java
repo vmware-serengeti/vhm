@@ -44,8 +44,10 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
 	public CompoundStatus enableTTs(VMDTO[] toEnable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
 	   CompoundStatus finalStatus = new CompoundStatus(_className+" enable");
        finalStatus.addStatus(_hc.recommissionTTs(getHostNamesForVMs(toEnable), cluster));
+       _pLog.registerProgress(50);
        /* TODO: Should powerOn be conditional */
        finalStatus.addStatus(powerOnVMs(toEnable));
+       _pLog.registerProgress(60);
 	   /* TODO: Blocking is conditional on success. That's probably right? */
 	   if (finalStatus.getFailedTaskCount() == 0) {
 	      finalStatus.addStatus(_hc.checkTargetTTsSuccess("Recommission", getHostNamesForVMs(toEnable), totalTargetEnabled, cluster));
@@ -58,17 +60,12 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
 	public CompoundStatus disableTTs(VMDTO[] toDisable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
        CompoundStatus finalStatus = new CompoundStatus(_className+" disable");
 	   finalStatus.addStatus(_hc.decommissionTTs(getHostNamesForVMs(toDisable), cluster));
-	   
-	   if (finalStatus.getFailedTaskCount() > 0) {
-	      _log.log(Level.SEVERE, "Decommission failed. See vhm.log and/or vhm.xml for details");
-	   } else {
+	   _pLog.registerProgress(60);
+	   if (finalStatus.getFailedTaskCount() == 0) {	  
 	      finalStatus.addStatus(_hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster));
-		  if (finalStatus.getFailedTaskCount() > 0) {
-			  _log.log(Level.SEVERE, "Decommission check failed. See vhm.log and/or vhm.xml for details");
-		  }
-	   }
-	   finalStatus.addStatus(powerOffVMs(toDisable));
-	   
+	      _pLog.registerProgress(70);
+	   }	   
+	   finalStatus.addStatus(powerOffVMs(toDisable));	   
 	   return finalStatus;
 	}
 }

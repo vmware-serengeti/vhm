@@ -159,7 +159,7 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
              /* The expectation is that enableVMs is blocking */
              vmChooserStatus = new CompoundStatus("Null VMChooser");        /* Ensure it's not null */
         	 edPolicyStatus = edPolicy.enableTTs(ttsToEnable, ttsToEnable.length, cluster);
-             _pLog.registerProgress(60);
+             _pLog.registerProgress(90);
          } else if (delta > 0) {
         	_log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
         	VMCAResult chooserResult = vmChooser.chooseVMsToEnable(ttStatesForHosts, allTTs.length, delta);
@@ -168,7 +168,7 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
             _pLog.registerProgress(40);
             /* The expectation is that enableVMs is blocking */
             edPolicyStatus = edPolicy.enableTTs(ttsToEnable, (ttsToEnable.length + totalEnabled), cluster);
-            _pLog.registerProgress(60);
+            _pLog.registerProgress(90);
          } else if (delta < 0) {
         	_log.log(Level.INFO, "Target TT VMs to enable/disable = "+delta);
         	VMCAResult chooserResult = vmChooser.chooseVMsToDisable(ttStatesForHosts, allTTs.length, 0 - delta);
