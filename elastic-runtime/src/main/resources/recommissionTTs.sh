@@ -85,7 +85,7 @@ checkArguments()
     fi
     
     if [ ! -f $loc_excludesFile ]; then
-	echo "ERROR: Excludes file \"loc_$excludesFile\" not found" 
+	echo "ERROR: Excludes file \"$loc_excludesFile\" not found" 
 	exit $ERROR_EXCLUDES_FILE_NOT_FOUND
     fi
     
@@ -177,7 +177,7 @@ main()
 		echo "INFO: Removing $ttRecommission from excludes file"
 		sed -i "/$ttRecommission/d" $excludesFile
 		returnVal=$?
-		if [ $returnVal -neq 0 ]; then
+		if [ $returnVal -ne 0 ]; then
 			echo "ERROR: Error while trying to update excludes file"
 			exit $ERROR_EXCLUDES_FILE_UPDATE
 		fi
