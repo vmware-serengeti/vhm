@@ -202,6 +202,7 @@ main()
     
     { 
 # Wait for lock on $LOCKFILE (fd 200) for 10 seconds
+# TODO: Test flock failure to exit (e.g., flock ... || exit $ERROR_FLOCK_FAILED)
 	flock -x -w 10 200
 	
 # Generate list of active task trackers
