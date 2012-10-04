@@ -45,6 +45,8 @@ public class HadoopErrorCodes {
    public static final int ERROR_FAIL_DERECOMMISSION = 106;
    public static final int ERROR_FEWER_TTS = 107;
    public static final int ERROR_EXCESS_TTS = 108;
+   public static final int ERROR_BAD_TARGET_TTS=109;
+   public static final int ERROR_EXCLUDES_FILE_UPDATE = 110;
    public static final int ERROR_COMMAND_NOT_EXECUTABLE = 126;
    public static final int ERROR_COMMAND_NOT_FOUND = 127;
    public static final int WARN_TT_EXCLUDESFILE = 200;
@@ -86,6 +88,8 @@ public class HadoopErrorCodes {
       addErrorCode(ERROR_EXCESS_TTS, true, "# Active TTs > Target number of TTs -- checked by %s", DRSCRIPT);
       addErrorCode(ERROR_COMMAND_NOT_EXECUTABLE, true, "%s script %s is not an executable", COMMAND, DRSCRIPT);
       addErrorCode(ERROR_COMMAND_NOT_FOUND, true, "Error in specifiying %s script %s", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_BAD_TARGET_TTS, true, "Bad number of target TTs specified while executing %s", DRSCRIPT);
+      addErrorCode(ERROR_EXCLUDES_FILE_UPDATE, true, "Error while trying to update excludes file during %sing (wrong permissions perhaps?)", COMMAND);
       addErrorCode(WARN_TT_EXCLUDESFILE, false, "One/More TTs were already %sed as per the excludes file %s while executing %s", COMMAND, EXCLUDE_FILE, DRSCRIPT);
       addErrorCode(WARN_TT_ACTIVE, false, "One/More TTs were already %sed as per \"hadoop job -list-active-trackers\"", COMMAND);
    }
