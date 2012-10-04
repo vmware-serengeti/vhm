@@ -193,7 +193,8 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
          CompoundStatus edPolicyStatus) {
       /* TODO: Look through the results of the important operations and decide what to report back to Serengeti */
       /* TODO: Trivial example for now */
-      if ((vhmStatus.getFatalFailureCount() + vmChooserStatus.getFatalFailureCount() + edPolicyStatus.getFatalFailureCount()) == 0) {
+      //if ((vhmStatus.getFatalFailureCount() + vmChooserStatus.getFatalFailureCount() + edPolicyStatus.getFatalFailureCount()) == 0) {
+	  if ((vhmStatus.getFailedTaskCount() + vmChooserStatus.getFailedTaskCount() + edPolicyStatus.getFailedTaskCount()) == 0) {
          sendMessage(new VHMJsonReturnMessage(true, true, 100, 0, null));
       } else {
          TaskStatus firstError = CompoundStatus.getFirstFailure(
