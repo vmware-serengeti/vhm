@@ -22,6 +22,7 @@ ERROR_JT_UNKNOWN=105
 ERROR_FEWER_TTS=107
 ERROR_EXCESS_TTS=108
 ERROR_BAD_TARGET_TTS=109
+ERROR_LOCK_FILE_WRITE=111
 
 # Check script arguments 
 
@@ -154,22 +155,28 @@ main()
     
     { 
 # Wait for lock on $LOCKFILE (fd 200) for 10 seconds
-	flock -x -w 10 200
+# TODO: Test flock failure to exit (e.g., flock ... || exit $ERROR_FLOCK_FAILED)
+		flock -x -w 10 200
 
 # Determine if target TTs is reached
-	checkTargetActiveTTs $numTargetTTs $hadoopHome
-	retVal=$?
-    }
+		checkTargetActiveTTs $numTargetTTs $hadoopHome
+		retVal=$?
+    }200>$LOCKFILE
 
+	lockExitVal=$?
+	
     if [[ "$retVal" -eq "0" ]]; then
-	echo "Successfully reached target number of active TTs: $numTargetTTs"
-	exitVal=0
+		echo "Successfully reached target number of active TTs: $numTargetTTs"
+		exitVal=0
     elif [[ "$retVal" -eq "1" ]]; then 
- 	echo "Number of active TTs is less than the target: $numTargetTTs"
- 	exitVal=$ERROR_FEWER_TTS
+		echo "Number of active TTs is less than the target: $numTargetTTs"
+		exitVal=$ERROR_FEWER_TTS
+	elif [[ $lockExitVal -ne 0 ]]; then
+		echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+		exitVal=$ERROR_LOCK_FILE_WRITE
     else
- 	echo "Number of active TTs is greater than the target: $numTargetTTs"	
- 	exitVal=$ERROR_EXCESS_TTS
+		echo "Number of active TTs is greater than the target: $numTargetTTs"	
+		exitVal=$ERROR_EXCESS_TTS
     fi
 
 # Restore stdout

@@ -26,6 +26,7 @@ ERROR_BAD_HADOOP_HOME=103
 ERROR_JT_CONNECTION=104
 ERROR_JT_UNKNOWN=105
 ERROR_EXCLUDES_FILE_UPDATE=110
+ERROR_LOCK_FILE_WRITE=111
 WARN_TT_EXCLUDESFILE=200
 WARN_TT_ACTIVE=201
 
@@ -102,6 +103,7 @@ exitWithWarning()
     local loc_numToRecommission=$1
     local loc_missingTT=$2
     local loc_activeTT=$3
+	local loc_lockExitVal=$4
     
     if [[ $loc_missingTT -ge 1 ]]; then
 	echo "WARNING: $loc_missingTT TTs were not in the excludes list" 
@@ -113,6 +115,11 @@ exitWithWarning()
 	echo "WARNING: Tried to recommission $loc_activeTT active TTs" 
 	echo "INFO: Successfully recommissioned $loc_numToRecommission TTs" 
 	exit $WARN_TT_ACTIVE
+    fi
+	
+	if [[ $loc_lockExitVal -ne 0 ]]; then
+		echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+		exit $ERROR_LOCK_FILE_WRITE
     fi
 }
 
@@ -146,6 +153,7 @@ main()
     
     { 
 # Wait for lock on $LOCKFILE (fd 200) for 10 seconds
+# TODO: Test flock failure to exit (e.g., flock ... || exit $ERROR_FLOCK_FAILED)
 	flock -x -w 10 200
 
 # Generate list of active task trackers
@@ -209,7 +217,9 @@ main()
 	
     } 200>$LOCKFILE
 
-    exitWithWarning $numToRecommission $missingTT $numActiveTT 
+	lockExitVal=$?
+
+    exitWithWarningOrError $numToRecommission $missingTT $numActiveTT $lockExitVal
 
     echo "INFO: Successfully recommissioned all $numToRecommission TTs in $rListFile" 
     exit 0	    

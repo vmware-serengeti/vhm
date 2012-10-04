@@ -27,6 +27,7 @@ ERROR_JT_CONNECTION=104
 ERROR_JT_UNKNOWN=105
 ERROR_FAIL_DECOMMISSION=106
 ERROR_EXCLUDES_FILE_UPDATE=110
+ERROR_LOCK_FILE_WRITE=111
 WARN_TT_EXCLUDESFILE=200
 WARN_TT_ACTIVE=201
 
@@ -143,24 +144,31 @@ exitWithWarningOrError()
     local loc_numToDecommission=$2
     local loc_dupl=$3
     local loc_inactiveTT=$4
+	local loc_lockExitVal=$5
 
 
     if [[ $loc_numFailDecommission -ge 1 ]]; then
-	echo "ERROR: Failed to decommission $loc_numFailDecommission out of $loc_numToDecommission TTs"
-	exit $ERROR_FAIL_DECOMMISSION
+		echo "ERROR: Failed to decommission $loc_numFailDecommission out of $loc_numToDecommission TTs"
+		exit $ERROR_FAIL_DECOMMISSION
     fi
     
     if [[ $loc_dupl -ge 1 ]]; then
-	echo "WARNING: $loc_dupl TTs were already in the excludes list" 
-	echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
-	exit $WARN_TT_EXCLUDESFILE
+		echo "WARNING: $loc_dupl TTs were already in the excludes list" 
+		echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
+		exit $WARN_TT_EXCLUDESFILE
     fi
 	    
     if [[ $loc_inactiveTT -ge 1 ]]; then
-	echo "WARNING: Tried to decommission $loc_inactiveTT inactive TTs" 
-	echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
+		echo "WARNING: Tried to decommission $loc_inactiveTT inactive TTs" 
+		echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
 	exit $WARN_TT_ACTIVE
     fi
+	
+    if [[ $loc_lockExitVal -ne 0 ]]; then
+		echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+		exit $ERROR_LOCK_FILE_WRITE
+    fi
+	
 }
 
 	
@@ -274,7 +282,9 @@ main()
 
     } 200>$LOCKFILE
 
-    exitWithWarningOrError $numFailDecommission $numToDecommission $dupl $inactiveTT 
+	lockExitVal=$?
+	
+    exitWithWarningOrError $numFailDecommission $numToDecommission $dupl $inactiveTT $lockExitVal
 
     echo "INFO: Successfully decommissioned all $numToDecommission TTs in $dListFile" 
     exit 0	    
