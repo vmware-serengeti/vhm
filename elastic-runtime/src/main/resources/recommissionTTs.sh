@@ -98,12 +98,12 @@ checkArguments()
 
 # Exit uncermoniously
 
-exitWithWarning()
+exitWithWarningOrError()
 {
     local loc_numToRecommission=$1
     local loc_missingTT=$2
     local loc_activeTT=$3
-	local loc_lockExitVal=$4
+    local loc_lockExitVal=$4
     
     if [[ $loc_missingTT -ge 1 ]]; then
 	echo "WARNING: $loc_missingTT TTs were not in the excludes list" 
@@ -117,9 +117,9 @@ exitWithWarning()
 	exit $WARN_TT_ACTIVE
     fi
 	
-	if [[ $loc_lockExitVal -ne 0 ]]; then
-		echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
-		exit $ERROR_LOCK_FILE_WRITE
+    if [[ $loc_lockExitVal -ne 0 ]]; then
+	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+	exit $ERROR_LOCK_FILE_WRITE
     fi
 }
 
@@ -186,8 +186,8 @@ main()
 		sed -i "/$ttRecommission/d" $excludesFile
 		returnVal=$?
 		if [ $returnVal -ne 0 ]; then
-			echo "ERROR: Error while trying to update excludes file"
-			exit $ERROR_EXCLUDES_FILE_UPDATE
+		    echo "ERROR: Error while trying to update excludes file"
+		    exit $ERROR_EXCLUDES_FILE_UPDATE
 		fi
 		isActive arrActiveTTs[@] $ttRecommission
 		returnVal=$?
@@ -217,10 +217,10 @@ main()
 	
     } 200>$LOCKFILE
 
-	lockExitVal=$?
+    lockExitVal=$?
 
     exitWithWarningOrError $numToRecommission $missingTT $numActiveTT $lockExitVal
-
+    
     echo "INFO: Successfully recommissioned all $numToRecommission TTs in $rListFile" 
     exit 0	    
 }

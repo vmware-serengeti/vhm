@@ -144,34 +144,34 @@ exitWithWarningOrError()
     local loc_numToDecommission=$2
     local loc_dupl=$3
     local loc_inactiveTT=$4
-	local loc_lockExitVal=$5
+    local loc_lockExitVal=$5
 
 
     if [[ $loc_numFailDecommission -ge 1 ]]; then
-		echo "ERROR: Failed to decommission $loc_numFailDecommission out of $loc_numToDecommission TTs"
-		exit $ERROR_FAIL_DECOMMISSION
+	echo "ERROR: Failed to decommission $loc_numFailDecommission out of $loc_numToDecommission TTs"
+	exit $ERROR_FAIL_DECOMMISSION
     fi
     
     if [[ $loc_dupl -ge 1 ]]; then
-		echo "WARNING: $loc_dupl TTs were already in the excludes list" 
-		echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
-		exit $WARN_TT_EXCLUDESFILE
+	echo "WARNING: $loc_dupl TTs were already in the excludes list" 
+	echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
+	exit $WARN_TT_EXCLUDESFILE
     fi
-	    
+    
     if [[ $loc_inactiveTT -ge 1 ]]; then
-		echo "WARNING: Tried to decommission $loc_inactiveTT inactive TTs" 
-		echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
+	echo "WARNING: Tried to decommission $loc_inactiveTT inactive TTs" 
+	echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
 	exit $WARN_TT_ACTIVE
     fi
-	
+    
     if [[ $loc_lockExitVal -ne 0 ]]; then
-		echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
-		exit $ERROR_LOCK_FILE_WRITE
+	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+	exit $ERROR_LOCK_FILE_WRITE
     fi
-	
+    
 }
 
-	
+
 main()
 {
 # Remove logfile if present
@@ -238,8 +238,8 @@ main()
 		echo $ttDecommission >> $excludesFile
 		returnVal=$?
 		if [ $returnVal -ne 0 ]; then
-			echo "ERROR: Error while trying to update excludes file"
-			exit $ERROR_EXCLUDES_FILE_UPDATE
+		    echo "ERROR: Error while trying to update excludes file"
+		    exit $ERROR_EXCLUDES_FILE_UPDATE
 		fi
 		isActive arrActiveTTs[@] $ttDecommission
 		returnVal=$?
@@ -268,7 +268,7 @@ main()
 	
         #sleep 2
         #wait
-
+	
 # Determine if all the TTs to be decommissioned are actually decommissioned
 	numActiveTTs=${#arrActiveTTs[@]}
 	getNumFailDecommission $numActiveTTs $numToDecommission $hadoopHome
@@ -279,15 +279,15 @@ main()
 	
 # Run refresh hosts again to allow the TTs to join at a later time 
         # $hadoopHome/bin/hadoop mradmin -refreshNodes
-
+	
     } 200>$LOCKFILE
-
-	lockExitVal=$?
+	
+    lockExitVal=$?
 	
     exitWithWarningOrError $numFailDecommission $numToDecommission $dupl $inactiveTT $lockExitVal
 
     echo "INFO: Successfully decommissioned all $numToDecommission TTs in $dListFile" 
     exit 0	    
-}
+    }
 
 main $*

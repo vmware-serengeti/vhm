@@ -156,27 +156,28 @@ main()
     { 
 # Wait for lock on $LOCKFILE (fd 200) for 10 seconds
 # TODO: Test flock failure to exit (e.g., flock ... || exit $ERROR_FLOCK_FAILED)
-		flock -x -w 10 200
-
-# Determine if target TTs is reached
-		checkTargetActiveTTs $numTargetTTs $hadoopHome
-		retVal=$?
-    }200>$LOCKFILE
-
-	lockExitVal=$?
+	flock -x -w 10 200
 	
-    if [[ "$retVal" -eq "0" ]]; then
-		echo "Successfully reached target number of active TTs: $numTargetTTs"
-		exitVal=0
+# Determine if target TTs is reached
+	checkTargetActiveTTs $numTargetTTs $hadoopHome
+	retVal=$?
+    }200>$LOCKFILE
+    
+    lockExitVal=$?
+
+
+    if [[ $lockExitVal -ne 0 ]]; then
+	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+	exitVal=$ERROR_LOCK_FILE_WRITE    
+    elif [[ "$retVal" -eq "0" ]]; then
+	echo "Successfully reached target number of active TTs: $numTargetTTs"
+	exitVal=0
     elif [[ "$retVal" -eq "1" ]]; then 
-		echo "Number of active TTs is less than the target: $numTargetTTs"
-		exitVal=$ERROR_FEWER_TTS
-	elif [[ $lockExitVal -ne 0 ]]; then
-		echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
-		exitVal=$ERROR_LOCK_FILE_WRITE
+	echo "Number of active TTs is less than the target: $numTargetTTs"
+	exitVal=$ERROR_FEWER_TTS
     else
-		echo "Number of active TTs is greater than the target: $numTargetTTs"	
-		exitVal=$ERROR_EXCESS_TTS
+	echo "Number of active TTs is greater than the target: $numTargetTTs"	
+	exitVal=$ERROR_EXCESS_TTS
     fi
 
 # Restore stdout
