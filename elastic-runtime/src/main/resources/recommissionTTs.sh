@@ -105,6 +105,11 @@ exitWithWarningOrError()
     local loc_activeTT=$3
     local loc_lockExitVal=$4
     
+    if [[ $loc_lockExitVal -ne 0 ]]; then
+	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+	exit $ERROR_LOCK_FILE_WRITE
+    fi
+
     if [[ $loc_missingTT -ge 1 ]]; then
 	echo "WARNING: $loc_missingTT TTs were not in the excludes list" 
 	echo "INFO: Successfully recommissioned $loc_numToRecommission TTs" 
@@ -117,10 +122,6 @@ exitWithWarningOrError()
 	exit $WARN_TT_ACTIVE
     fi
 	
-    if [[ $loc_lockExitVal -ne 0 ]]; then
-	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
-	exit $ERROR_LOCK_FILE_WRITE
-    fi
 }
 
 main()

@@ -47,7 +47,7 @@ public class HadoopErrorCodes {
    public static final int ERROR_EXCESS_TTS = 108;
    public static final int ERROR_BAD_TARGET_TTS=109;
    public static final int ERROR_EXCLUDES_FILE_UPDATE = 110;
-   public static final int ERROR_LOCK_FILE_WRITE = 110;
+   public static final int ERROR_LOCK_FILE_WRITE = 111;
    public static final int ERROR_COMMAND_NOT_EXECUTABLE = 126;
    public static final int ERROR_COMMAND_NOT_FOUND = 127;
    public static final int WARN_TT_EXCLUDESFILE = 200;

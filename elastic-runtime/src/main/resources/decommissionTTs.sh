@@ -146,6 +146,10 @@ exitWithWarningOrError()
     local loc_inactiveTT=$4
     local loc_lockExitVal=$5
 
+    if [[ $loc_lockExitVal -ne 0 ]]; then
+	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
+	exit $ERROR_LOCK_FILE_WRITE
+    fi
 
     if [[ $loc_numFailDecommission -ge 1 ]]; then
 	echo "ERROR: Failed to decommission $loc_numFailDecommission out of $loc_numToDecommission TTs"
@@ -163,12 +167,7 @@ exitWithWarningOrError()
 	echo "INFO: Successfully decommissioned $loc_numToDecommission TTs" 
 	exit $WARN_TT_ACTIVE
     fi
-    
-    if [[ $loc_lockExitVal -ne 0 ]]; then
-	echo "ERROR: Failed to write to lock file $LOCKFILE (permissions problem?)"
-	exit $ERROR_LOCK_FILE_WRITE
-    fi
-    
+        
 }
 
 
@@ -194,6 +193,7 @@ main()
     flagDupl=0
     inactiveTT=0
     numToDecommission=0
+    numFailDecommission=0
     
 # Ensure only one VHM executes this script at any given time
     

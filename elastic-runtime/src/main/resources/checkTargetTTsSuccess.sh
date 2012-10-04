@@ -161,7 +161,7 @@ main()
 # Determine if target TTs is reached
 	checkTargetActiveTTs $numTargetTTs $hadoopHome
 	retVal=$?
-    }200>$LOCKFILE
+    } 200>$LOCKFILE
     
     lockExitVal=$?
 
