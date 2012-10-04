@@ -25,6 +25,7 @@ ERROR_DRLIST_FILE_NOT_FOUND=102
 ERROR_BAD_HADOOP_HOME=103
 ERROR_JT_CONNECTION=104
 ERROR_JT_UNKNOWN=105
+ERROR_EXCLUDES_FILE_UPDATE=110
 WARN_TT_EXCLUDESFILE=200
 WARN_TT_ACTIVE=201
 
@@ -175,7 +176,11 @@ main()
 
 		echo "INFO: Removing $ttRecommission from excludes file"
 		sed -i "/$ttRecommission/d" $excludesFile
-
+		returnVal=$?
+		if [ $returnVal -neq 0 ]; then
+			echo "ERROR: Error while trying to update excludes file"
+			exit $ERROR_EXCLUDES_FILE_UPDATE
+		fi
 		isActive arrActiveTTs[@] $ttRecommission
 		returnVal=$?
 		if [ $returnVal -eq 0 ]; then

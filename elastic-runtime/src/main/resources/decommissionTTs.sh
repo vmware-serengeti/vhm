@@ -26,6 +26,7 @@ ERROR_BAD_HADOOP_HOME=103
 ERROR_JT_CONNECTION=104
 ERROR_JT_UNKNOWN=105
 ERROR_FAIL_DECOMMISSION=106
+ERROR_EXCLUDES_FILE_UPDATE=110
 WARN_TT_EXCLUDESFILE=200
 WARN_TT_ACTIVE=201
 
@@ -227,6 +228,11 @@ main()
 	    if [ $flagDupl -eq 0 ]; then
 		echo "INFO: Adding $ttDecommission to excludes file"
 		echo $ttDecommission >> $excludesFile
+		returnVal=$?
+		if [ $returnVal -neq 0 ]; then
+			echo "ERROR: Error while trying to update excludes file"
+			exit $ERROR_EXCLUDES_FILE_UPDATE
+		fi
 		isActive arrActiveTTs[@] $ttDecommission
 		returnVal=$?
 		if [ $returnVal -eq 1 ]; then
