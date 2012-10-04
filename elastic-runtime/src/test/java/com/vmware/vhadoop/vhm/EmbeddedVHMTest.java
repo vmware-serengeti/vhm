@@ -77,7 +77,7 @@ public class EmbeddedVHMTest {
 
       //String jsonMsg = "{\"version\":1,\"cluster_name\":\"computeOnly1\",\"jobtracker\":\"10.141.73.4\",\"instance_num\":1,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-2dcd00fb-ed3a-4ee0-a02e-4b20bbf15a93\"}";
 
-      String jsonMsg = "{\"version\":1,\"cluster_name\":\"dcsplit\",\"jobtracker\":\"10.141.73.231\",\"instance_num\":6,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-3bf8edd1-30f6-4ac0-9950-5f5571c22c6f\"}";
+      String jsonMsg = "{\"version\":1,\"cluster_name\":\"dcsplit\",\"jobtracker\":\"10.141.73.231\",\"instance_num\":4,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-3bf8edd1-30f6-4ac0-9950-5f5571c22c6f\"}";
 
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
       VHMProgressUpdater progressUpdater = new VHMProgressUpdater(null);
