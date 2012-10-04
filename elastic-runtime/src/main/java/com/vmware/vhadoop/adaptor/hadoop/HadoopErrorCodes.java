@@ -73,7 +73,7 @@ public class HadoopErrorCodes {
    }
    
    private void initErrorCodes() {
-      addErrorCode(UNKNOWN_ERROR, true, "Unknown exit status from %s", DRSCRIPT);
+      addErrorCode(UNKNOWN_ERROR, true, "Unknown exit status during %s", COMMAND);
       addErrorCode(SUCCESS, false, "Successfully executed %s script: %s", COMMAND, DRSCRIPT);
       addErrorCode(ERROR_BAD_ARGS, true, "Bad arguments passed to %s", DRSCRIPT);
       addErrorCode(ERROR_EXCLUDES_FILE_NOT_FOUND, true, "Excludes file %s not found while executing %s", EXCLUDE_FILE, DRSCRIPT);
