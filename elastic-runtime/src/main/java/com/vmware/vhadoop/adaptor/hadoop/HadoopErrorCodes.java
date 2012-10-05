@@ -105,12 +105,13 @@ public class HadoopErrorCodes {
    public CompoundStatus interpretErrorCode(Logger log, int code, Map<ParamTypes, String> paramValuesMap) {
       CompoundStatus status = new CompoundStatus("interpretErrorCode");
       ErrorCode rc = _errorCodes.get(code);
+      String[] paramValues = null;
       if (rc == null) {
          log.log(Level.WARNING, "Unknown error code!");
          rc = _errorCodes.get(-1);
       } else {
          if (paramValuesMap != null) {
-            String[] paramValues = new String[rc._params.length];
+            paramValues = new String[rc._params.length];
             for (int i=0; i<paramValues.length; paramValues[i] = paramValuesMap.get(rc._params[i++]));
             log.log(Level.INFO, rc._logError, paramValues);
          } else {
@@ -120,7 +121,10 @@ public class HadoopErrorCodes {
       if (rc._code == SUCCESS) {
          status.registerTaskSucceeded();
       } else if (rc._isMajor) {
-         status.registerTaskFailed(false, rc._logError);
+         String formattedString = (paramValues == null) ?
+               rc._logError : String.format(rc._logError, (Object[])paramValues);
+         /* Currently all of these errors are considered non-fatal to subsequent operations */
+         status.registerTaskFailed(false, formattedString);
       }
       return status;
    }
