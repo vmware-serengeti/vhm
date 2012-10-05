@@ -133,7 +133,7 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
       for (VMDTO vm : toPowerOn) {
          _log.log(Level.INFO, "Enabling VM "+vm._name+" ...");
          try {
-             VMPowerState vmp = getVC().getPowerState(vm, true).get();
+             VMPowerState vmp = getVC().getPowerState(vm, false).get();
              if (!vmp.equals(VMPowerState.POWERED_ON)) {
                  powerOnTasks.add(getVC().powerOnVM(vm));
              }
@@ -146,6 +146,7 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
       _log.log(Level.INFO, "Waiting for completion...");
       if (powerOnTasks.size() > 0) {
           status.addStatus(blockOnVMTaskCompletion(powerOnTasks)); /* Currently blocking */
+          status.addStatus(testForPowerState(toPowerOn, true/*->powered-on*/));
       } else {
     	  status.registerTaskSucceeded();
       }
@@ -162,6 +163,7 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
       }
       _log.log(Level.INFO, "Waiting for completion...");
       status.addStatus(blockOnVMTaskCompletion(powerOffTasks)); /* Currently blocking */
+      status.addStatus(testForPowerState(toPowerOff, false/*->powered-off*/));
       _log.log(Level.INFO, "Done");
       return status;
    }
@@ -203,6 +205,7 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
 	  }
 	  if (shutDownTasks.size() > 0) {
 	      status.addStatus(blockOnVMTaskCompletion(shutDownTasks)); /* Currently blocking */
+	      status.addStatus(testForPowerState(toShutDown, false/*->powered-off*/));
 	  }
 	  _log.log(Level.INFO, "Done");
 	  return status;
