@@ -201,7 +201,11 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
       } else {
          TaskStatus firstError = CompoundStatus.getFirstFailure(
                new CompoundStatus[]{vhmStatus, vmChooserStatus, edPolicyStatus});
-         sendMessage(new VHMJsonReturnMessage(true, false, 100, 0, firstError.getMessage()));
+         if (CompoundStatus.allPowerOpsSucceeded(edPolicyStatus)) {
+        	 sendMessage(new VHMJsonReturnMessage(true, false, 100, 0, firstError.getMessage() + " however, powering on/off VMs succeeded;"));
+         } else {
+        	 sendMessage(new VHMJsonReturnMessage(true, false, 100, 0, firstError.getMessage()));
+         }
       }
    }
 

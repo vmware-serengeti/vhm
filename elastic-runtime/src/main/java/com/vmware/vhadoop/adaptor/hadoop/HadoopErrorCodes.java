@@ -78,28 +78,28 @@ public class HadoopErrorCodes {
    }
    
    private void initErrorCodes() {
-      addErrorCode(UNKNOWN_ERROR, true, "Unknown exit status during %s", COMMAND);
-      addErrorCode(SUCCESS, false, "Successfully executed %s script: %s", COMMAND, DRSCRIPT);
-      addErrorCode(ERROR_BAD_ARGS, true, "Bad arguments passed to %s", DRSCRIPT);
-      addErrorCode(ERROR_EXCLUDES_FILE_NOT_FOUND, true, "Excludes file %s not found while executing %s", EXCLUDE_FILE, DRSCRIPT);
-      addErrorCode(ERROR_DRLIST_FILE_NOT_FOUND, true, "%s list file %s not found while executing %s", COMMAND, DRLIST, DRSCRIPT);
-      addErrorCode(ERROR_BAD_HADOOP_HOME, true, "HADOOP_HOME %s does not resolve correctly while running %s", HADOOP_HOME, DRSCRIPT);
-      addErrorCode(ERROR_JT_CONNECTION, true, "Unable to connect to jobtracker (%s) while running %s", JOBTRACKER, DRSCRIPT);
-      addErrorCode(ERROR_JT_UNKNOWN, true, "Unknown error connecting to jobtracker (%s) while running %s", JOBTRACKER, DRSCRIPT);
-      addErrorCode(ERROR_FAIL_DERECOMMISSION, true, "Failed to %s one or more TTs while running %s", COMMAND, DRSCRIPT);
-      addErrorCode(ERROR_FEWER_TTS, true, "# Active TTs < Target number of TTs -- checked by %s", DRSCRIPT);
-      addErrorCode(ERROR_EXCESS_TTS, true, "# Active TTs > Target number of TTs -- checked by %s", DRSCRIPT);
-      addErrorCode(ERROR_COMMAND_NOT_EXECUTABLE, true, "%s script %s is not an executable", COMMAND, DRSCRIPT);
-      addErrorCode(ERROR_COMMAND_NOT_FOUND, true, "Error in specifiying %s script %s", COMMAND, DRSCRIPT);
-      addErrorCode(ERROR_BAD_TARGET_TTS, true, "Bad number of target TTs specified while executing %s", DRSCRIPT);
-      addErrorCode(ERROR_EXCLUDES_FILE_UPDATE, true, "Error while trying to update excludes file during %sing (wrong permissions/user perhaps?)", COMMAND);
-      addErrorCode(ERROR_LOCK_FILE_WRITE, true, "Error while trying to write to lock file during %sing (wrong permissions/user perhaps?)", COMMAND);
-      addErrorCode(WARN_TT_EXCLUDESFILE, false, "One/More TTs were already %sed as per the excludes file %s while executing %s", COMMAND, EXCLUDE_FILE, DRSCRIPT);
-      addErrorCode(WARN_TT_ACTIVE, false, "One/More TTs were already %sed as per \"hadoop job -list-active-trackers\"", COMMAND);
+      addErrorCode(UNKNOWN_ERROR, true, "Unknown exit status during %s;", COMMAND);
+      addErrorCode(SUCCESS, false, "Successfully executed %s script (%s);", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_BAD_ARGS, true, "Bad arguments passed to %s script (%s)", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_EXCLUDES_FILE_NOT_FOUND, true, "Excludes file (%s) not found while executing %s script (%s);", EXCLUDE_FILE, COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_DRLIST_FILE_NOT_FOUND, true, "%s list file (%s) not found while executing %s script (%s);", COMMAND, DRLIST, COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_BAD_HADOOP_HOME, true, "HADOOP_HOME (%s) does not resolve correctly while running %s script (%s);", HADOOP_HOME, COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_JT_CONNECTION, true, "Unable to connect to jobtracker (%s) while running %s script (%s);", JOBTRACKER, COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_JT_UNKNOWN, true, "Unknown error connecting to jobtracker (%s) while running %s script (%s);", JOBTRACKER, COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_FAIL_DERECOMMISSION, true, "Failed to %s one or more TTs while running %s script (%s);", COMMAND, COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_FEWER_TTS, true, "# Active TTs < Target number of TTs -- checked by validator script (%s);", DRSCRIPT);
+      addErrorCode(ERROR_EXCESS_TTS, true, "# Active TTs > Target number of TTs -- checked by validator script (%s);", DRSCRIPT);
+      addErrorCode(ERROR_COMMAND_NOT_EXECUTABLE, true, "%s script (%s) is not an executable;", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_COMMAND_NOT_FOUND, true, "Error in specifiying %s script (%s) - Command not found;", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_BAD_TARGET_TTS, true, "Bad number of target TTs specified while executing %s script (%s);", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_EXCLUDES_FILE_UPDATE, true, "Error while trying to update excludes file during %sing (wrong permissions/user perhaps?);", COMMAND);
+      addErrorCode(ERROR_LOCK_FILE_WRITE, true, "Error while trying to write to lock file during %sing (wrong permissions/user perhaps?);", COMMAND);
+      addErrorCode(WARN_TT_EXCLUDESFILE, false, "One/More TTs were already %sed as per the excludes file (%s) while executing %s;", COMMAND, EXCLUDE_FILE, DRSCRIPT);
+      addErrorCode(WARN_TT_ACTIVE, false, "One/More TTs were already %sed as per \"hadoop job -list-active-trackers\";", COMMAND);
    }
 
-   public void addErrorCode(int code, boolean fatal, String logError, ParamTypes... params) {
-      _errorCodes.put(code, new ErrorCode(code, logError, fatal, params));
+   public void addErrorCode(int code, boolean isMajor, String logError, ParamTypes... params) {
+      _errorCodes.put(code, new ErrorCode(code, logError, isMajor, params));
    }
 
    public CompoundStatus interpretErrorCode(Logger log, int code, Map<ParamTypes, String> paramValuesMap) {

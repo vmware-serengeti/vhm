@@ -1,9 +1,27 @@
+/***************************************************************************
+ * Copyright (c) 2012 VMware, Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************/
+
 package com.vmware.vhadoop.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
+import com.vmware.vhadoop.vhm.EmbeddedVHM;
 
 /**
  * CompoundStatus is a class used to allow a method to register successes or failures in its operation
@@ -20,6 +38,9 @@ import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
  *
  */
 public class CompoundStatus {
+   
+   private static final ProgressLogger _pLog = ProgressLogger.getProgressLogger(EmbeddedVHM.class.getName());
+   private static final Logger _log = _pLog.getLogger();
    
    public List<TaskStatus> _taskStatusList;     /* TODO: Order by timestamp for audit */
    public String _name;
@@ -132,8 +153,23 @@ public class CompoundStatus {
                   result = taskStatus;
                }
             }
+            _log.log(Level.INFO, "TaskStatus: " + taskStatus.getCompoundName() + " " + taskStatus.getMessage() + " "  + taskStatus.getTaskState());
          }
       }
       return result;
+   }
+   
+   /* Utility method to check if all the poweron/off operations succeeded */
+   public static boolean allPowerOpsSucceeded(CompoundStatus edpStatus) {
+	  boolean powerTestExists = false;
+	  for (TaskStatus taskStatus : edpStatus._taskStatusList) {
+    	  if (taskStatus.getCompoundName().equals("testForPowerState")) { 
+    		  powerTestExists = true;
+    		  if ((!taskStatus._taskState.equals(TaskState.SUCCEEDED))) {
+    			  return false;
+    		  }
+    	  }
+      }
+	  return powerTestExists;
    }
 }
