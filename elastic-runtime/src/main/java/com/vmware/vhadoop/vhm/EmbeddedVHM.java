@@ -130,11 +130,13 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
          
          _pLog.registerProgress(10);
          
-         _log.log(Level.INFO, "Getting folders...");
-         FolderDTO rootFolder = _vc.getRootFolder().get();
-         FolderDTO serengetiRootFolder = _vc.getFolderForName(rootFolder, input.getSerengetiRootFolder()).get();
-         FolderDTO clusterFolder = _vc.getFolderForName(serengetiRootFolder, input.getClusterName()).get();
-         VMDTO[] allTTs = getAllTTsForAllHosts(input.getTTFolderNames(), clusterFolder);
+         _log.log(Level.INFO, "Getting cluster inventory information...");
+         VMDTO[] allTTs = getAllTTsForAllHosts(thisStatus, input.getTTFolderNames(),
+                 input.getSerengetiRootFolder(), input.getClusterName());
+         if ((allTTs == null) || (allTTs.length == 0)) {
+            processCompoundStatuses(thisStatus, vmChooserStatus, edPolicyStatus);
+            return;
+         }
          
          TTStatesForHost[] ttStatesForHosts = _config._enableDisablePolicy.getStateForTTs(allTTs);
          int totalEnabled = 0;
@@ -209,13 +211,82 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
       }
    }
 
-   private VMDTO[] getAllTTsForAllHosts(String[] folderNames, FolderDTO clusterFolder) throws ExecutionException, InterruptedException {
+   private VMDTO[] getAllTTsForAllHosts(CompoundStatus vhmStatus, String[] folderNames,
+           String serengetiRootFolderName, String vHadoopClusterName) {
+      // Get vCenter root folder
+      FolderDTO rootFolder = null;
+      try {
+         rootFolder = _vc.getRootFolder().get();
+      } catch (Exception e) {
+         _log.log(Level.SEVERE, "Got exception trying to access root folder in vCenter");
+      }
+      if (rootFolder == null) {
+          vhmStatus.registerTaskFailed(false, "Could not access root folder in vCenter");
+          return null;
+      }
+      
+      // Get Serengeti deployment folder
+      FolderDTO serengetiRootFolder = null;
+      try {
+         if ((serengetiRootFolderName != null) & (serengetiRootFolderName.length() != 0)) {
+              serengetiRootFolder = _vc.getFolderForName(rootFolder, serengetiRootFolderName).get();
+         }
+      } catch (Exception e) {
+         _log.log(Level.SEVERE, "Got exception trying to access serengeti folder "+serengetiRootFolderName+" in vCenter");
+      }
+      if (serengetiRootFolder == null) {
+          vhmStatus.registerTaskFailed(false,
+           "Could not access serengeti root folder "+serengetiRootFolderName+" in vCenter");
+          return null;
+      }
+      
+      // Get hadoop cluster folder
+      FolderDTO clusterFolder = null;
+      try {
+         if ((vHadoopClusterName != null) & (vHadoopClusterName.length() != 0)) {
+              clusterFolder = _vc.getFolderForName(serengetiRootFolder, vHadoopClusterName).get();
+         }
+      } catch (Exception e) {
+         _log.log(Level.SEVERE, "Got exception trying to access hadoop cluster folder "+vHadoopClusterName+" in vCenter");
+      }
+      if (clusterFolder == null) {
+          vhmStatus.registerTaskFailed(false,
+           "Could not access hadoop cluster folder "+vHadoopClusterName+" in vCenter");
+          return null;
+      }
+      
+      // Walk through specified task tracker folders
       List<VMDTO> allTTsAllFolders = new ArrayList<VMDTO>();
-      for (String ttFolderName : folderNames) {
-         FolderDTO ttFolder = _vc.getFolderForName(clusterFolder, ttFolderName).get();
-         _log.log(Level.INFO, "Finding TT states for " + ttFolderName);
-         /* Note that these VMDTOs should not be cached for long. If they are vMotioned, the host moIds will be incorrect */
-         allTTsAllFolders.addAll(Arrays.asList(_vc.listVMsInFolder(ttFolder).get()));
+      if (folderNames != null) {
+         for (String ttFolderName : folderNames) {
+            FolderDTO ttFolder = null;
+            if ((ttFolderName != null) & (ttFolderName.length() != 0)) {
+               try {
+                  ttFolder =  _vc.getFolderForName(clusterFolder, ttFolderName).get();
+               } catch (Exception e) {
+                  _log.log(Level.SEVERE, "Got exception trying to access task tracker folder "+ttFolderName+" in vCenter");
+               }
+               if (ttFolder == null) {
+                  vhmStatus.registerTaskFailed(false,
+                             "Could not access task tracker folder "+ttFolderName+" in vCenter");
+               } else {
+                  _log.log(Level.INFO, "Finding TT states for " + ttFolderName);
+                  /* Note that these VMDTOs should not be cached for long. If they are vMotioned, the host moIds will be incorrect */
+                  VMDTO[] vmsInFolder = null;
+                  try {
+                     vmsInFolder = _vc.listVMsInFolder(ttFolder).get();
+                  } catch (Exception e) {
+                     _log.log(Level.SEVERE, "Got exception trying to access vm list in task tracker folder "+ttFolderName+" in vCenter");
+                  }
+                  if (vmsInFolder != null) {
+                     allTTsAllFolders.addAll(Arrays.asList(vmsInFolder));
+                  }
+               }
+            }
+         }
+      }
+      if (allTTsAllFolders.size() == 0) {
+         vhmStatus.registerTaskFailed(false, "No task trackers found");
       }
       return allTTsAllFolders.toArray(new VMDTO[0]);
    }

@@ -222,6 +222,9 @@ public class VCUtils {
       public External[] get() {
          if (waitForProps()) {
             List<External> results = new ArrayList<External>();
+            if (_toWrap == null) {
+               return null;
+            }
             for (MoRefAndProps moref : _toWrap) {
                results.add(transform(moref));
             }

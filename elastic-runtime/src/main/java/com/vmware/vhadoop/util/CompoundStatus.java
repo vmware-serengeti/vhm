@@ -145,6 +145,9 @@ public class CompoundStatus {
    public static TaskStatus getFirstFailure(CompoundStatus[] statuses) {
       TaskStatus result = null;
       for (CompoundStatus compStatus : statuses) {
+         if (compStatus == null) {
+            continue;
+         }
          for (TaskStatus taskStatus : compStatus._taskStatusList) {
             if (!taskStatus._taskState.equals(TaskState.SUCCEEDED) && (taskStatus._message != null)) {
                if (result == null) {
@@ -162,6 +165,9 @@ public class CompoundStatus {
    /* Utility method to check if all the poweron/off operations succeeded */
    public static boolean allPowerOpsSucceeded(CompoundStatus edpStatus) {
 	  boolean powerTestExists = false;
+      if (edpStatus == null) {
+         return false;
+      }
 	  for (TaskStatus taskStatus : edpStatus._taskStatusList) {
     	  if (taskStatus.getCompoundName().equals("testForPowerState")) { 
     		  powerTestExists = true;
