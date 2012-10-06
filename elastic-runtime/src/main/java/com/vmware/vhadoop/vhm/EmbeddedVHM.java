@@ -89,6 +89,18 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
                _running = false;
                continue;
             }
+            
+            boolean vcConnection = false;
+            try {
+               vcConnection = _vc.testConnection();
+            } catch (Exception e) {
+               _log.log(Level.SEVERE, "VHM got exception trying to connect to vCenter: "+e);
+            }
+            if (vcConnection == false) {
+               sendMessage(new VHMJsonReturnMessage(true, false, 100, 0,
+                       "VHM cannot connect to vCenter; check VHM log for details"));
+               continue;  // Not stopping VHM since problem may be temporary vCenter issue
+            }
 
             _log.log(Level.INFO, "Processing message...");
             setNumTTVMsForCluster(input);

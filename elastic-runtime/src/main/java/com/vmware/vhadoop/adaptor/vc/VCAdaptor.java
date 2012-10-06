@@ -58,7 +58,6 @@ public class VCAdaptor extends AbstractVCAdaptor {
    
    public VCAdaptor(VCCredentials credentials) {
       _connection = new VCConnection(credentials);
-      _connection.connect();            /* TODO: Could move into init method for better error handling */
    }
    
    @Override

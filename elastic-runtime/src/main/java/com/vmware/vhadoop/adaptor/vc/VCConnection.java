@@ -197,6 +197,7 @@ private boolean testConnection() {
          _connected = true;
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected exception when trying to connect to vCenter: "+e);
+         return false;
       }
       
       return testConnection();
