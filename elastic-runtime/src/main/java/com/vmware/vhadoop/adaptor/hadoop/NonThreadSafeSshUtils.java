@@ -67,7 +67,7 @@ public class NonThreadSafeSshUtils implements SshUtils {
         
          return (ChannelExec)session.openChannel("exec");
       } catch (JSchException e) {
-         logger.log(Level.SEVERE, "Could not create channel (e.g., wrong username/password) on host "+host, e);
+         logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password) on host "+host, e);
          return null;
       }
    }
