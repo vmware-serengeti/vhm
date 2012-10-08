@@ -42,8 +42,9 @@ encountered in the process.  Here are the fields of the return message
 to Serengeti:
 
 
-   Boolean finished;
-   Boolean succeed;
-   int progress;
-   int error_code;
-   String error_msg;
+      Boolean finished;
+      Boolean succeed;
+      int progress;
+      int error_code;
+      String error_msg;
+
