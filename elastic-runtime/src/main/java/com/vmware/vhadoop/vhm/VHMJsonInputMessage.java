@@ -28,12 +28,12 @@ public class VHMJsonInputMessage implements VHMInputMessage {
    
    // TODO:  move to separate file?
    private class VHMCommandMessage {
-      int version;
-      String cluster_name;
-      String jobtracker;
-      int instance_num;
-      String[] node_groups;
-      String serengeti_instance;
+      int version;          // currently at version 1 
+      String cluster_name;  // name of VM folder
+      String jobtracker;    // IP address of jobtracker
+      int instance_num;     // number of desired instances (-1 for unlimit)
+      String[] node_groups; // list of nodegroups (vm folders) on which to apply the setting
+      String serengeti_instance; // VM folder for the instance of serengeti that sent the command
    }
 
    private VHMCommandMessage _command; 
