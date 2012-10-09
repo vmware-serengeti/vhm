@@ -298,12 +298,14 @@ public class HadoopAdaptor implements HadoopActions {
 
          //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
 
+         /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
          String[] allActiveTTs = out.toString().split("\n");
+         allActiveTTs[allActiveTTs.length - 1] = null;
          
          if (checkOpSuccess(opType, affectedTTs, allActiveTTs)) {
-        	 _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
-        	 rc = SUCCESS;
-        	 break;
+            _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
+            rc = SUCCESS;
+        	   break;
          }
          //TODO: out.close()?
          
@@ -320,9 +322,9 @@ public class HadoopAdaptor implements HadoopActions {
 
 	  _log.log(Level.INFO, "ActiveTTs:");
 	  for (String tt : allActiveTTs) {
-		  _log.log(Level.INFO, tt);	
 		  if (tt != null) {
 			  setTTs.add(tt); //add if unique...
+			  _log.log(Level.INFO, tt);
 		  }
 	   }
 		   
