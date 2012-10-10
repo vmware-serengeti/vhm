@@ -15,8 +15,6 @@
 
 package com.vmware.vhadoop.adaptor.hadoop;
 
-import static org.junit.Assert.*;
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -24,8 +22,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import com.jcraft.jsch.ChannelExec;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.SshUtils;
@@ -37,7 +35,7 @@ public class SshUtilsTest {
    private static final Logger _log = Logger.getLogger(SshUtilsTest.class.getName());
    Map<ParamTypes, String> _paramValues = new HashMap<ParamTypes, String>();
 
-   @Before
+   @BeforeMethod
    public void init() {
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
       _paramValues.put(ParamTypes.COMMAND, "recommission");

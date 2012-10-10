@@ -17,8 +17,8 @@ package com.vmware.vhadoop.vhm;
 
 import java.util.logging.Logger;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import com.vmware.vhadoop.adaptor.hadoop.HadoopAdaptor;
 import com.vmware.vhadoop.adaptor.hadoop.JTConfig;
@@ -39,7 +39,7 @@ import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
 public class EmbeddedVHMTest {
    EmbeddedVHM _test = new EmbeddedVHM();
 
-   @Before
+   @BeforeMethod
    public void init() {
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
       VCUtils.trustAllHttpsCertificates();
