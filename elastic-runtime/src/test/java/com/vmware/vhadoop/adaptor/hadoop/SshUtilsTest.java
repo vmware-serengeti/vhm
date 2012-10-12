@@ -43,7 +43,7 @@ public class SshUtilsTest {
       _paramValues.put(ParamTypes.EXCLUDE_FILE, "/tmp/exclude.txt");
       _paramValues.put(ParamTypes.DRLIST, "rlist.txt");
       _paramValues.put(ParamTypes.HADOOP_HOME, "/tmp/hadoop");
-      _paramValues.put(ParamTypes.JOBTRACKER, "10.141.20.40");
+      _paramValues.put(ParamTypes.JOBTRACKER, "1.2.3.4");
    }
    
 //   @Test
@@ -57,7 +57,7 @@ public class SshUtilsTest {
    @Test
    public void testSSH() {
      SshUtils test = new NonThreadSafeSshUtils();
-     ChannelExec channel = test.createChannel(_log, new SimpleHadoopCredentials("hduser", "had00p"), "10.140.109.105", 22);
+     ChannelExec channel = test.createChannel(_log, new SimpleHadoopCredentials("user", "password"), "1.2.3.4", 22);
      ByteArrayOutputStream baos = new ByteArrayOutputStream();
      PrintStream ps = new PrintStream(baos);
      int retVal = test.exec(_log, channel, ps, "/tmp/wibble.sh");
@@ -70,7 +70,7 @@ public class SshUtilsTest {
    // @Test
    public void testSCP() {
      SshUtils test = new NonThreadSafeSshUtils();
-     ChannelExec channel = test.createChannel(_log, new SimpleHadoopCredentials("hduser", "had00p"), "10.140.109.105", 22);
+     ChannelExec channel = test.createChannel(_log, new SimpleHadoopCredentials("user", "password"), "1.2.3.4", 22);
 
      int retVal = test.scpBytes(_log, channel, "I love my bytes".getBytes(), "/opt/", "bentit.txt", "755");
      
