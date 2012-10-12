@@ -84,7 +84,7 @@ public class HadoopConnection {
    public int copyDataToJobTracker(byte[] inputData, String remotePath, String remoteFileName, boolean isExecutable) {
       int exitStatus = UNKNOWN_ERROR;
 
-      _log.log(Level.INFO, "Copying data to remote file "+remotePath+remoteFileName);
+      _log.log(Level.INFO, "Copying data to remote file "+remotePath+remoteFileName + " on jobtracker");
       
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, 
             _hadoopCluster.getJobTrackerName(), _connectionProperties.getSshPort());
@@ -109,7 +109,7 @@ public class HadoopConnection {
    public int executeScript(String scriptFileName, String destinationPath, String[] scriptArgs, OutputStream out) {
       int exitStatus = UNKNOWN_ERROR;
 
-      _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName);
+      _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker");
 
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, 
             _hadoopCluster.getJobTrackerName(), _connectionProperties.getSshPort());
