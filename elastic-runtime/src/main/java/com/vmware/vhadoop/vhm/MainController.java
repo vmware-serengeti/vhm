@@ -106,7 +106,9 @@ public class MainController {
        /* TODO: As we build these subsystems, we should be checking that they're operational
         * and putting in decent error handling if they're not */
        
-       VCUtils.trustAllHttpsCertificates();         /* TODO: BAD??? */
+       VCUtils.trustAllHttpsCertificates(
+             properties.getProperty("keyStorePath"),
+             properties.getProperty("keyStorePwd"));   
        VCActions vc = new VCAdaptor(new SimpleVCCredentials(
              properties.getProperty("vCenterId"), 
              properties.getProperty("vCenterUser"),

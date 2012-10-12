@@ -18,14 +18,17 @@ package com.vmware.vhadoop.adaptor.vc;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.ws.BindingProvider;
+import javax.xml.ws.handler.MessageContext;
 import javax.xml.ws.soap.SOAPFaultException;
 
 import com.vmware.vim25.DynamicProperty;
@@ -137,13 +140,17 @@ public class VCConnection {
 
    public VCConnection(VCCredentials credentials) {
       _credentials = credentials;
+
+      // For login by certificate we have to use proxy and connect to sdkTunnel
+      System.setProperty("https.proxyHost", _credentials.getHostName());         
+      System.setProperty("https.proxyPort", "80");         
    }
 
    @SuppressWarnings("finally")
-private boolean testConnection() {
-	  if (!_connected) {
-		 return false;
-	  }
+   private boolean testConnection() {
+      if (!_connected) {
+         return false;
+      }
       /* Test the operation of the current connection using the standard simple call for this purpose.
        * Note: Don't use getVimPort() which would recursively try to test the connection.
        * */
@@ -154,15 +161,20 @@ private boolean testConnection() {
          svcInstRef.setValue("ServiceInstance");
          vcTime = _vimPort.currentTime(svcInstRef);
       } finally {
-    	 if (vcTime == null) {
-    		 _log.log(Level.SEVERE, "testConnection found VC connection dropped; caller will reconnect");
-    	 }
-    	 return vcTime != null;
+         if (vcTime == null) {
+            _log.log(Level.SEVERE, "testConnection found VC connection dropped; caller will reconnect");
+         }
+         return vcTime != null;
       }
    }
 
    private String getWsURL() {
-      return "https://"+_credentials.getHostName()+"/sdk";
+      /* 
+       * For login by certificate we have to use proxy and connect to sdkTunnel
+       * return "https://"+_credentials.getHostName()+":443/sdk"; 
+       */
+       
+      return "https://sdkTunnel:8089/sdk/vimService"; 
    }
 
    /**
@@ -193,7 +205,31 @@ private boolean testConnection() {
 
       try {
          _serviceContent = _vimPort.retrieveServiceContent(svcInstRef);
-         _vimPort.login(_serviceContent.getSessionManager(), _credentials.getUserName(), _credentials.getPassword(), null);
+         
+         /*
+          *  Because we're going through the proxy, we need to manually extract the cookie
+          *  that contains the session ID from the response message and set it in HTTP header
+          *  for future requests.
+          */
+         Map headers =
+               (Map) ((BindingProvider) _vimPort).getResponseContext().get(
+                  MessageContext.HTTP_RESPONSE_HEADERS);
+         List cookies = (List) headers.get("Set-cookie");
+         String cookieValue = (String) cookies.get(0);
+         StringTokenizer tokenizer = new StringTokenizer(cookieValue, ";");
+         cookieValue = tokenizer.nextToken();
+         String path = "$" + tokenizer.nextToken();
+         String cookie = "$Version=\"1\"; " + cookieValue + "; " + path;
+
+         Map map = new HashMap();
+         map.put("Cookie", Collections.singletonList(cookie));
+         ((BindingProvider) _vimPort).getRequestContext().put(
+            MessageContext.HTTP_REQUEST_HEADERS, map);
+
+         // Login
+         String extensionKey = "com.vmware.vhm-1";
+         ManagedObjectReference sessionManager = _serviceContent.getSessionManager(); 
+         _vimPort.loginExtensionByCertificate(sessionManager, extensionKey, null);
          _connected = true;
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected exception when trying to connect to vCenter: "+e);

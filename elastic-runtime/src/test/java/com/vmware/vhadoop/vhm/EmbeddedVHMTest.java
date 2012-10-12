@@ -41,8 +41,9 @@ public class EmbeddedVHMTest {
 
    @BeforeMethod
    public void init() {
+      //System.setProperty("javax.net.debug", "ssl");         
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
-      VCUtils.trustAllHttpsCertificates();
+      VCUtils.trustAllHttpsCertificates("/tmp/keyStore", "password");
       
       VCActions vc = new VCAdaptor(new SimpleVCCredentials("1.2.3.4", "user", "password"));
       MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("1.2.3.5", "bdd.runtime.exchange", "command", "status"));

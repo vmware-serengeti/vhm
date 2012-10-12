@@ -15,8 +15,15 @@
 
 package com.vmware.vhadoop.adaptor.vc;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -26,6 +33,7 @@ import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSessionContext;
@@ -70,19 +78,26 @@ public class VCUtils {
       }
    };
 
-   /* Hack to ignore SSL certificates - useful for testing */
-   public static void trustAllHttpsCertificates() {
+   /* 
+    * 1) Trust all server certificates -- TODO verify server cert
+    * 2) setup SSL to use given keystore to send client certificate. 
+    */
+   public static void trustAllHttpsCertificates(String keyStorePath, String keyStorePassword) {
       SSLContext sc;
       try {
          sc = SSLContext.getInstance("SSL");
          SSLSessionContext sslsc = sc.getServerSessionContext();
          sslsc.setSessionTimeout(0);
-         sc.init(null, new TrustManager[]{(TrustManager)new TrustAllTrustManager()}, null);
+
+         KeyStore keyStore = KeyStore.getInstance("JKS");
+         keyStore.load(new FileInputStream(keyStorePath), keyStorePassword.toCharArray());
+         KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+         kmf.init(keyStore, keyStorePassword.toCharArray());
+         sc.init(kmf.getKeyManagers(),
+                 new TrustManager[]{(TrustManager)new TrustAllTrustManager()}, null);
          HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
          HttpsURLConnection.setDefaultHostnameVerifier(new VerifyAllHostNames());
-      } catch (KeyManagementException e) {
-         throw new RuntimeException("Unexpected HTTPS Exception", e);
-      } catch (NoSuchAlgorithmException e) {
+      } catch (Exception e) {
          throw new RuntimeException("Unexpected HTTPS Exception", e);
       }
    }
