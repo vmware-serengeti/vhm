@@ -111,8 +111,7 @@ public class MainController {
              properties.getProperty("keyStorePwd"));   
        VCActions vc = new VCAdaptor(new SimpleVCCredentials(
              properties.getProperty("vCenterId"), 
-             properties.getProperty("vCenterUser"),
-             properties.getProperty("vCenterPwd")));
+             properties.getProperty("extensionKey")));
        
        MQActions mq = new RabbitAdaptor(
              new SimpleRabbitCredentials(

@@ -20,13 +20,11 @@ import com.vmware.vhadoop.adaptor.vc.VCConnection.VCCredentials;
 public class SimpleVCCredentials implements VCCredentials {
 
    String _hostName;
-   String _userName;
-   String _password;
+   String _extensionKey;
 
-   public SimpleVCCredentials(String hostName, String userName, String password) {
+   public SimpleVCCredentials(String hostName, String extensionKey) {
       _hostName = hostName;
-      _userName = userName;
-      _password = password;
+      _extensionKey = extensionKey;
    }
       
    @Override
@@ -35,13 +33,8 @@ public class SimpleVCCredentials implements VCCredentials {
    }
 
    @Override
-   public String getUserName() {
-      return _userName;
-   }
-
-   @Override
-   public String getPassword() {
-      return _password;
+   public String getExtensionKey() {
+      return _extensionKey;
    }
 
 }

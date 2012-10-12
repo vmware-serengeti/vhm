@@ -45,7 +45,7 @@ public class EmbeddedVHMTest {
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
       VCUtils.trustAllHttpsCertificates("/tmp/keyStore", "password");
       
-      VCActions vc = new VCAdaptor(new SimpleVCCredentials("1.2.3.4", "user", "password"));
+      VCActions vc = new VCAdaptor(new SimpleVCCredentials("1.2.3.4", "com.vmware.vhm"));
       MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("1.2.3.5", "bdd.runtime.exchange", "command", "status"));
       
       HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("user", "password"), 

@@ -63,8 +63,7 @@ public class VCConnection {
 
    interface VCCredentials {
       public String getHostName();
-      public String getUserName();
-      public String getPassword();
+      public String getExtensionKey();
    }
    
    private static final int propertyCollectorTimeout = 300;
@@ -227,9 +226,8 @@ public class VCConnection {
             MessageContext.HTTP_REQUEST_HEADERS, map);
 
          // Login
-         String extensionKey = "com.vmware.vhm-1";
          ManagedObjectReference sessionManager = _serviceContent.getSessionManager(); 
-         _vimPort.loginExtensionByCertificate(sessionManager, extensionKey, null);
+         _vimPort.loginExtensionByCertificate(sessionManager, _credentials.getExtensionKey(), null);
          _connected = true;
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected exception when trying to connect to vCenter: "+e);
