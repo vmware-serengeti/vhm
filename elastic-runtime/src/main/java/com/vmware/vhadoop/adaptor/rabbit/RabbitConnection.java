@@ -67,7 +67,9 @@ public class RabbitConnection {
    
    void sendMessage(byte[] data) {
       try {
-         _channel.basicPublish(_credentials.getExchangeName(), _credentials.getRouteKeyStatus(), null, data);
+         if (_channel != null) {
+            _channel.basicPublish(_credentials.getExchangeName(), _credentials.getRouteKeyStatus(), null, data);
+         }
       } catch (IOException e) {
          throw new RuntimeException("Unable to send message", e);
       }
