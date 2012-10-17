@@ -26,6 +26,7 @@ public class VHMJsonReturnMessage implements VHMReturnMessage {
    int progress;
    int error_code;
    String error_msg;
+   String progress_msg;
 
    
    public VHMJsonReturnMessage(
@@ -33,12 +34,14 @@ public class VHMJsonReturnMessage implements VHMReturnMessage {
           Boolean param_succeed,
           int param_progress,
           int param_error_code,
-          String param_error_msg) {
+          String param_error_msg,
+          String param_progress_msg) {
       finished = param_finished;
       succeed = param_succeed;
       progress = param_progress;
       error_code = param_error_code;
       error_msg = param_error_msg;
+      progress_msg = param_progress_msg;
    }
    
    
