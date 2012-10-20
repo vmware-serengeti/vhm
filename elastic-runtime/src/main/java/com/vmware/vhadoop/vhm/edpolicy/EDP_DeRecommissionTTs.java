@@ -47,7 +47,7 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
        _pLog.registerProgress(50);
        /* TODO: Should powerOn be conditional */
        finalStatus.addStatus(powerOnVMs(toEnable));
-       _pLog.registerProgress(60);
+       _pLog.registerProgress(60, "verifying active task trackers");
 	   /* TODO: Blocking is conditional on success. That's probably right? */
 	   if (finalStatus.getFailedTaskCount() == 0) {
 	      finalStatus.addStatus(_hc.checkTargetTTsSuccess("Recommission", getHostNamesForVMs(toEnable), totalTargetEnabled, cluster));
@@ -60,7 +60,7 @@ public class EDP_DeRecommissionTTs extends AbstractEDP {
 	public CompoundStatus disableTTs(VMDTO[] toDisable, int totalTargetEnabled, HadoopCluster cluster) throws Exception {
        CompoundStatus finalStatus = new CompoundStatus(_className+" disable");
 	   finalStatus.addStatus(_hc.decommissionTTs(getHostNamesForVMs(toDisable), cluster));
-	   _pLog.registerProgress(60);
+      _pLog.registerProgress(60, "verifying active task trackers");
 	   if (finalStatus.getFailedTaskCount() == 0) {	  
 	      finalStatus.addStatus(_hc.checkTargetTTsSuccess("Decommission", getHostNamesForVMs(toDisable), totalTargetEnabled, cluster));
 	      _pLog.registerProgress(70);

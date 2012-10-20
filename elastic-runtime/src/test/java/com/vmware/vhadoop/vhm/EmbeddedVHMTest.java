@@ -25,6 +25,7 @@ import com.vmware.vhadoop.adaptor.hadoop.JTConfig;
 import com.vmware.vhadoop.adaptor.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.adaptor.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.adaptor.rabbit.SimpleRabbitCredentials;
+import com.vmware.vhadoop.adaptor.vc.SecureVCCredentials;
 import com.vmware.vhadoop.adaptor.vc.SimpleVCCredentials;
 import com.vmware.vhadoop.adaptor.vc.VCAdaptor;
 import com.vmware.vhadoop.adaptor.vc.VCUtils;
@@ -41,10 +42,11 @@ public class EmbeddedVHMTest {
 
    @BeforeMethod
    public void init() {
+      //System.setProperty("javax.net.debug", "ssl");         
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
-      VCUtils.trustAllHttpsCertificates();
+      VCUtils.trustAllHttpsCertificates("/tmp/keyStore", "password");
       
-      VCActions vc = new VCAdaptor(new SimpleVCCredentials("1.2.3.4", "user", "password"));
+      VCActions vc = new VCAdaptor(new SecureVCCredentials("1.2.3.4", "com.vmware.vhm"));
       MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("1.2.3.5", "bdd.runtime.exchange", "command", "status"));
       
       HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("user", "password"), 

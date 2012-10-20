@@ -70,7 +70,7 @@ public class ProgressLogger {
       if (_progressReporter != null) {
          _progressReporter.reportProgress(percentage, message);
       }
-      _logger.log(Level.INFO, "Progress percent = "+percentage+"%");
+      _logger.log(Level.INFO, "Progress percent = "+percentage+"% msg=" +message);
    }
 
    public Logger getLogger() {

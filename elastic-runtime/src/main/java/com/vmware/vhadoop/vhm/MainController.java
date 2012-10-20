@@ -33,6 +33,7 @@ import com.vmware.vhadoop.adaptor.hadoop.JTConfig;
 import com.vmware.vhadoop.adaptor.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.adaptor.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.adaptor.rabbit.SimpleRabbitCredentials;
+import com.vmware.vhadoop.adaptor.vc.SecureVCCredentials;
 import com.vmware.vhadoop.adaptor.vc.SimpleVCCredentials;
 import com.vmware.vhadoop.adaptor.vc.VCAdaptor;
 import com.vmware.vhadoop.adaptor.vc.VCUtils;
@@ -40,6 +41,7 @@ import com.vmware.vhadoop.external.HadoopActions;
 import com.vmware.vhadoop.external.MQActions;
 import com.vmware.vhadoop.external.VCActions;
 import com.vmware.vhadoop.util.LogFormatter;
+import com.vmware.vhadoop.util.ProgressLogger;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_DeRecommissionTTs;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_JustPowerTTOnOff;
 import com.vmware.vhadoop.vhm.edpolicy.EDP_SoftDeRecommissionTTs;
@@ -53,6 +55,9 @@ public class MainController {
    static String vhmConfigFileName = "vhm.properties";
    static String legacyVhmConfigFileName = "vHadoopProperties";
    static String vhmLogFileName = "vhm.xml";
+   
+   private static final ProgressLogger _pLog = ProgressLogger.getProgressLogger(EmbeddedVHM.class.getName());
+   private static final Logger _log = _pLog.getLogger();
    
    public static boolean readPropertiesFile(String fileName) {
        try {
@@ -93,6 +98,38 @@ public class MainController {
 	   String configFileName = builder.toString();
 	   return configFileName;
    }
+   
+   public static VCActions getVCAdaptor() {
+      VCActions vc = null;
+      
+      // First try to get properties associated w/certificate VC login.
+      try {
+         VCUtils.trustAllHttpsCertificates(
+              properties.getProperty("keyStorePath"),
+              properties.getProperty("keyStorePwd")); 
+         vc = new VCAdaptor(new SecureVCCredentials(
+              properties.getProperty("vCenterId"), 
+              properties.getProperty("extensionKey")));
+      } catch (Exception e) {
+         _log.log(Level.WARNING, "Falling back to user/password vc connection; Got exception initializing certificate vc connection properties: "+e);
+      }
+      if (vc != null) {
+         return vc;
+      }
+      
+      // If not available, next try to get properties associated w/user/password VC login.
+      try {
+         VCUtils.trustAllHttpsCertificates();
+         vc = new VCAdaptor(new SimpleVCCredentials(
+              properties.getProperty("vCenterId"),
+              properties.getProperty("vCenterUser"),
+              properties.getProperty("vCenterPwd")));
+      } catch (Exception e) {
+         _log.log(Level.WARNING, "Got exception initializing user/password vc connection properties: "+e);
+      }
+      
+      return vc;
+   }
 
    public static void main(String[] args) {
 	   String logFileName = getVHMFileName("logs", vhmLogFileName);
@@ -106,11 +143,7 @@ public class MainController {
        /* TODO: As we build these subsystems, we should be checking that they're operational
         * and putting in decent error handling if they're not */
        
-       VCUtils.trustAllHttpsCertificates();         /* TODO: BAD??? */
-       VCActions vc = new VCAdaptor(new SimpleVCCredentials(
-             properties.getProperty("vCenterId"), 
-             properties.getProperty("vCenterUser"),
-             properties.getProperty("vCenterPwd")));
+       VCActions vc = getVCAdaptor();
        
        MQActions mq = new RabbitAdaptor(
              new SimpleRabbitCredentials(

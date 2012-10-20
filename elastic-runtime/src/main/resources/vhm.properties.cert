@@ -1,0 +1,12 @@
+vCenterId=1.2.3.4
+keyStorePath=/tmp/keyStore
+keyStorePwd=password
+extensionKey=com.vmware.vhm
+vHadoopUser=user
+vHadoopPwd=password
+vHadoopHome=/usr/local/hadoop/hadoop-0.20.203.0
+vHadoopExcludeTTFile=/usr/local/hadoop/hadoop-0.20.203.0/conf/excludeTTs
+exchangeName=bdd.runtime
+msgHostName=localhost
+routeKeyCommand=command
+routeKeyStatus=status

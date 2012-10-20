@@ -97,8 +97,7 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
                _log.log(Level.SEVERE, "VHM got exception trying to connect to vCenter: "+e);
             }
             if (vcConnection == false) {
-               sendMessage(new VHMJsonReturnMessage(true, false, 100, 0,
-                       "VHM cannot connect to vCenter; check VHM log for details"));
+               reportError("VHM cannot connect to vCenter; check VHM log for details");
                continue;  // Not stopping VHM since problem may be temporary vCenter issue
             }
 
@@ -196,6 +195,7 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
 
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM: "+e);
+         //e.printStackTrace();
          thisStatus.registerTaskFailed(true, e.getMessage());
       }
 
@@ -211,14 +211,14 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
 	  if (((vhmStatus == null)?       0 : vhmStatus.getFailedTaskCount()) +
 		  ((vmChooserStatus == null)? 0 : vmChooserStatus.getFailedTaskCount()) +
 		  ((edPolicyStatus == null)?  0 : edPolicyStatus.getFailedTaskCount()) == 0) {
-         sendMessage(new VHMJsonReturnMessage(true, true, 100, 0, null));
+	     reportCompletion();
       } else {
          TaskStatus firstError = CompoundStatus.getFirstFailure(
                new CompoundStatus[]{vhmStatus, vmChooserStatus, edPolicyStatus});
          if (CompoundStatus.allPowerOpsSucceeded(edPolicyStatus)) {
-        	 sendMessage(new VHMJsonReturnMessage(true, false, 100, 0, firstError.getMessage() + " however, powering on/off VMs succeeded;"));
+            reportError(firstError.getMessage() + " however, powering on/off VMs succeeded;");
          } else {
-        	 sendMessage(new VHMJsonReturnMessage(true, false, 100, 0, firstError.getMessage()));
+            reportError(firstError.getMessage());
          }
       }
    }
@@ -311,7 +311,17 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
 
    @Override
    public void reportProgress(int percentage, String message) {
-      VHMJsonReturnMessage msg = new VHMJsonReturnMessage(false, false, percentage, 0, null);
+      VHMJsonReturnMessage msg = new VHMJsonReturnMessage(false, false, percentage, 0, null, message);
+      sendMessage(msg);
+   }
+
+   public void reportError(String message) {
+      VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
+      sendMessage(msg);
+   }
+
+   public void reportCompletion() {
+      VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
       sendMessage(msg);
    }
 }

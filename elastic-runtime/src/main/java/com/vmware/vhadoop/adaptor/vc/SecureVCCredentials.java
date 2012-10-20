@@ -17,16 +17,14 @@ package com.vmware.vhadoop.adaptor.vc;
 
 import com.vmware.vhadoop.adaptor.vc.VCConnection.VCCredentials;
 
-public class SimpleVCCredentials implements VCCredentials {
+public class SecureVCCredentials implements VCCredentials {
 
    String _hostName;
-   String _userName;
-   String _password;
+   String _extensionKey;
 
-   public SimpleVCCredentials(String hostName, String userName, String password) {
+   public SecureVCCredentials(String hostName, String extensionKey) {
       _hostName = hostName;
-      _userName = userName;
-      _password = password;
+      _extensionKey = extensionKey;
    }
       
    @Override
@@ -35,18 +33,18 @@ public class SimpleVCCredentials implements VCCredentials {
    }
 
    @Override
+   public String getExtensionKey() {
+      return _extensionKey;
+   }
+
+   @Override
    public String getUserName() {
-      return _userName;
+      return null;
    }
 
    @Override
    public String getPassword() {
-      return _password;
-   }
-
-   @Override
-   public String getExtensionKey() {
       return null;
    }
-
+   
 }
