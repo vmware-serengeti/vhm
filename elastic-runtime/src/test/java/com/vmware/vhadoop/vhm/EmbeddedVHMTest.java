@@ -17,8 +17,8 @@ package com.vmware.vhadoop.vhm;
 
 import java.util.logging.Logger;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import com.vmware.vhadoop.adaptor.hadoop.HadoopAdaptor;
 import com.vmware.vhadoop.adaptor.hadoop.JTConfig;
@@ -40,13 +40,14 @@ import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
 public class EmbeddedVHMTest {
    EmbeddedVHM _test = new EmbeddedVHM();
 
-   @BeforeMethod
+   @Before
    public void init() {
       //System.setProperty("javax.net.debug", "ssl");         
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
       VCUtils.trustAllHttpsCertificates("/tmp/keyStore", "password");
       
-      VCActions vc = new VCAdaptor(new SecureVCCredentials("1.2.3.4", "com.vmware.vhm"));
+      SecureVCCredentials vcCred = new SecureVCCredentials("1.2.3.4", "com.vmware.vhm");
+      VCActions vc = new VCAdaptor(vcCred);
       MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("1.2.3.5", "bdd.runtime.exchange", "command", "status"));
       
       HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("user", "password"), 

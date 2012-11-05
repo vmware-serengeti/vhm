@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.Before;
+import org.junit.Test;
 
 import com.jcraft.jsch.ChannelExec;
 import com.vmware.vhadoop.adaptor.hadoop.HadoopConnection.SshUtils;
@@ -35,7 +35,7 @@ public class SshUtilsTest {
    private static final Logger _log = Logger.getLogger(SshUtilsTest.class.getName());
    Map<ParamTypes, String> _paramValues = new HashMap<ParamTypes, String>();
 
-   @BeforeMethod
+   @Before
    public void init() {
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
       _paramValues.put(ParamTypes.COMMAND, "recommission");
