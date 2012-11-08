@@ -142,9 +142,6 @@ public class VCConnection {
    public VCConnection(VCCredentials credentials) {
       _credentials = credentials;
 
-      // For login by certificate we have to use proxy and connect to sdkTunnel
-      System.setProperty("https.proxyHost", _credentials.getHostName());         
-      System.setProperty("https.proxyPort", "80");         
    }
 
    @SuppressWarnings("finally")
@@ -172,10 +169,12 @@ public class VCConnection {
    private String getWsURL() {
       /* 
        * For login by certificate we have to use proxy and connect to sdkTunnel
-       * return "https://"+_credentials.getHostName()+":443/sdk"; 
        */
-       
-      return "https://sdkTunnel:8089/sdk/vimService"; 
+      if (_credentials.getExtensionKey() == null) {
+         return "https://"+_credentials.getHostName()+":443/sdk"; 
+      } else {
+         return "https://sdkTunnel:8089/sdk/vimService"; 
+      }
    }
    
    /*
@@ -236,6 +235,12 @@ public class VCConnection {
          }
       }
 
+      if (_credentials.getExtensionKey() != null) {
+         // For login by certificate we have to use proxy and connect to sdkTunnel
+         System.setProperty("https.proxyHost", _credentials.getHostName());         
+         System.setProperty("https.proxyPort", "80");         
+      }
+      
       ManagedObjectReference svcInstRef = new ManagedObjectReference();
       svcInstRef.setType("ServiceInstance");
       svcInstRef.setValue("ServiceInstance");
