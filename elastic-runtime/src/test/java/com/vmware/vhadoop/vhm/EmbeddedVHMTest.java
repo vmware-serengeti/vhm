@@ -15,8 +15,11 @@
 
 package com.vmware.vhadoop.vhm;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,26 +47,21 @@ public class EmbeddedVHMTest {
    public void init() {
       //System.setProperty("javax.net.debug", "ssl");         
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
-      VCUtils.trustAllHttpsCertificates("/tmp/keyStore", "password");
-      
-      SecureVCCredentials vcCred = new SecureVCCredentials("1.2.3.4", "com.vmware.vhm");
-      VCActions vc = new VCAdaptor(vcCred);
-      MQActions mq = new RabbitAdaptor(new SimpleRabbitCredentials("1.2.3.5", "bdd.runtime.exchange", "command", "status"));
-      
-      HadoopActions hd = new HadoopAdaptor(new SimpleHadoopCredentials("user", "password"), 
-              new JTConfig("/usr/lib/hadoop", "/usr/lib/hadoop/conf/mapred.hosts.exclude"));
-      VHMConfig vhmc = new VHMConfig(new VMCA_BalancedVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
+      VHMActions actions = MainController.setupActions();
+
+      VHMConfig vhmc = new VHMConfig(new VMCA_BalancedVMChooser(), new EDP_DeRecommissionTTs(actions.vc, actions.hd));
       //VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_DeRecommissionTTs(vc, hd));
       //VHMConfig vhmc = new VHMConfig(new VMCA_DumbVMChooser(), new EDP_JustPowerTTOnOff(vc));
 
-      _test.init(vhmc, vc, mq);
+      _test.init(vhmc, actions.vc, actions.mq);
    }
    
    @Test
-   public void testWithFakeQueue() {
-
-      String jsonMsg = "{\"version\":1,\"cluster_name\":\"cName\",\"jobtracker\":\"1.2.3.6\",\"instance_num\":4,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-vApp-xxx\"}";
-
+   public void testWithFakeQueue() throws IOException {
+//    String jsonMsg = "{\"version\":1,\"cluster_name\":\"cName\",\"jobtracker\":\"1.2.3.6\",\"instance_num\":4,\"node_groups\":[\"compute\"],\"serengeti_instance\":\"SERENGETI-vApp-xxx\"}";
+      File file = new File("/tmp/vhm.json.msg");
+      String jsonMsg = FileUtils.readFileToString(file);
+      
       VHMInputMessage input = new VHMJsonInputMessage(jsonMsg.getBytes());
       _test.setNumTTVMsForCluster(input);
    }

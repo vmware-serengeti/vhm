@@ -50,6 +50,13 @@ import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_BalancedVMChooser;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMCA_DumbVMChooser;
 import com.vmware.vhadoop.vhm.vmcalgorithm.VMChooserAlgorithm;
 
+// Result class for MainController.setupActions()
+class VHMActions {
+   VCActions vc;
+   MQActions mq;
+   HadoopActions hd;
+}
+
 public class MainController {
    static Properties properties = null;
    static String vhmConfigFileName = "vhm.properties";
@@ -131,44 +138,54 @@ public class MainController {
       return vc;
    }
 
+   public static VHMActions setupActions() {
+      VHMActions actions = new VHMActions();
+
+      String configFileName = getVHMFileName("conf", vhmConfigFileName);
+      if (!readPropertiesFile(configFileName)) {
+         configFileName = getVHMFileName("conf", legacyVhmConfigFileName);
+         readPropertiesFile(configFileName);
+      }
+
+      /* TODO: As we build these subsystems, we should be checking that they're operational
+       * and putting in decent error handling if they're not */
+
+      actions.vc = getVCAdaptor();
+
+      actions.mq = new RabbitAdaptor(
+            new SimpleRabbitCredentials(
+                  properties.getProperty("msgHostName"),
+                  properties.getProperty("exchangeName"),
+                  properties.getProperty("routeKeyCommand"),
+                  properties.getProperty("routeKeyStatus")));
+
+      actions.hd = new HadoopAdaptor(
+            new SimpleHadoopCredentials(
+                  properties.getProperty("vHadoopUser"), 
+                  properties.getProperty("vHadoopPwd")), 
+                  new JTConfig(
+                        properties.getProperty("vHadoopHome"),
+                        properties.getProperty("vHadoopExcludeTTFile")));
+
+      return actions;
+   }
+   
+   
    public static void main(String[] args) {
 	   String logFileName = getVHMFileName("logs", vhmLogFileName);
 	   setupLogger(logFileName);
-	   String configFileName = getVHMFileName("conf", vhmConfigFileName);
-       if (!readPropertiesFile(configFileName)) {
-    	   configFileName = getVHMFileName("conf", legacyVhmConfigFileName);
-    	   readPropertiesFile(configFileName);
-       }
-       
-       /* TODO: As we build these subsystems, we should be checking that they're operational
-        * and putting in decent error handling if they're not */
-       
-       VCActions vc = getVCAdaptor();
-       
-       MQActions mq = new RabbitAdaptor(
-             new SimpleRabbitCredentials(
-                   properties.getProperty("msgHostName"),
-                   properties.getProperty("exchangeName"),
-                   properties.getProperty("routeKeyCommand"),
-                   properties.getProperty("routeKeyStatus")));
 
-       HadoopActions hd = new HadoopAdaptor(
-             new SimpleHadoopCredentials(
-                   properties.getProperty("vHadoopUser"), 
-                   properties.getProperty("vHadoopPwd")), 
-             new JTConfig(
-                   properties.getProperty("vHadoopHome"),
-                   properties.getProperty("vHadoopExcludeTTFile")));
+      VHMActions actions = setupActions();
        
        VMChooserAlgorithm vmChooser = new VMCA_BalancedVMChooser();
        // VMChooserAlgorithm vmChooser = new VMCA_DumbVMChooser();
-       EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(vc, hd);
+       EnableDisableTTPolicy enableDisablePolicy = new EDP_DeRecommissionTTs(actions.vc, actions.hd);
        //EnableDisableTTPolicy enableDisablePolicy = new EDP_SoftDeRecommissionTTs(vc, hd);
        //EnableDisableTTPolicy enableDisablePolicy = new EDP_JustPowerTTOnOff(vc);
        VHMConfig vhmc = new VHMConfig(vmChooser, enableDisablePolicy);
 
        EmbeddedVHM vhm = new EmbeddedVHM();
-       vhm.init(vhmc, vc, mq);
+       vhm.init(vhmc, actions.vc, actions.mq);
        vhm.start();
    }
 }
