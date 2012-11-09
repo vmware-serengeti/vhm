@@ -63,7 +63,7 @@ public class ProgressLogger {
    }
   
    public void registerProgress(int percentage) {
-      registerProgress(percentage, null);
+      registerProgress(percentage, "");
    }
 
    public void registerProgress(int percentage, String message) {
