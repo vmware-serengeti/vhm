@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # This script decommissions a list of tasktrackers from the jobtracker
 # Prerequisites:

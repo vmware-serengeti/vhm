@@ -16,6 +16,7 @@
 package com.vmware.vhadoop.adaptor.hadoop;
 
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_FOUND;
+import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_CATCHALL;
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
 import static com.vmware.vhadoop.adaptor.hadoop.HadoopErrorCodes.SUCCESS;
@@ -77,7 +78,7 @@ public class HadoopAdaptor implements HadoopActions {
    public static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
    public static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
    
-   public static final int MAX_CHECK_RETRY_ITERATIONS = 10;
+   public static final int MAX_CHECK_RETRY_ITERATIONS = 15;
       
    public HadoopAdaptor(HadoopCredentials credentials, JTConfig jtConfig) {
       _connectionProperties = getDefaultConnectionProperties();
@@ -205,7 +206,7 @@ public class HadoopAdaptor implements HadoopActions {
       int rc = -1;
       for (int i=0; i<2; i++) {
          rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs, out);
-         if (i == 0 && rc == ERROR_COMMAND_NOT_FOUND) {
+         if (i == 0 && (rc == ERROR_COMMAND_NOT_FOUND || rc == ERROR_CATCHALL)) {
         	 _log.log(Level.INFO, scriptFileName + " not found...");
         	 //Changed this to accommodate using jar file...
         	//String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();
@@ -265,36 +266,36 @@ public class HadoopAdaptor implements HadoopActions {
    public CompoundStatus checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopCluster cluster) {
       CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
       
-	  String scriptFileName = CHECK_SCRIPT_FILE_NAME;
+	   String scriptFileName = CHECK_SCRIPT_FILE_NAME;
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
     
-	  _log.log(Level.INFO, "AffectedTTs:");
-	  for (String tt : affectedTTs) {
-		  _log.log(Level.INFO, tt);
-	  }
+	   _log.log(Level.INFO, "AffectedTTs:");
+	   for (String tt : affectedTTs) {
+		   _log.log(Level.INFO, tt);
+	   }
       HadoopConnection connection = getConnectionForCluster(cluster);
       setErrorParamsForCommand(opDesc, scriptRemoteFilePath, listRemoteFilePath);
       
       int rc = -1;
       int iterations = 0;
       do {
-    	 if (iterations > 0) {
+    	   if (iterations > 0) {
     	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
          }    	 
 
          OutputStream out = new ByteArrayOutputStream();
-    	 rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
+    	   rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, 
                new String[]{""+totalTargetEnabled, connection.getHadoopHome()},
                out); 
          try {
-             out.flush();
-          } catch (IOException e) {
-             String errorMsg = "Unexpected exception in SSH OutputStream ";
-             _log.log(Level.WARNING, errorMsg, e);
-             status.registerTaskFailed(false, errorMsg + e.getMessage());
-          }
+            out.flush();
+         } catch (IOException e) {
+            String errorMsg = "Unexpected exception in SSH OutputStream ";
+            _log.log(Level.WARNING, errorMsg, e);
+            status.registerTaskFailed(false, errorMsg + e.getMessage());
+         }
 
          //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
 

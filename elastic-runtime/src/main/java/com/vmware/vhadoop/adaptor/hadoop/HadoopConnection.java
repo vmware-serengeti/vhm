@@ -37,6 +37,7 @@ public class HadoopConnection {
    public interface HadoopCredentials {
       public String getSshUsername();
       public String getSshPassword();
+      public String getSshPrvkeyFile();
    }
    
    public interface HadoopConnectionProperties {

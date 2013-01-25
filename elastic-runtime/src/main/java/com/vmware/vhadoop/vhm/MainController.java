@@ -162,7 +162,8 @@ public class MainController {
       actions.hd = new HadoopAdaptor(
             new SimpleHadoopCredentials(
                   properties.getProperty("vHadoopUser"), 
-                  properties.getProperty("vHadoopPwd")), 
+                  properties.getProperty("vHadoopPwd"),
+                  properties.getProperty("vHadoopPrvkeyFile")),
                   new JTConfig(
                         properties.getProperty("vHadoopHome"),
                         properties.getProperty("vHadoopExcludeTTFile")));

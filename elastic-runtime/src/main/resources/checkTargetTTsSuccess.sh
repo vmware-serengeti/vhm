@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # This script checks if the active target TTs were reached
 # Prerequisites:

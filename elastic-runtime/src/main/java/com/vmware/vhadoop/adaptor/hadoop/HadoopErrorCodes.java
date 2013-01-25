@@ -38,6 +38,7 @@ public class HadoopErrorCodes {
    
    public static final int UNKNOWN_ERROR = -1;
    public static final int SUCCESS = 0;
+   public static final int ERROR_CATCHALL = 1;
    public static final int ERROR_BAD_ARGS = 100;
    public static final int ERROR_EXCLUDES_FILE_NOT_FOUND = 101;
    public static final int ERROR_DRLIST_FILE_NOT_FOUND = 102;
@@ -80,6 +81,7 @@ public class HadoopErrorCodes {
    private void initErrorCodes() {
       addErrorCode(UNKNOWN_ERROR, true, "Unknown exit status during %s;", COMMAND);
       addErrorCode(SUCCESS, false, "Successfully executed %s script (%s);", COMMAND, DRSCRIPT);
+      addErrorCode(ERROR_CATCHALL, true, "Generic error while executing %s", COMMAND);
       addErrorCode(ERROR_BAD_ARGS, true, "Bad arguments passed to %s script (%s)", COMMAND, DRSCRIPT);
       addErrorCode(ERROR_EXCLUDES_FILE_NOT_FOUND, true, "Excludes file (%s) not found while executing %s script (%s);", EXCLUDE_FILE, COMMAND, DRSCRIPT);
       addErrorCode(ERROR_DRLIST_FILE_NOT_FOUND, true, "%s list file (%s) not found while executing %s script (%s);", COMMAND, DRLIST, COMMAND, DRSCRIPT);

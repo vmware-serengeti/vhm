@@ -51,11 +51,16 @@ public class NonThreadSafeSshUtils implements SshUtils {
     	 
          Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
 
-         session.setPassword(credentials.getSshPassword());
-         UserInfo ui = new SSHUserInfo(credentials.getSshPassword());
-         session.setUserInfo(ui);
-
-
+         // If private key file is specified, use that as identity; else use password.
+         String prvkeyFile = credentials.getSshPrvkeyFile();
+         if (prvkeyFile != null) {
+            _jsch.addIdentity(prvkeyFile); //Setup SSH identity using private key file
+         } else {
+            session.setPassword(credentials.getSshPassword());
+            UserInfo ui = new SSHUserInfo(credentials.getSshPassword());
+            session.setUserInfo(ui);
+         }
+         
          java.util.Properties config = new java.util.Properties();
          config.put("StrictHostKeyChecking", "no");        /* TODO: Necessary? Hack? Security hole?? */
          session.setConfig(config);
@@ -67,20 +72,26 @@ public class NonThreadSafeSshUtils implements SshUtils {
         
          return (ChannelExec)session.openChannel("exec");
       } catch (JSchException e) {
-         logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password) on host "+host, e);
+         logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password/prvkey) on host "+host, e);
          return null;
       }
    }
+
 
    @Override
    public int exec(Logger logger, ChannelExec channel, OutputStream out, String command) {
       int exitStatus = UNKNOWN_ERROR;
       try {
-         logger.log(Level.FINE, "About to execute: "+command);   	  
-         channel.setCommand(command);
+         logger.log(Level.FINE, "About to execute: " + command);   	  
+
+         // Executing all commands as root
+         channel.setPty(true); //to enable sudo
+         channel.setCommand("sudo " + command); 
+         
          channel.setOutputStream(out);
          channel.setInputStream(null);         /* TODO: Why? */
          InputStream in = channel.getInputStream();
+ 
          channel.connect();
 
         logger.log(Level.FINE, "Finished channel connection in exec");

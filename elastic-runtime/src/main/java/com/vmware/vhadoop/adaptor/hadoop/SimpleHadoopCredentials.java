@@ -21,10 +21,12 @@ public class SimpleHadoopCredentials implements HadoopCredentials {
 
    private String _sshUsername;
    private String _sshPassword;
+   private String _sshPrvkeyFile;
 
-   public SimpleHadoopCredentials(String sshUsername, String sshPassword) {
+   public SimpleHadoopCredentials(String sshUsername, String sshPassword, String sshPrvkeyFile) {
       _sshUsername = sshUsername;
       _sshPassword = sshPassword;
+      _sshPrvkeyFile = sshPrvkeyFile;
    }
 
    @Override
@@ -37,4 +39,8 @@ public class SimpleHadoopCredentials implements HadoopCredentials {
       return _sshPassword;
    }
 
+   @Override
+   public String getSshPrvkeyFile() {
+      return _sshPrvkeyFile;
+   }
 }
