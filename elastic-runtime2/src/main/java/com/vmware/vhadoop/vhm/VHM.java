@@ -7,6 +7,10 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
+import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
+import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHM implements EventConsumer {
    private Set<EventProducer> _eventProducers;

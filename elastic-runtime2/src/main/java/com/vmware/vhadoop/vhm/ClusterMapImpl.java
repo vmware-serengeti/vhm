@@ -3,10 +3,10 @@ package com.vmware.vhadoop.vhm;
 import java.util.*;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.ComputeVMEventData;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.MasterVMEventData;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMAddedToClusterEvent;
 import com.vmware.vhadoop.vhm.events.VMHostChangeEvent;

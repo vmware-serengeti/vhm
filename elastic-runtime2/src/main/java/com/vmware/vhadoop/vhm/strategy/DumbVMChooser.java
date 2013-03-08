@@ -1,9 +1,9 @@
-package com.vmware.vhadoop.vhm;
+package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.*;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.VMChooser;
+import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 
 public class DumbVMChooser implements VMChooser {
 

@@ -8,8 +8,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.*;
 
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
-import com.vmware.vhadoop.api.vhm.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 
 
 public class ThreadPoolExecutionStrategy implements ExecutionStrategy {

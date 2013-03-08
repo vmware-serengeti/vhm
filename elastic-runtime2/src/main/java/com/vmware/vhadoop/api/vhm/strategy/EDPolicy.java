@@ -1,6 +1,8 @@
-package com.vmware.vhadoop.api.vhm;
+package com.vmware.vhadoop.api.vhm.strategy;
 
 import java.util.*;
+
+import com.vmware.vhadoop.api.vhm.ClusterMap;
 
 public interface EDPolicy {
    void enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId, ClusterMap cluster) throws Exception;

@@ -1,12 +1,13 @@
-package com.vmware.vhadoop.vhm;
+package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.concurrent.Callable;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.EDPolicy;
-import com.vmware.vhadoop.api.vhm.ScaleStrategy;
-import com.vmware.vhadoop.api.vhm.VMChooser;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
+import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
+import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitEvent;
 
 import java.util.*;

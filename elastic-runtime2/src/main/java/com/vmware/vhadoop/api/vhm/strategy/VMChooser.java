@@ -1,4 +1,4 @@
-package com.vmware.vhadoop.api.vhm;
+package com.vmware.vhadoop.api.vhm.strategy;
 
 import java.util.*;
 

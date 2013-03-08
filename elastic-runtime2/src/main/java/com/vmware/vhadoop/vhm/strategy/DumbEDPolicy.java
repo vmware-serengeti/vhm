@@ -1,10 +1,10 @@
-package com.vmware.vhadoop.vhm;
+package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.EDPolicy;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 
 public class DumbEDPolicy implements EDPolicy {
    final VCActions _vcActions;
