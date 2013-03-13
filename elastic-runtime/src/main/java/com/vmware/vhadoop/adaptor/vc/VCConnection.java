@@ -427,7 +427,7 @@ public class VCConnection {
                      cachedDps.put(dp.getName(), dp.getVal());
                      if (dp.getName().equalsIgnoreCase("name")) {
                         String objectName = (String) dp.getVal();
-                        if ((restrictToName == null) || restrictToName.equalsIgnoreCase(objectName)) {
+                        if ((restrictToName == null) || restrictToName.equals(objectName)) {
                            moRefAndProps = new MoRefAndProps(oc.getObj(), objectName);
                            result.add(moRefAndProps);
                         }
