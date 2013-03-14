@@ -21,6 +21,31 @@
       <version>4.8.1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.vmware</groupId>
+      <artifactId>vlsiCore</artifactId>
+      <version>1.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vmware</groupId>
+      <artifactId>vlsiClient</artifactId>
+      <version>1.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vmware</groupId>
+      <artifactId>vimVmodl</artifactId>
+      <version>1.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vmware</groupId>
+      <artifactId>queryVmodl</artifactId>
+      <version>1.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vmware</groupId>
+      <artifactId>reflectVmodl</artifactId>
+      <version>1.0.8</version>
+    </dependency>
   </dependencies>
 
   <build>
