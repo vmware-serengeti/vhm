@@ -47,7 +47,7 @@ public class VHM implements EventConsumer {
    
    public void registerEventProducer(EventProducer eventProducer) {
       _eventProducers.add(eventProducer);
-      eventProducer.registerConsumer(this);
+      eventProducer.registerEventConsumer(this);
       eventProducer.registerClusterMapAccess(new ClusterMapAccess());
       eventProducer.start();
    }
