@@ -55,7 +55,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    
    
    @Override
-   public void registerConsumer(EventConsumer consumer) {
+   public void registerEventConsumer(EventConsumer consumer) {
       _eventConsumer = consumer;
    }
 

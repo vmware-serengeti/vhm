@@ -24,7 +24,7 @@ public class MQClientImpl extends AbstractClusterMapReader implements com.vmware
    }
 
    @Override
-   public void registerConsumer(EventConsumer consumer) {
+   public void registerEventConsumer(EventConsumer consumer) {
       _eventConsumer = consumer;
    }
 
