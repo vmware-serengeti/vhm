@@ -7,6 +7,7 @@ import java.util.*;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.vhm.ClusterStateChangeListenerImpl.TestCluster;
 import com.vmware.vhadoop.vhm.VHM;
+import com.vmware.vhadoop.vhm.vc.VCTestModel;
 
 public class SimpleTests {
    static MQClientImpl _mqClient;
@@ -41,9 +42,10 @@ public class SimpleTests {
    
    @BeforeClass
    public static void initMQClient() {
-      _vhm = new VHM();
+      VCActions vcActions = new VCTestModel();
+      _vhm = new VHM(vcActions);
       _mqClient = new MQClientImpl();
-      _cscl = new ClusterStateChangeListenerImpl(_vhm.getVCActions());
+      _cscl = new ClusterStateChangeListenerImpl(_vhm.getVCActions(), "serengetiFolderName"); //VCTestModel ignores foldername
       
       _vhm.registerEventProducer(_mqClient);
       _vhm.registerEventProducer(_cscl);

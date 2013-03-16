@@ -20,12 +20,12 @@ public class VHM implements EventConsumer {
    private ExecutionStrategy _executionStrategy;
    private VCActions _vcActions;
    
-   public VHM() {
+   public VHM(VCActions vcActions) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
       _clusterMap = new ClusterMapImpl();
-      _vcActions = new VCTestModel();
+      _vcActions = vcActions;
       initScaleStrategies();
       _executionStrategy = new ThreadPoolExecutionStrategy();
    }

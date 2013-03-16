@@ -1,6 +1,8 @@
-package com.vmware.vhadoop.vhm;
+package com.vmware.vhadoop.vhm.vc;
 
 import java.util.Random;
+
+import com.vmware.vim.vmomi.client.Client;
 
 public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
    
@@ -49,7 +51,7 @@ public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
    }
 
    @Override
-   public com.vmware.vhadoop.api.vhm.events.PropertyChangeEvent waitForPropertyChange() {
+   public com.vmware.vhadoop.api.vhm.events.PropertyChangeEvent waitForPropertyChange(String folderName) {
       synchronized(_holder) {
          try {
             _holder.wait();
@@ -68,5 +70,11 @@ public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
          _holder._event = new PropertyChangeEvent(moRef, key, value);
          _holder.notify();
       }
+   }
+
+   @Override
+   public Client getStatsPollClient() {
+      // TODO Auto-generated method stub
+      return null;
    }
 }

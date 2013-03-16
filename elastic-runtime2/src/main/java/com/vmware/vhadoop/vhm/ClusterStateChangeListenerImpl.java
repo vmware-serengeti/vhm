@@ -9,6 +9,7 @@ import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.PropertyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMAddedToClusterEvent;
 import com.vmware.vhadoop.vhm.events.VMPowerStateChangeEvent;
+import com.vmware.vhadoop.vhm.vc.VCTestModel;
 
 import java.util.*;
 
@@ -16,9 +17,11 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
    EventConsumer _eventConsumer;
    VCActions _vcActions;
+   String _serengetiFolderName;
    
-   public ClusterStateChangeListenerImpl(VCActions vcActions) {
+   public ClusterStateChangeListenerImpl(VCActions vcActions, String serengetiFolderName) {
       _vcActions = vcActions;
+      _serengetiFolderName = serengetiFolderName;
    }
    
    public static class TestCluster {
@@ -78,7 +81,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          @Override
          public void run() {
             while (true) {
-               PropertyChangeEvent pce = _vcActions.waitForPropertyChange();
+               PropertyChangeEvent pce = _vcActions.waitForPropertyChange(_serengetiFolderName);
                System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change "+
                      pce.getPropertyKey()+" in moRef "+pce.getMoRef()+" to value "+pce.getNewValue());
                _eventConsumer.placeEventOnQueue(processPropertyChangeEvent(pce));

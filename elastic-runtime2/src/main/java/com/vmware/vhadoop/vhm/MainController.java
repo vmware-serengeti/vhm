@@ -6,13 +6,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 
-import com.vmware.vhadoop.vhm.vc.VcVlsi;
+import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.vhm.vc.VcAdapter;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
-import com.vmware.vim.vmomi.client.Client;
 
 public class MainController {
-   static Properties properties = null;
-   static String vhmConfigFileName = "vhm.properties";
+   private static Properties properties = null;
+   private static String vhmConfigFileName = "vhm.properties";
    
    public static String getVHMFileName(String subdir, String fileName) {
       String homeDir = System.getProperties().getProperty("serengeti.home.dir");
@@ -42,11 +42,8 @@ public class MainController {
       return false;
   }
   
-   public static void setup() {
-      String configFileName = getVHMFileName("conf", vhmConfigFileName);
-      readPropertiesFile(configFileName);
-      System.out.println(Thread.currentThread().getName()+": vcid=" +  properties.getProperty("vCenterId"));
-      com.vmware.vhadoop.vhm.vc.VcCredentials vcCreds = new VcCredentials();
+   public static VCActions setupVC() {
+      VcCredentials vcCreds = new VcCredentials();
       vcCreds.vcIP = properties.getProperty("vCenterId");
       vcCreds.vcThumbprint = properties.getProperty("vCenterThumbprint");
       
@@ -57,23 +54,25 @@ public class MainController {
       vcCreds.keyStorePwd = properties.getProperty("keyStorePwd");
       vcCreds.vcExtKey = properties.getProperty("extensionKey");
       
-      VcVlsi vcVlsi = new VcVlsi();
-      try {
-         Client vcClient = vcVlsi.connect(vcCreds, true, false);
-         
-         Client cloneClient = vcVlsi.connect(vcCreds, true, true);
+      return new VcAdapter(vcCreds);
+   }
 
-         vcVlsi.testPC(cloneClient, properties.getProperty("uuid"));
+   public static void readConfigFile() {
+      String configFileName = getVHMFileName("conf", vhmConfigFileName);
+      readPropertiesFile(configFileName);
 
-      } catch (Exception e) {
-         // TODO Auto-generated catch block
-         e.printStackTrace();
-      }
-      
+
+   }
+   
+   public static Properties getProperties() {
+      return properties;
    }
    
    public static void main(String[] args) {
-      setup();
+      readConfigFile();
+      VCActions vcActions = setupVC();
+      ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(vcActions, 
+            properties.getProperty("uuid"));
       
    }
 
