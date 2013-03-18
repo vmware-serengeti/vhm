@@ -13,6 +13,7 @@ ME=`basename $0`
 LOGFILE="$HOME/.$ME.log"
 JTERRFILE="$HOME/.$ME.jt.stderr"
 LOCKFILE="/var/lock/.derecommission.exclusiveLock" # Note: same LOCKFILE for de/recommission
+JTENV="/etc/default/hadoop-0.20-mapreduce"
 
 # Errors/Warnings
 ERROR_BAD_ARGS=100
@@ -23,6 +24,7 @@ ERROR_FEWER_TTS=107
 ERROR_EXCESS_TTS=108
 ERROR_BAD_TARGET_TTS=109
 ERROR_LOCK_FILE_WRITE=111
+WARN_IGNORE=202
 
 # Check script arguments 
 
@@ -52,17 +54,30 @@ checkArguments()
 parseJTErrFile()
 {
     file="$1"
+
+    firstWord=`head -1 $file | awk '{print $1}'`
+    numLines=`wc -l $file | awk '{print $1}'`
+
+# If first line says DEPRECATED use of "old" bin/hadoop and that is
+# the only warning, ignore it for now...
+    if [[ "$firstWord" = "DEPRECATED:" && $numLines -eq 3 ]]; then
+        echo "WARNING: Using a DEPRECATED command (e.g., bin/hadoop instead of bin/mapred)"
+        return $WARN_IGNORE
+    fi
+
+# If connection error is detected report it differently from an unknown error
+
     connLine=`sed -n '11p' < $file`
 #   lastLine=`tail -1 $file` # We could use this only for "hadoop mradmin"
     echo "$connLine"
     arr=( $connLine )
     lidx=${#arr[@]}
-    if [[ "${arr[$((lidx-2))]}" = "Connection" && "${arr[$((lidx-1))]}" = "refused" ]]; then    
-	echo "ERROR: Unable to connect to jobtracker"
-	return $ERROR_JT_CONNECTION
+    if [[ $lidx -gt 0 && "${arr[$((lidx-1))]}" = "refused" && "${arr[$((lidx-1))]}" = "Connection" ]]; then
+        echo "ERROR: Unable to connect to jobtracker"
+        return $ERROR_JT_CONNECTION
     else
-	echo "Unknown error related to jobtracker"
-	return $ERROR_JT_UNKNOWN
+        echo "Unknown error related to jobtracker"
+        return $ERROR_JT_UNKNOWN
     fi
 }
 
@@ -81,11 +96,14 @@ checkTargetActiveTTs()
 	newActiveTTs=`$loc_hadoopHome/bin/hadoop job -list-active-trackers 2> $JTERRFILE`
 	arrNewActiveTTs=( $newActiveTTs )
 
-	if [ -s $JTERRFILE ]; then
-	    parseJTErrFile $JTERRFILE
-	    exit $?
-	fi
-	
+        if [ -s $JTERRFILE ]; then
+            parseJTErrFile $JTERRFILE
+            returnVal=$?
+            if [ $returnVal -ne $WARN_IGNORE ]; then
+                exit $?
+            fi
+        fi
+
 	numNewActiveTTs=${#arrNewActiveTTs[@]}
 	
 	if [[ $numNewActiveTTs -ne $loc_numTargetTTs ]]; then
@@ -120,10 +138,12 @@ printActiveTTs()
     arrNewActiveTTs=( $newActiveTTs )
     
     if [ -s $JTERRFILE ]; then
-	parseJTErrFile $JTERRFILE
-	exit $?
+        parseJTErrFile $JTERRFILE
+        returnVal=$?
+        if [ $returnVal -ne $WARN_IGNORE ]; then
+            exit $?
+        fi
     fi
-
 
 # List of TT names (after removing initial tracker_)    
     for tt in ${arrNewActiveTTs[@]}; do	
@@ -147,6 +167,11 @@ main()
     hadoopHome=$2
         
     echo "INFO: Arguments:: Target for active TTs: $targetActiveTTs; hadoopHome: $hadoopHome" 
+
+# Set different environment, if specified
+    if [ -f $JTENV ]; then
+        . $JTENV # source this environment
+    fi
         
 # Ensure only one VHM executes this script at any given time
     
