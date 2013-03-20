@@ -1,5 +1,8 @@
 package com.vmware.vhadoop.vhm.vc;
 
+import java.util.ArrayList;
+
+import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 import com.vmware.vim.vmomi.client.Client;
@@ -27,9 +30,8 @@ public class VcAdapter implements com.vmware.vhadoop.api.vhm.VCActions {
    }
 
    @Override
-   public com.vmware.vhadoop.api.vhm.events.PropertyChangeEvent waitForPropertyChange(String folderName) {
-      _vcVlsi.testPC(_cloneClient, folderName);
-      return null;
+   public String  waitForPropertyChange(String folderName, String version, ArrayList<VMEventData> vmDataList) {
+      return _vcVlsi.testPC(_cloneClient, folderName, version, vmDataList);
    }
    
    @Override

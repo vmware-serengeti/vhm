@@ -2,10 +2,10 @@ package com.vmware.vhadoop.vhm.events;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
 
-public class VMAddedToClusterEvent extends NotificationEvent implements ClusterStateChangeEvent {
+public class VMUpdatedEvent extends NotificationEvent implements ClusterStateChangeEvent {
    VMEventData _vm;
    
-   public VMAddedToClusterEvent(VMEventData vm) {
+   public VMUpdatedEvent(VMEventData vm) {
       super(false, false);
       _vm = vm;
    }

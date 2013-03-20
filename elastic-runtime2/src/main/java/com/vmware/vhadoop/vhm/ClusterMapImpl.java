@@ -3,14 +3,10 @@ package com.vmware.vhadoop.vhm;
 import java.util.*;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.ComputeVMEventData;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.MasterVMEventData;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMAddedToClusterEvent;
-import com.vmware.vhadoop.vhm.events.VMHostChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMPowerStateChangeEvent;
+import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 
 public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
@@ -30,18 +26,21 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
    }
    
    public class VMInfo {
-      public VMInfo(String moRef, HostInfo host, ClusterInfo cluster, boolean powerState, boolean isMaster) {
+      public VMInfo(String moRef) {
          this._moRef = moRef;
-         this._host = host;
-         this._cluster = cluster;
-         this._powerState = powerState;
-         this._isMaster = isMaster;
       }
-      final boolean _isMaster;
       final String _moRef;
       HostInfo _host;
-      final ClusterInfo _cluster;
+      ClusterInfo _cluster;
+      boolean _isMaster;
+      boolean _isElastic;
       boolean _powerState;
+      public String _myUUID;
+      public String _name;
+      
+      // temporary/cache holding fields until cluster object is created
+      Integer _cachedMinInstances;
+      String _cachedScaleStrategyKey;
    }
 
    public class ClusterInfo {
@@ -55,7 +54,7 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
    
    private HostInfo getHost(String hostMoRef) {
       HostInfo host = _hosts.get(hostMoRef);
-      if (host == null) {
+      if ((host == null) && (hostMoRef != null)) {
          host = new HostInfo(hostMoRef);
          _hosts.put(hostMoRef, host);
       }
@@ -64,49 +63,75 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
 
    private ClusterInfo getCluster(String masterUUID) {
       ClusterInfo cluster = _clusters.get(masterUUID);
-      if (cluster == null) {
+      if ((cluster == null) && (masterUUID != null)) {
          cluster = new ClusterInfo(masterUUID);
          _clusters.put(masterUUID, cluster);
       }
       return cluster;
    }
 
-   private void changePowerState(String vmMoRef, boolean powerState) {
-      VMInfo vm = _vms.get(vmMoRef);
-      vm._powerState = powerState;
-      System.out.println(Thread.currentThread().getName()+": ClusterMap setting power state to "+powerState+" for VM "+vmMoRef);
-   }
-   
-   private void changeHost(String vmMoRef, String hostMoRef) {
-      VMInfo vm = _vms.get(vmMoRef);
-      vm._host = getHost(hostMoRef);
-      System.out.println(Thread.currentThread().getName()+": ClusterMap setting host to "+hostMoRef+" for VM "+vmMoRef);
-   }
-   
-   private void addVMToCluster(VMEventData vmd) {
-      ClusterInfo ci = null;
-      boolean isMaster = false;
-      if (vmd instanceof ComputeVMEventData) {
-         ComputeVMEventData cved = (ComputeVMEventData)vmd;
-         ci = getCluster(cved._masterUUID);
-      } else if (vmd instanceof MasterVMEventData) {
-         MasterVMEventData mved = (MasterVMEventData)vmd;
-         ci = getCluster(mved._masterUUID);
-         ci._minInstances = mved._minInstances;
-         ci._scaleStrategyKey = mved._enableAutomation ? "automatic" : "manual";
-         isMaster = true;
+   private void updateVMState(VMEventData vmd) {
+      
+      VMInfo vmInfo = _vms.get(vmd._vmMoRef);
+      if (vmInfo == null) {
+         vmInfo = new VMInfo(vmd._vmMoRef);
+         _vms.put(vmd._vmMoRef, vmInfo);
+         System.out.println(Thread.currentThread().getName()+": Add VM " + vmd._vmMoRef);
       }
-      HostInfo host = getHost(vmd._hostMoRef);
-      _vms.put(vmd._vmMoRef, new VMInfo(vmd._vmMoRef, host, ci, vmd._powerState, isMaster));
+
+      if (vmd._hostMoRef != null) {
+         vmInfo._host = getHost(vmd._hostMoRef);
+      }
+      if (vmd._masterUUID != null) {
+         vmInfo._cluster = getCluster(vmd._masterUUID);
+         if (vmInfo._cachedMinInstances != null) {
+            vmInfo._cluster._minInstances = vmInfo._cachedMinInstances;
+         }
+         if (vmInfo._cachedScaleStrategyKey != null) {
+            vmInfo._cluster._scaleStrategyKey = vmInfo._cachedScaleStrategyKey;
+         }
+      }
+      if (vmd._powerState != null) {
+         vmInfo._powerState = vmd._powerState;
+      }
+      if (vmd._myName != null) {
+         vmInfo._name = vmd._myName;
+      }
+      if (vmd._myUUID != null) {
+         vmInfo._myUUID = vmd._myUUID;
+      }
+      if (vmd._isElastic != null) {
+         vmInfo._isElastic = vmd._isElastic;
+      }
+      
+      ClusterInfo ci = vmInfo._cluster;
+      if (vmd._enableAutomation != null) {
+         vmInfo._isMaster = true;
+         String scaleStrategyKey = vmd._enableAutomation ? "automatic" : "manual";
+         if (ci != null) {
+            ci._scaleStrategyKey = scaleStrategyKey;
+         } else {
+            vmInfo._cachedScaleStrategyKey = scaleStrategyKey;
+         }
+      }
+      if (vmd._minInstances != null) {
+         vmInfo._isMaster = true;
+         if (ci != null) {
+            ci._minInstances = vmd._minInstances;
+         } else {
+            vmInfo._cachedMinInstances = vmd._minInstances;
+         }
+      }
+      if ((vmInfo._myUUID != null) && (ci != null) && (ci._masterUUID == vmInfo._myUUID)) {
+         vmInfo._isMaster = true;
+      }
    }
    
-   private void removeVMFromCluster(String clusterId, String vmMoRef) {
-      ClusterInfo cluster = _clusters.get(clusterId);
-      VMInfo vm = _vms.get(vmMoRef);
-      if (vm._cluster == cluster) {
+   private void removeVM(String vmMoRef) {
+      VMInfo vmInfo = _vms.get(vmMoRef);
+      if (vmInfo != null) {
          _vms.remove(vmMoRef);
-      } else {
-         throw new RuntimeException("WRONG!");
+         //XXX remove all VMs for this cluster if this is a master VM?
       }
    }
    
@@ -116,18 +141,12 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
    }
 
    public void handleClusterEvent(ClusterStateChangeEvent event) {
-      if (event instanceof VMAddedToClusterEvent) {
-         VMAddedToClusterEvent ace = (VMAddedToClusterEvent)event;
-         addVMToCluster(ace.getVm());
-      } else if (event instanceof VMHostChangeEvent) {
-         VMHostChangeEvent hce = (VMHostChangeEvent)event;
-         changeHost(hce.getVmMoRef(), hce.getHostMoRef());
-      } else if (event instanceof VMPowerStateChangeEvent) {
-         VMPowerStateChangeEvent pce = (VMPowerStateChangeEvent)event;
-         changePowerState(pce.getVmMoRef(), pce.getNewPowerState());
+      if (event instanceof VMUpdatedEvent) {
+         VMUpdatedEvent ace = (VMUpdatedEvent)event;
+         updateVMState(ace.getVm());
       } else if (event instanceof VMRemovedFromClusterEvent) {
          VMRemovedFromClusterEvent rce = (VMRemovedFromClusterEvent)event;
-         removeVMFromCluster(rce.getClusterId(), rce.getVmMoRef());
+         removeVM(rce.getVmMoRef());
       } else if (event instanceof ScaleStrategyChangeEvent) {
          ScaleStrategyChangeEvent sce = (ScaleStrategyChangeEvent)event;
          changeScaleStrategy(sce.getClusterId(), sce.getNewStrategyKey());

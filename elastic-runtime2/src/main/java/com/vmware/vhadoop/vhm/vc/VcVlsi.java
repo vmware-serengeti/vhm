@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLException;
 
+import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.Folder;
 import com.vmware.vim.binding.vim.ServiceInstance;
@@ -33,13 +34,11 @@ import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
 import com.vmware.vim.binding.vim.fault.InvalidLocale;
 import com.vmware.vim.binding.vim.fault.InvalidLogin;
-import com.vmware.vim.binding.vim.fault.InvalidTicket;
 import com.vmware.vim.binding.vim.fault.NoClientCertificate;
 import com.vmware.vim.binding.vim.fault.NoHost;
 import com.vmware.vim.binding.vim.fault.NotFound;
 import com.vmware.vim.binding.vim.fault.NotSupportedHost;
 import com.vmware.vim.binding.vim.fault.TooManyTickets;
-import com.vmware.vim.binding.vim.fault.UserNotFound;
 import com.vmware.vim.binding.vim.option.OptionValue;
 import com.vmware.vim.binding.vim.version.version8;
 import com.vmware.vim.binding.vim.view.ContainerView;
@@ -47,7 +46,6 @@ import com.vmware.vim.binding.vim.view.ViewManager;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
-import com.vmware.vim.binding.vmodl.fault.NotSupported;
 import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.Change;
@@ -80,6 +78,12 @@ public class VcVlsi {
    private Client defaultClient;
    private String vcThumbprint = null;
 
+   private static final String VC_PROP_VM_NAME = "name";
+   private static final String VC_PROP_VM_EXTRA_CONFIG = "config.extraConfig";
+   private static final String VC_PROP_VM_UUID = "config.uuid";
+   private static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
+   private static final String VC_PROP_VM_HOST = "runtime.host";
+   
    private static final String VC_MOREF_TYPE_TASK = "Task";
    private static final String VC_MOREF_TYPE_VM = "VirtualMachine";
    private static final String VC_MOREF_TYPE_FOLDER = "Folder";
@@ -283,28 +287,30 @@ public class VcVlsi {
       }
 
       /* TODO: Could this be called post-init? */
-      public void setPropToFilter(String property) {
+      public void setPropToFilter(String property) throws InvalidProperty {
          _propertySpec.setPathSet(new String[] {property});
+         init();
       }
 
-      public void setPropsToFilter(String[] properties) {
+      public void setPropsToFilter(String[] properties) throws InvalidProperty {
          _propertySpec.setPathSet(properties);
+         init();
       }
 
-      private void init()  {
+      private void init() throws InvalidProperty  {
          if (!_initialized) {
             _propertyFilterSpec.setPropSet(new PropertySpec [] {_propertySpec});
+
             ServiceInstanceContent sic = getServiceInstanceContent(_vcClient);
             _propertyCollector = _vcClient.createStub(PropertyCollector.class, sic.getPropertyCollector());
+
+            _filter = _vcClient.createStub(Filter.class, _propertyCollector.createFilter(_propertyFilterSpec, true));
          }
          _initialized = true;
       }
 
-      public PropertyCollector getPropertyCollector() throws InvalidProperty {
+      public PropertyCollector getPropertyCollector() throws InvalidProperty  {
          init();
-         if (_filter == null) {
-            _filter = _vcClient.createStub(Filter.class, _propertyCollector.createFilter(_propertyFilterSpec, true));
-         }
          return _propertyCollector;
       }
 
@@ -403,7 +409,7 @@ public class VcVlsi {
       return propFilter;
    }
    
-   private UpdateSet callWaitForUpdates(PropertyFilter propFilter, String version) {
+   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version) {
       UpdateSet updateSet = null;
       try {
          if (version == null) {
@@ -414,7 +420,7 @@ public class VcVlsi {
          waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
 
          _log.log(Level.INFO, "WFU waiting");
-         updateSet = propFilter.getPropertyCollector().waitForUpdatesEx(version, waitOptions);
+         updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
          _log.log(Level.INFO, "WFU us= " + updateSet);
 
       } catch (Exception e) {
@@ -428,96 +434,104 @@ public class VcVlsi {
    }
 
 
-   private void parseExtraConfig(String key, Object value) {
+   private void parseExtraConfig(VMEventData vmData, String key, String value) {
       if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
          _log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
-         /*
          if (key.equals(VHM_EXTRA_CONFIG_UUID)) {
-            if (value.equals("SERENGETI-vApp-m4-jan14-975086")) {
-               //_log.log(Level.INFO, "pVoH name= " + mrap._name + " moref= " + mrap._moref.getValue());
-               vmInfo.vmRef = mrap._moref;
-               vmInfo.name = mrap._name;
-            }
+            vmData._serengetiFolder = value;
          } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_UUID)) {
-            vmInfo.masterUuid = value;
+            vmData._masterUUID = value;
          } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_MOREF)) {
-            vmInfo.masterMoRefString = value;
+            vmData._masterMoRef = value;
          } else if (key.equals(VHM_EXTRA_CONFIG_ELASTIC)) {
-            vmInfo.elastic = value.equalsIgnoreCase("true");
+            vmData._isElastic = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_ENABLE)) {
-            automationEnabled = value.equalsIgnoreCase("true");
+            vmData._enableAutomation = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
-            minInstances = value;
+            vmData._minInstances = Integer.valueOf(value);
          }
-         */
       }
    }
    
-   private void parseObjUpdate(ObjectUpdate obj, String[] props) {
+   private VMEventData parseObjUpdate(ObjectUpdate obj) {
+      VMEventData vmData = new VMEventData();
+      vmData._vmMoRef = obj.getObj().getValue();
+
       Kind kind = obj.getKind();
       _log.log(Level.INFO, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
-      if (kind == Kind.modify || kind == Kind.enter || kind == Kind.leave) {
+      if (kind == Kind.leave) {
+         vmData._isLeaving = true;
+      } else if (kind == Kind.modify || kind == Kind.enter) {
+         vmData._isLeaving = false;
          for (Change pc : obj.getChangeSet()) {
             String pcName = pc.getName();
             Object pcValue = pc.getVal();
-            for (String prop : props) {
-               int lastIndex = pcName.lastIndexOf(prop);
-               if (lastIndex >= 0) {
-                  _log.log(Level.INFO, "Pobj prop= " + pcName + " val= " + pcValue);
-                  if (prop.equals("config.extraConfig")) {
-                     /*
-                      * Need to handle two cases.
-                      * 1) extraConfig returned as an array (pcName == config.extraConfig)
-                      * 2) individual extraConfig entries (pcName = config.extraConfig["xxx"].value)
-                      */
-                     if (pcName.equals("config.extraConfig")) {
-                        OptionValue[] ecl = (OptionValue[]) pcValue;
-                        for (OptionValue ec : ecl) {
-                           parseExtraConfig(ec.getKey(), ec.getValue());
-                        }
-                     } else {
-                        String [] parts = pcName.split("\"",3);
-                        if (parts.length > 1) {
-                           _log.log(Level.INFO, "Pobj key = " + parts[1]);
-                           parseExtraConfig(parts[1], pcValue);
-                        }
-                     }
-                  }
+            _log.log(Level.INFO, "Pobj prop= " + pcName + " val= " + pcValue);
+            if (pcName.equals(VC_PROP_VM_UUID)) {
+               vmData._myUUID = (String)pcValue;
+            } else if (pcName.equals(VC_PROP_VM_NAME)) {
+               vmData._myName = (String)pcValue;
+            } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
+               PowerState ps = (PowerState)pcValue;
+               if (ps == PowerState.poweredOn) {
+                  vmData._powerState = true;
+               } else {
+                  vmData._powerState = false;
                }
+            } else if (pcName.equals(VC_PROP_VM_HOST)) {
+               vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
+            } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
+               // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
+               OptionValue[] ecl = (OptionValue[]) pcValue;
+               for (OptionValue ec : ecl) {
+                  parseExtraConfig(vmData, ec.getKey(), (String)ec.getValue());
+               }
+            } else if (pcName.lastIndexOf(VC_PROP_VM_EXTRA_CONFIG) >= 0) {
+               // individual extraConfig entries (pcName = config.extraConfig["xxx"].value)
+               String [] parts = pcName.split("\"",3);
+               if (parts.length > 1) {
+                  _log.log(Level.INFO, "Pobj key = " + parts[1]);
+                  parseExtraConfig(vmData, parts[1], (String)pcValue);
+               }
+            } else {
+               _log.log(Level.WARNING, "Unexpected update: prop= " + pcName + " val= " + pcValue);
             }
          }
       }
+      return vmData;
    }
 
-   public void pcVMsInFolder(Client vcClient, Folder folder) {
-      String [] props = {"name", "config.extraConfig", "runtime.powerState", "runtime.host"};
-      
-      PropertyFilter propFilter = setupWaitForUpdates(vcClient, folder, typeVM, props);
+   public String pcVMsInFolder(Client vcClient, Folder folder, String version, ArrayList<VMEventData> vmDataList) {
+      PropertyFilter pf = null;
+      if (version.equals("")) {
+         String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID,
+               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST};
+         pf = setupWaitForUpdates(vcClient, folder, typeVM, props);
+      }
+      ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
+      PropertyCollector propertyCollector = vcClient.createStub(PropertyCollector.class, sic.getPropertyCollector());
 
-      String version = "";
-      while (true) {
-         UpdateSet updateSet = callWaitForUpdates(propFilter, version);
+      UpdateSet updateSet = callWaitForUpdates(propertyCollector, version);
 
-         if (updateSet != null) {
-            version = updateSet.getVersion();
-            FilterUpdate[] updates = updateSet.getFilterSet();
+      if (updateSet != null) {
+         version = updateSet.getVersion();
+         FilterUpdate[] updates = updateSet.getFilterSet();
 
-            _log.log(Level.INFO, "WFU version= " + version + " fs= " + updates);
-            if (updates != null) {
-               for (FilterUpdate pfu : updates) {
-                  ObjectUpdate[] objectSet = pfu.getObjectSet();
+         _log.log(Level.INFO, "WFU version= " + version + " fs= " + updates);
+         if (updates != null) {
+            for (FilterUpdate pfu : updates) {
+               ObjectUpdate[] objectSet = pfu.getObjectSet();
 
-                  for (ObjectUpdate obj : objectSet) {
-                     parseObjUpdate(obj, props);
+               for (ObjectUpdate obj : objectSet) {
+                  VMEventData vmData = parseObjUpdate(obj);
+                  if (vmData != null) {
+                     vmDataList.add(vmData);
                   }
                }
-
             }
          }
       }
-      
-      // XXX commenting out because this function doesn't return yet 
-      // propFilter.cleanup();
+      return version;
    }
 
    private boolean waitForTask(Task task) {
@@ -573,13 +587,13 @@ public class VcVlsi {
    }
 
    
-   public void testPC(Client vcClient, String baseFolderName) {
+   public String testPC(Client vcClient, String baseFolderName, String version, ArrayList<VMEventData> vmDataList) {
       try {
          Folder f = getFolderForName(baseFolderName);
          _log.log(Level.INFO, "TPC f.name = " + f.getName());
-         _log.log(Level.INFO, "TPC f = " + f);
-         pcVMsInFolder(vcClient, f);
-
+         _log.log(Level.INFO, "TPC version = " + version);
+         return pcVMsInFolder(vcClient, f, version, vmDataList);
+/*
          
          VirtualMachine vm = getVMForName(f, "xxxxx");
          _log.log(Level.INFO, "TPC vm.name = " + vm.getName());
@@ -598,12 +612,13 @@ public class VcVlsi {
          
          ps = vm.getRuntime().getPowerState();
          _log.log(Level.INFO, "TPC vm new ps = " + ps);
-         
+*/       
     
       } catch (Exception e) {
          // TODO Auto-generated catch block
          e.printStackTrace();
       }
+      return null;
    }
    
 }

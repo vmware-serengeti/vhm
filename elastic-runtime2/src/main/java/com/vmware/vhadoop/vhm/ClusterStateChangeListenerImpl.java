@@ -2,13 +2,10 @@ package com.vmware.vhadoop.vhm;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.ComputeVMEventData;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.MasterVMEventData;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
-import com.vmware.vhadoop.api.vhm.events.PropertyChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMAddedToClusterEvent;
-import com.vmware.vhadoop.vhm.events.VMPowerStateChangeEvent;
+import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
+import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.vc.VCTestModel;
 
 import java.util.*;
@@ -29,28 +26,42 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          this._vms = new HashSet<VMEventData>();
       }
       public Set<VMEventData> _vms;
-      
+
       public TestCluster addComputeVM(String vmMoRef, String hostMoRef, String serengetiUUID, String masterUUID, String masterMoRef, boolean powerState) {
-         ComputeVMEventData cved = new ComputeVMEventData();
+         VMEventData cved = new VMEventData();
          cved._vmMoRef = vmMoRef;
-         cved._hostMoRef = hostMoRef;
-         cved._serengetiUUID = serengetiUUID;
+         cved._isLeaving = false;
+         
+         cved._myName = vmMoRef;
+         cved._myUUID = vmMoRef;
          cved._masterUUID = masterUUID;
          cved._masterMoRef = masterMoRef;
+         cved._isElastic = true;
+
          cved._powerState = powerState;
+         cved._hostMoRef = hostMoRef;
+         cved._serengetiFolder = serengetiUUID;
+
          _vms.add(cved);
          return this;
       }
 
       public TestCluster addMasterVM(String vmMoRef, String hostMoRef, String serengetiUUID, String UUID, boolean enableAutomation, int minInstances, boolean powerState) {
-         MasterVMEventData mved = new MasterVMEventData();
+         VMEventData mved = new VMEventData();
          mved._vmMoRef = vmMoRef;
+         mved._isLeaving = false;
+         
+         mved._myName = vmMoRef;
+         mved._myUUID = UUID;
+         mved._masterUUID = UUID;
+         mved._isElastic = false;
+
+         mved._powerState = powerState;
          mved._hostMoRef = hostMoRef;
-         mved._serengetiUUID = serengetiUUID;
+         mved._serengetiFolder = serengetiUUID;
+
          mved._enableAutomation = enableAutomation;
          mved._minInstances = minInstances;
-         mved._powerState = powerState;
-         mved._masterUUID = UUID;
          _vms.add(mved);
          return this;
       }
@@ -64,15 +75,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
    void discoverTestCluster(TestCluster cluster) {
       for (VMEventData vmEvent : cluster._vms) {
-         _eventConsumer.placeEventOnQueue(new VMAddedToClusterEvent(vmEvent));
+         _eventConsumer.placeEventOnQueue(new VMUpdatedEvent(vmEvent));
       }
-   }
-   
-   private ClusterStateChangeEvent processPropertyChangeEvent(PropertyChangeEvent pce) {
-      if (pce.getPropertyKey().equals(VCTestModel.PROPERTY_KEY_POWER_STATE)) {
-         return new VMPowerStateChangeEvent(pce.getMoRef(), pce.getNewValue().equalsIgnoreCase("true"));
-      }
-      return null;
    }
    
    @Override
@@ -80,11 +84,20 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       new Thread(new Runnable() {
          @Override
          public void run() {
+            String version = "";
             while (true) {
-               PropertyChangeEvent pce = _vcActions.waitForPropertyChange(_serengetiFolderName);
-               System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change "+
-                     pce.getPropertyKey()+" in moRef "+pce.getMoRef()+" to value "+pce.getNewValue());
-               _eventConsumer.placeEventOnQueue(processPropertyChangeEvent(pce));
+               ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 
+               version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
+               for (VMEventData vmData : vmDataList) {
+                  System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change moRef= "
+                        +vmData._vmMoRef + " leaving=" + vmData._isLeaving);
+                  
+                  if (vmData._isLeaving) {
+                     _eventConsumer.placeEventOnQueue(new VMRemovedFromClusterEvent(vmData._vmMoRef));
+                  } else {
+                     _eventConsumer.placeEventOnQueue(new VMUpdatedEvent(vmData));
+                  }
+               }
             }
          }}, "ClusterSCL_Poll_Thread").start();
    }

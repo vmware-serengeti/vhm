@@ -4,20 +4,21 @@ import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 
 public interface ClusterStateChangeEvent extends NotificationEvent {
 
-   public abstract class VMEventData {
+   public class VMEventData {
+      // these two fields must always be filled
       public String _vmMoRef;
+      public boolean _isLeaving;
+
+      // these fields can be left as null if there is no new information
+      public String _myName;
       public String _hostMoRef;
-      public String _serengetiUUID;
+      public String _serengetiFolder;
       public String _masterUUID;
-      public boolean _powerState;
-   }
-   
-   public class ComputeVMEventData extends VMEventData {
+      public String _myUUID;
+      public Boolean _powerState;
       public String _masterMoRef;
-   }
-   
-   public class MasterVMEventData extends VMEventData {
-      public boolean _enableAutomation;
-      public int _minInstances;
+      public Boolean _enableAutomation;
+      public Integer _minInstances;
+      public Boolean _isElastic;
    }
 }
