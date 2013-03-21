@@ -3,6 +3,7 @@ package com.vmware.vhadoop.vhm.vc;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
@@ -46,6 +47,7 @@ import com.vmware.vim.binding.vim.view.ViewManager;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
+import com.vmware.vim.binding.vmodl.query.InvalidCollectorVersion;
 import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.Change;
@@ -64,6 +66,7 @@ import com.vmware.vim.binding.vmodl.query.PropertyCollector.TraversalSpec;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.UpdateSet;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.WaitOptions;
 import com.vmware.vim.vmomi.client.Client;
+import com.vmware.vim.vmomi.client.exception.ConnectionException;
 import com.vmware.vim.vmomi.client.http.HttpClientConfiguration;
 import com.vmware.vim.vmomi.client.http.ThumbprintVerifier;
 import com.vmware.vim.vmomi.client.http.impl.HttpConfigurationImpl;
@@ -404,43 +407,32 @@ public class VcVlsi {
       return vms;
    }
 
-   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet) {
+   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet)
+         throws InvalidProperty {
       PropertyFilter propFilter = null;
-      try {
-         ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
-         
-         ViewManager viewMgr = vcClient.createStub(ViewManager.class, sic.getViewManager());
-         ContainerView cView = vcClient.createStub(ContainerView.class,
-               viewMgr.createContainerView(baseFolder._getRef(), new TypeName[] {type}, true));
+      ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
 
-         propFilter = new PropertyFilter(vcClient, cView, type);
+      ViewManager viewMgr = vcClient.createStub(ViewManager.class, sic.getViewManager());
+      ContainerView cView = vcClient.createStub(ContainerView.class,
+            viewMgr.createContainerView(baseFolder._getRef(), new TypeName[] {type}, true));
 
-         propFilter.setPropsToFilter(statePropsToGet);
-      } catch (Exception e) {
-         _log.log(Level.INFO, "Unexpected exception waiting for VC property change" + e);
-         return null;
-      }
+      propFilter = new PropertyFilter(vcClient, cView, type);
 
+      propFilter.setPropsToFilter(statePropsToGet);
       return propFilter;
    }
    
-   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version) {
+   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version)
+         throws Exception {
       UpdateSet updateSet = null;
-      try {
-         if (version == null) {
-            version = "";
-         }
-
-         WaitOptions waitOptions = new WaitOptions();
-         waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
-
-         _log.log(Level.INFO, "WFU waiting");
-         updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
-         _log.log(Level.INFO, "WFU us= " + updateSet);
-
-      } catch (Exception e) {
-         _log.log(Level.INFO, "Unexpected exception waiting for VC property change" + e);
+      if (version == null) {
+         version = "";
       }
+
+      WaitOptions waitOptions = new WaitOptions();
+      waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
+
+      updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
       return updateSet;
    }
 
@@ -449,9 +441,10 @@ public class VcVlsi {
    }
 
 
-   private void parseExtraConfig(VMEventData vmData, String key, String value) {
+   private void parseExtraConfig(VMEventData vmData, String key, Object valueObj) {
       if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
-         _log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
+         String value = (String)valueObj;
+         //_log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
          if (key.equals(VHM_EXTRA_CONFIG_UUID)) {
             vmData._serengetiFolder = value;
          } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_UUID)) {
@@ -482,41 +475,50 @@ public class VcVlsi {
             String pcName = pc.getName();
             Object pcValue = pc.getVal();
             _log.log(Level.INFO, "Pobj prop= " + pcName + " val= " + pcValue);
-            if (pcName.equals(VC_PROP_VM_UUID)) {
-               vmData._myUUID = (String)pcValue;
-            } else if (pcName.equals(VC_PROP_VM_NAME)) {
-               vmData._myName = (String)pcValue;
-            } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
-               PowerState ps = (PowerState)pcValue;
-               if (ps == PowerState.poweredOn) {
-                  vmData._powerState = true;
+            if (pcValue != null) {
+               if (pcName.equals(VC_PROP_VM_UUID)) {
+                  vmData._myUUID = (String)pcValue;
+               } else if (pcName.equals(VC_PROP_VM_NAME)) {
+                  vmData._myName = (String)pcValue;
+               } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
+                  PowerState ps = (PowerState)pcValue;
+                  if (ps == PowerState.poweredOn) {
+                     vmData._powerState = true;
+                  } else {
+                     vmData._powerState = false;
+                  }
+               } else if (pcName.equals(VC_PROP_VM_HOST)) {
+                  vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
+               } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
+                  // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
+                  OptionValue[] ecl = (OptionValue[]) pcValue;
+                  for (OptionValue ec : ecl) {
+                     parseExtraConfig(vmData, ec.getKey(), ec.getValue());
+                  }
+               } else if (pcName.lastIndexOf(VC_PROP_VM_EXTRA_CONFIG) >= 0) {
+                  // individual extraConfig entries (pcName = config.extraConfig["xxx"].value)
+                  String [] parts = pcName.split("\"",3);
+                  if (parts.length > 1) {
+                     _log.log(Level.INFO, "Pobj key = " + parts[1]);
+                     if (parts[1].startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
+                        OptionValue ov = (OptionValue)pcValue;
+                        parseExtraConfig(vmData, parts[1], ov.getValue());
+                     }
+                  }
                } else {
-                  vmData._powerState = false;
+                  _log.log(Level.WARNING, "Unexpected update: prop= " + pcName + " val= " + pcValue);
                }
-            } else if (pcName.equals(VC_PROP_VM_HOST)) {
-               vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
-            } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
-               // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
-               OptionValue[] ecl = (OptionValue[]) pcValue;
-               for (OptionValue ec : ecl) {
-                  parseExtraConfig(vmData, ec.getKey(), (String)ec.getValue());
-               }
-            } else if (pcName.lastIndexOf(VC_PROP_VM_EXTRA_CONFIG) >= 0) {
-               // individual extraConfig entries (pcName = config.extraConfig["xxx"].value)
-               String [] parts = pcName.split("\"",3);
-               if (parts.length > 1) {
-                  _log.log(Level.INFO, "Pobj key = " + parts[1]);
-                  parseExtraConfig(vmData, parts[1], (String)pcValue);
-               }
-            } else {
-               _log.log(Level.WARNING, "Unexpected update: prop= " + pcName + " val= " + pcValue);
             }
          }
       }
       return vmData;
    }
 
-   private String pcVMsInFolder(Client vcClient, Folder folder, String version, ArrayList<VMEventData> vmDataList) {
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, ArrayList<VMEventData> vmDataList)
+         throws Exception {
+      if (version == null) {
+         version = "";
+      }
       if (version.equals("")) {
          String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID,
                VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST};
@@ -525,13 +527,26 @@ public class VcVlsi {
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
       PropertyCollector propertyCollector = vcClient.createStub(PropertyCollector.class, sic.getPropertyCollector());
 
-      UpdateSet updateSet = callWaitForUpdates(propertyCollector, version);
-
+      UpdateSet updateSet = null;
+      try {
+         updateSet = callWaitForUpdates(propertyCollector, version);
+      } catch (ConnectionException e) {
+         Throwable cause = e.getCause();
+         /*
+          * SocketTimeoutException is caused when we hit SESSION_TIME_OUT
+          * If that happens, hide the exception, and just return with no changes
+          */
+         if ((cause != null) && (cause instanceof SocketTimeoutException)) {
+            return version;
+         }
+         throw e;
+      }
+      
       if (updateSet != null) {
          version = updateSet.getVersion();
          FilterUpdate[] updates = updateSet.getFilterSet();
 
-         _log.log(Level.INFO, "WFU version= " + version + " fs= " + updates);
+         _log.log(Level.INFO, "WFU new version= " + version + " fs= " + updates);
          if (updates != null) {
             for (FilterUpdate pfu : updates) {
                ObjectUpdate[] objectSet = pfu.getObjectSet();
@@ -606,10 +621,10 @@ public class VcVlsi {
          Folder f = getFolderForName(baseFolderName);
          return pcVMsInFolder(vcClient, f, version, vmDataList);
       } catch (Exception e) {
-         // TODO Auto-generated catch block
+         _log.log(Level.INFO, "Unexpected exception waiting for updates: " + e);
          e.printStackTrace();
       }
-      return null;
+      return version;
    }
    
    /*

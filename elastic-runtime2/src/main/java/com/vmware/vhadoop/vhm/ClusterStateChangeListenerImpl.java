@@ -1,16 +1,17 @@
 package com.vmware.vhadoop.vhm;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
-import com.vmware.vhadoop.vhm.vc.VCTestModel;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements com.vmware.vhadoop.api.vhm.ClusterStateChangeListener {
+   private static final Logger _log = Logger.getLogger("ChangeListener");
 
    EventConsumer _eventConsumer;
    VCActions _vcActions;
@@ -89,8 +90,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
                ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 
                version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
                for (VMEventData vmData : vmDataList) {
-                  System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change moRef= "
-                        +vmData._vmMoRef + " leaving=" + vmData._isLeaving);
+                  _log.log(Level.INFO, "Detected change moRef= " + vmData._vmMoRef + " leaving= " + vmData._isLeaving);
                   
                   if (vmData._isLeaving) {
                      _eventConsumer.placeEventOnQueue(new VMRemovedFromClusterEvent(vmData._vmMoRef));
