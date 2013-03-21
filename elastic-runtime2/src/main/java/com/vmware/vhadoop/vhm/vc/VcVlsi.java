@@ -12,6 +12,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -29,7 +30,6 @@ import com.vmware.vim.binding.vim.ServiceInstanceContent;
 import com.vmware.vim.binding.vim.SessionManager;
 import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
-import com.vmware.vim.binding.vim.UserSession;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
 import com.vmware.vim.binding.vim.fault.InvalidLocale;
@@ -127,13 +127,15 @@ public class VcVlsi {
       };
    }
 
-   public ServiceInstanceContent getServiceInstanceContent(Client vcClient) {
-
+   private ServiceInstance getServiceInstance(Client vcClient) {
       ManagedObjectReference svcRef = new ManagedObjectReference();
       svcRef.setType("ServiceInstance");
       svcRef.setValue("ServiceInstance");
-      ServiceInstance svc = vcClient.createStub(ServiceInstance.class, svcRef);
-      
+      return vcClient.createStub(ServiceInstance.class, svcRef);
+   }
+
+   private ServiceInstanceContent getServiceInstanceContent(Client vcClient) {
+      ServiceInstance svc = getServiceInstance(vcClient);
       return svc.retrieveContent();
    }
    
@@ -141,7 +143,7 @@ public class VcVlsi {
     * Create a temporary connection to VC to login using extension certificate via sdkTunnel,
     * and get the session ticket to use for the normal connection.
     */
-   public String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey)
+   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey)
          throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
 
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService"); 
@@ -163,7 +165,7 @@ public class VcVlsi {
       
       ServiceInstanceContent sic = getServiceInstanceContent(newClient);
       SessionManager sm = newClient.createStub(SessionManager.class, sic.getSessionManager());
-      UserSession us = sm.loginExtensionByCertificate(vcExtKey, null);
+      sm.loginExtensionByCertificate(vcExtKey, null);
       String ticket = sm.acquireSessionTicket(null);
       
       return ticket;
@@ -208,23 +210,37 @@ public class VcVlsi {
 
       ServiceInstanceContent sic = getServiceInstanceContent(newClient);
       SessionManager sm = newClient.createStub(SessionManager.class, sic.getSessionManager());
-      UserSession us = null;
 
       if (cloneSession) {
-         us = sm.cloneSession(sessionTicket);
-         _log.log(Level.INFO, "WFU us = " + us);
+         sm.cloneSession(sessionTicket);
       } else {
          // set this as the default client
          defaultClient = newClient;
          if (useKey) {
-            us = sm.loginBySessionTicket(sessionTicket);
+            sm.loginBySessionTicket(sessionTicket);
          } else {
-            us = sm.login(credentials.user, credentials.password, null);
+            sm.login(credentials.user, credentials.password, null);
          }
       }
       
       return newClient;
    }
+
+   @SuppressWarnings("finally")
+   public boolean testConnection() {
+      // Test the operation of the current connection using the standard simple call for this purpose.
+      Calendar vcTime = null;
+      try {
+         ServiceInstance si = getServiceInstance(defaultClient);
+         vcTime = si.currentTime();
+      } finally {
+         if (vcTime == null) {
+            _log.log(Level.SEVERE, "testConnection found VC connection dropped; caller will reconnect");
+         }
+         return vcTime != null;
+      }
+   }
+
 
    private Folder getRootFolder() {
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
@@ -286,7 +302,6 @@ public class VcVlsi {
          return viewToObject;
       }
 
-      /* TODO: Could this be called post-init? */
       public void setPropToFilter(String property) throws InvalidProperty {
          _propertySpec.setPathSet(new String[] {property});
          init();
@@ -501,12 +516,11 @@ public class VcVlsi {
       return vmData;
    }
 
-   public String pcVMsInFolder(Client vcClient, Folder folder, String version, ArrayList<VMEventData> vmDataList) {
-      PropertyFilter pf = null;
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, ArrayList<VMEventData> vmDataList) {
       if (version.equals("")) {
          String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID,
                VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST};
-         pf = setupWaitForUpdates(vcClient, folder, typeVM, props);
+         setupWaitForUpdates(vcClient, folder, typeVM, props);
       }
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
       PropertyCollector propertyCollector = vcClient.createStub(PropertyCollector.class, sic.getPropertyCollector());
@@ -587,33 +601,10 @@ public class VcVlsi {
    }
 
    
-   public String testPC(Client vcClient, String baseFolderName, String version, ArrayList<VMEventData> vmDataList) {
+   public String waitForUpdates(Client vcClient, String baseFolderName, String version, ArrayList<VMEventData> vmDataList) {
       try {
          Folder f = getFolderForName(baseFolderName);
-         _log.log(Level.INFO, "TPC f.name = " + f.getName());
-         _log.log(Level.INFO, "TPC version = " + version);
          return pcVMsInFolder(vcClient, f, version, vmDataList);
-/*
-         
-         VirtualMachine vm = getVMForName(f, "xxxxx");
-         _log.log(Level.INFO, "TPC vm.name = " + vm.getName());
-         _log.log(Level.INFO, "TPC vm = " + vm);
-         PowerState ps = vm.getRuntime().getPowerState();
-         _log.log(Level.INFO, "TPC vm ps = " + ps);
-         ManagedObjectReference taskRef;
-         if (ps == PowerState.poweredOn) {
-            taskRef = vm.powerOff();
-         } else {
-             taskRef = vm.powerOn(null);
-         }
-         Task t = defaultClient.createStub(Task.class, taskRef);
-         boolean success = waitForTask(t);
-         _log.log(Level.INFO, "TPC task success=" + success);
-         
-         ps = vm.getRuntime().getPowerState();
-         _log.log(Level.INFO, "TPC vm new ps = " + ps);
-*/       
-    
       } catch (Exception e) {
          // TODO Auto-generated catch block
          e.printStackTrace();
@@ -621,4 +612,25 @@ public class VcVlsi {
       return null;
    }
    
+   /*
+   
+   VirtualMachine vm = getVMForName(f, "xxxxx");
+   _log.log(Level.INFO, "TPC vm.name = " + vm.getName());
+   _log.log(Level.INFO, "TPC vm = " + vm);
+   PowerState ps = vm.getRuntime().getPowerState();
+   _log.log(Level.INFO, "TPC vm ps = " + ps);
+   ManagedObjectReference taskRef;
+   if (ps == PowerState.poweredOn) {
+      taskRef = vm.powerOff();
+   } else {
+       taskRef = vm.powerOn(null);
+   }
+   Task t = defaultClient.createStub(Task.class, taskRef);
+   boolean success = waitForTask(t);
+   _log.log(Level.INFO, "TPC task success=" + success);
+   
+   ps = vm.getRuntime().getPowerState();
+   _log.log(Level.INFO, "TPC vm new ps = " + ps);
+*/       
+
 }
