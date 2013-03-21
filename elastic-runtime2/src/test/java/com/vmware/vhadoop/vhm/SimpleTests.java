@@ -45,7 +45,7 @@ public class SimpleTests {
       VCActions vcActions = new VCTestModel();
       _vhm = new VHM(vcActions);
       _mqClient = new MQClientImpl();
-      _cscl = new ClusterStateChangeListenerImpl(_vhm.getVCActions(), "serengetiFolderName"); //VCTestModel ignores foldername
+      _cscl = new ClusterStateChangeListenerImpl(_vhm.getVCActions(), "MySerengeti"); //VCTestModel ignores foldername
       
       _vhm.registerEventProducer(_mqClient);
       _vhm.registerEventProducer(_cscl);
