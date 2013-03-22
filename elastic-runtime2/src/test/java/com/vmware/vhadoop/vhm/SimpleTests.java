@@ -42,6 +42,8 @@ public class SimpleTests {
    
    @BeforeClass
    public static void initMQClient() {
+      MainController.readConfigFile();
+      
       VCActions vcActions = new VCTestModel();
       _vhm = new VHM(vcActions);
       _mqClient = new MQClientImpl();
