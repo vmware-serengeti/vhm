@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.vhm.vc;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,7 +68,7 @@ public class VcAdapter implements com.vmware.vhadoop.api.vhm.VCActions {
    }
 
    @Override
-   public String  waitForPropertyChange(String folderName, String version, ArrayList<VMEventData> vmDataList) {
+   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) {
       validateConnection();
       return _vcVlsi.waitForUpdates(_cloneClient, folderName, version, vmDataList);
    }
@@ -75,6 +76,12 @@ public class VcAdapter implements com.vmware.vhadoop.api.vhm.VCActions {
    @Override
    public Client getStatsPollClient() {
       return _cloneClient;
+   }
+
+   @Override
+   public List<String> listVMsInFolder(String folderName) {
+      validateConnection();
+      return _vcVlsi.getVMsInFolder(folderName);
    }
 
 }

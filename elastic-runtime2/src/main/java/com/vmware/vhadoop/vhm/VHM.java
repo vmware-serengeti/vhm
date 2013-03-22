@@ -116,12 +116,20 @@ public class VHM implements EventConsumer {
       }
    }
    
+   private String getClusterIdForVCFolder(String folderName) {
+      List<String> vms = _vcActions.listVMsInFolder(folderName);
+      return _clusterMap.getClusterIdFromVMsInFolder(folderName, vms);
+   }
+   
    private void handleEvent(NotificationEvent event) {
       if (event instanceof ClusterScaleEvent) {
          System.out.println(Thread.currentThread().getName()+": VHM: ClusterScaleEvent received: "+event.getClass().getName());
-         String clusterId = ((ClusterScaleEvent)event).getClusterId();
-         ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
-         _executionStrategy.handleClusterScaleEvent(scaleStrategy, (ClusterScaleEvent)event);
+         String clusterFolderName = ((ClusterScaleEvent)event).getClusterFolderName();
+         String clusterId = getClusterIdForVCFolder(clusterFolderName);
+         if (clusterId != null) {
+            ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
+            _executionStrategy.handleClusterScaleEvent(scaleStrategy, (ClusterScaleEvent)event);
+         }
       } else 
       if (event instanceof ClusterStateChangeEvent) {
          System.out.println(Thread.currentThread().getName()+": VHM: ClusterStateChangeEvent received: "+event.getClass().getName());

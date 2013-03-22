@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
@@ -11,8 +12,8 @@ import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 
-public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
-   private static final Logger _log = Logger.getLogger("ClusterMap");
+public class ClusterMapImpl implements ClusterMap {
+   private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
 
    Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
@@ -52,6 +53,7 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
          this._masterUUID = masterUUID;
       }
       final String _masterUUID;
+      String _folderName;
       String _name;
       int _minInstances;
       String _scaleStrategyKey;
@@ -131,7 +133,7 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
          vmInfo._isMaster = true;
       }
       if (vmInfo._isMaster && (ci != null)) {
-         ci._name = vmInfo._name;
+         ci._name = vmInfo._name; 
       }
       dumpState();
    }
@@ -188,7 +190,7 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
       for (VMInfo vminfo : _vms.values()) {
          String masterUUID = vminfo._cluster._masterUUID;
          
-         if (masterUUID.equals(clusterId) && !(vminfo._isMaster) &&
+         if (masterUUID.equals(clusterId) && (vminfo._isElastic) &&
                (vminfo._powerState == powerState)) {
             result.add(vminfo._moRef);
          }
@@ -215,5 +217,26 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
       }
    }
 
+   String getClusterIdFromVMsInFolder(String folderName, List<String> vms) {
+      String clusterId = null;
+      for (String moRef : vms) {
+         try {
+            clusterId = _vms.get(moRef)._cluster._masterUUID;
+            _clusters.get(clusterId)._folderName = folderName;
+            break;
+         } catch (NullPointerException e) {}
+      }
+      return clusterId;
+   }
+
+   @Override
+   public String getClusterIdForFolder(String clusterFolderName) {
+      for (ClusterInfo ci : _clusters.values()) {
+         if (ci._folderName.equals(clusterFolderName)) {
+            return ci._masterUUID;
+         }
+      }
+      return null;
+   }
    
 }
