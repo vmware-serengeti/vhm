@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.vhm.vc;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
@@ -27,7 +28,7 @@ public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
    }
 
    @Override
-   public String waitForPropertyChange(String folderName, String version, ArrayList<VMEventData>  vmDataList) {
+   public String waitForPropertyChange(String folderName, String version, List<VMEventData>  vmDataList) {
       synchronized(_holder) {
          try {
             _holder.wait();
@@ -57,4 +58,11 @@ public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public List<String> listVMsInFolder(String folderName) {
+      // TODO Auto-generated method stub
+      return null;
+   }
+
 }

@@ -61,15 +61,15 @@ public class SimpleTests {
    
    @Test
    public void testSerengetiIncrease() {
-      _mqClient.doSerengetiLimitAction("MyCluster1", 2, 4);
-      _mqClient.doSerengetiLimitAction("MyCluster2", 2, 4);
+      _mqClient.doSerengetiLimitAction("MyCluster1", 4);
+      _mqClient.doSerengetiLimitAction("MyCluster2", 4);
       _vhm.waitForClusterScaleCompletion();
    }
 
    @Test
    public void testSerengetiDecrease() {
-      _mqClient.doSerengetiLimitAction("MyCluster1", 4, 2);
-      _mqClient.doSerengetiLimitAction("MyCluster2", 4, 2);
+      _mqClient.doSerengetiLimitAction("MyCluster1", 2);
+      _mqClient.doSerengetiLimitAction("MyCluster2", 2);
       _vhm.waitForClusterScaleCompletion();
    }
 }

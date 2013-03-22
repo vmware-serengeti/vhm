@@ -350,9 +350,9 @@ public class VcVlsi {
 
    }
 
-   private ArrayList<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName) 
+   private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName) 
          throws InvalidProperty {
-      ArrayList<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
+      List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
       
       ViewManager viewMgr = defaultClient.createStub(ViewManager.class, sic.getViewManager());
@@ -383,7 +383,7 @@ public class VcVlsi {
 
    private Folder getFolderForName(String restrictToName) throws InvalidProperty {
       Folder rootFolder = getRootFolder();
-      ArrayList<ManagedObjectReference> refs = findObjectsInFolder(rootFolder, typeFolder, restrictToName);
+      List<ManagedObjectReference> refs = findObjectsInFolder(rootFolder, typeFolder, restrictToName);
       if (refs.size() > 0) {
          return defaultClient.createStub(Folder.class, refs.get(0));
       }
@@ -391,16 +391,16 @@ public class VcVlsi {
    }
 
    private VirtualMachine getVMForName(Folder baseFolder, String restrictToName) throws InvalidProperty {
-      ArrayList<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, restrictToName);
+      List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, restrictToName);
       if (refs.size() > 0) {
          return defaultClient.createStub(VirtualMachine.class, refs.get(0));
       }
       return null;
    }
 
-   private ArrayList<VirtualMachine> listVMsinFolder(Folder baseFolder) throws InvalidProperty {
-      ArrayList<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, null);
-      ArrayList<VirtualMachine> vms = new ArrayList<VirtualMachine>();
+   private List<VirtualMachine> listVMsinFolder(Folder baseFolder) throws InvalidProperty {
+      List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, null);
+      List<VirtualMachine> vms = new ArrayList<VirtualMachine>();
       for (ManagedObjectReference ref : refs) {
          vms.add(defaultClient.createStub(VirtualMachine.class, ref));
       }
@@ -514,7 +514,7 @@ public class VcVlsi {
       return vmData;
    }
 
-   private String pcVMsInFolder(Client vcClient, Folder folder, String version, ArrayList<VMEventData> vmDataList)
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList)
          throws Exception {
       if (version == null) {
          version = "";
@@ -616,7 +616,7 @@ public class VcVlsi {
    }
 
    
-   public String waitForUpdates(Client vcClient, String baseFolderName, String version, ArrayList<VMEventData> vmDataList) {
+   public String waitForUpdates(Client vcClient, String baseFolderName, String version, List<VMEventData> vmDataList) {
       try {
          Folder f = getFolderForName(baseFolderName);
          return pcVMsInFolder(vcClient, f, version, vmDataList);
@@ -626,7 +626,25 @@ public class VcVlsi {
       }
       return version;
    }
-   
+
+   public List<String> getVMsInFolder(String baseFolderName) {
+      List<String> result = null;
+      try {
+         Folder baseFolder = getFolderForName(baseFolderName);
+         List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, null);
+         if ((refs != null) && (refs.size() > 0)) {
+            result = new ArrayList<String>();
+            for (ManagedObjectReference ref : refs) {
+               result.add(ref.getValue());
+            }
+         }
+      } catch (Exception e) {
+         _log.log(Level.INFO, "Unexpected exception in getVMsInFolder: " + e);
+         e.printStackTrace();
+      }
+      return result;
+   }
+
    /*
    
    VirtualMachine vm = getVMForName(f, "xxxxx");

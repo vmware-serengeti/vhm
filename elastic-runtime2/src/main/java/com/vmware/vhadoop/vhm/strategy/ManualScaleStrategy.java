@@ -32,18 +32,20 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       public Object call() throws Exception {
          if (_event instanceof SerengetiLimitEvent) {
             SerengetiLimitEvent limitEvent = (SerengetiLimitEvent)_event;
-            int delta = limitEvent.getToSize() - limitEvent.getFromSize();
             ClusterMap clusterMap = getReadOnlyClusterMap();
+            String clusterId = clusterMap.getClusterIdForFolder(limitEvent.getClusterFolderName());
+            int poweredOnVms = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true).size();
+            int delta = limitEvent.getToSize() - poweredOnVms;
             Set<String> vmsToED;
             if (delta > 0) {
-               vmsToED = _vmChooser.chooseVMsToEnable(limitEvent.getClusterId(), clusterMap, delta);
+               vmsToED = _vmChooser.chooseVMsToEnable(clusterId, clusterMap, delta);
                if (vmsToED != null) {
-                  _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), limitEvent.getClusterId(), clusterMap);
+                  _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), clusterId, clusterMap);
                }
             } else if (delta < 0) {
-               vmsToED = _vmChooser.chooseVMsToDisable(limitEvent.getClusterId(), clusterMap, delta);
+               vmsToED = _vmChooser.chooseVMsToDisable(clusterId, clusterMap, delta);
                if (vmsToED != null) {
-                  _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), limitEvent.getClusterId(), clusterMap);
+                  _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId, clusterMap);
                }
             }
          }

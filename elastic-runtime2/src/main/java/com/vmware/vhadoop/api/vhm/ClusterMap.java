@@ -6,4 +6,6 @@ public interface ClusterMap {
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);
 
+   String getClusterIdForFolder(String clusterFolderName);
+
 }
