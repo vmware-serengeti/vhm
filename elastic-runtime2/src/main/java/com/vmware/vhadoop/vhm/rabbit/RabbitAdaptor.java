@@ -24,6 +24,7 @@ import com.rabbitmq.client.ShutdownSignalException;
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitEvent;
 import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
@@ -62,9 +63,15 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("Rabbit queue waiting for message");
                   QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                   VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                  _eventConsumer.placeEventOnQueue(
-                        new SerengetiLimitEvent(message.getClusterId(), message.getInstanceNum()));
+                  ClusterScaleEvent event = new SerengetiLimitEvent(message.getClusterId(), message.getInstanceNum());
+                  _eventConsumer.placeEventOnQueue(event);
                   _log.info("New Serengeti limit event placed on queue");
+                  _eventConsumer.blockOnEventProcessingCompletion(event);
+                  /* TODO: Currently assumes success */
+                  _log.info("Serengti event completed. Sending completion event");
+                  VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
+                  sendMessage(msg.getRawPayload());
+                  _log.info("Message sent. Over and out.");
                } catch (InterruptedException e) {
                   /* TODO: Worth logging? */
                }
