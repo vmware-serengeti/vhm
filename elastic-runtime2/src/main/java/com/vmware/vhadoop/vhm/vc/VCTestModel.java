@@ -2,7 +2,10 @@ package com.vmware.vhadoop.vhm.vc;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.Future;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vim.vmomi.client.Client;
@@ -15,8 +18,7 @@ public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
       VMEventData _event;
    }
    
-   @Override
-   public void changeVMPowerState(String vmMoRef, boolean b) {
+   public void oldChangeVMPowerState(String vmMoRef, boolean b) {
       System.out.println(Thread.currentThread().getName()+": VCActions: changing power state of "+vmMoRef+" to "+b+"...");
       try {
          Thread.sleep(new Random().nextInt(1000)+1000);
@@ -61,6 +63,13 @@ public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {
 
    @Override
    public List<String> listVMsInFolder(String folderName) {
+      // TODO Auto-generated method stub
+      return null;
+   }
+
+   @Override
+   public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs,
+         boolean b) {
       // TODO Auto-generated method stub
       return null;
    }

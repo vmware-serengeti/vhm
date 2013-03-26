@@ -14,10 +14,15 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,6 +38,7 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
+import com.vmware.vim.binding.vim.fault.FileFault;
 import com.vmware.vim.binding.vim.fault.InvalidLocale;
 import com.vmware.vim.binding.vim.fault.InvalidLogin;
 import com.vmware.vim.binding.vim.fault.NoClientCertificate;
@@ -70,6 +76,7 @@ import com.vmware.vim.vmomi.client.exception.ConnectionException;
 import com.vmware.vim.vmomi.client.http.HttpClientConfiguration;
 import com.vmware.vim.vmomi.client.http.ThumbprintVerifier;
 import com.vmware.vim.vmomi.client.http.impl.HttpConfigurationImpl;
+import com.vmware.vim.vmomi.core.Future;
 import com.vmware.vim.vmomi.core.types.VmodlContext;
 
 public class VcVlsi {
@@ -563,7 +570,7 @@ public class VcVlsi {
       return version;
    }
 
-   private boolean waitForTask(Task task) {
+   boolean waitForTask(Task task) {
       PropertyFilter propFilter = new PropertyFilter(defaultClient, task);
       try {
          propFilter.setPropsToFilter(new String [] {TASK_INFO_STATE });
@@ -641,6 +648,40 @@ public class VcVlsi {
       } catch (Exception e) {
          _log.log(Level.INFO, "Unexpected exception in getVMsInFolder: " + e);
          e.printStackTrace();
+      }
+      return result;
+   }
+
+   public Map<String, Task> powerOnVMs(Set<String> vmMoRefs) {
+      Map<String, Task> result = new HashMap<String, Task>();
+      for (String moRef : vmMoRefs) {
+         ManagedObjectReference ref = new ManagedObjectReference();
+         ref.setValue(moRef);
+         VirtualMachine vm = defaultClient.createStub(VirtualMachine.class, ref);
+         try {
+            ManagedObjectReference taskRef = vm.powerOn(null);
+            Task task = defaultClient.createStub(Task.class, taskRef);
+            result.put(moRef, task);
+         } catch (Exception e) {
+            _log.info("Error powering on VM "+e.getMessage());
+         }
+      }
+      return result;
+   }
+
+   public Map<String, Task> powerOffVMs(Set<String> vmMoRefs) {
+      Map<String, Task> result = new HashMap<String, Task>();
+      for (String moRef : vmMoRefs) {
+         ManagedObjectReference ref = new ManagedObjectReference();
+         ref.setValue(moRef);
+         VirtualMachine vm = defaultClient.createStub(VirtualMachine.class, ref);
+         try {
+            ManagedObjectReference taskRef = vm.powerOff();
+            Task task = defaultClient.createStub(Task.class, taskRef);
+            result.put(moRef, task);
+         } catch (Exception e) {
+            _log.info("Error powering off VM "+e.getMessage());
+         }
       }
       return result;
    }

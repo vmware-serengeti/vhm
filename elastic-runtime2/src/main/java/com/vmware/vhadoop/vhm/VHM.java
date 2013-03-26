@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.*;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
@@ -8,6 +9,9 @@ import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitEvent;
+import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
+import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
@@ -19,7 +23,9 @@ public class VHM implements EventConsumer {
    private ClusterMapImpl _clusterMap;
    private ExecutionStrategy _executionStrategy;
    private VCActions _vcActions;
-   
+
+   private static final Logger _log = Logger.getLogger(VHM.class.getName());
+
    public VHM(VCActions vcActions) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
@@ -123,7 +129,7 @@ public class VHM implements EventConsumer {
    
    private void handleEvent(NotificationEvent event) {
       if (event instanceof ClusterScaleEvent) {
-         System.out.println(Thread.currentThread().getName()+": VHM: ClusterScaleEvent received: "+event.getClass().getName());
+         _log.info("ClusterScaleEvent received: "+event.getClass().getName());
          String clusterFolderName = ((ClusterScaleEvent)event).getClusterFolderName();
          String clusterId = getClusterIdForVCFolder(clusterFolderName);
          if (clusterId != null) {
@@ -132,7 +138,7 @@ public class VHM implements EventConsumer {
          }
       } else 
       if (event instanceof ClusterStateChangeEvent) {
-         System.out.println(Thread.currentThread().getName()+": VHM: ClusterStateChangeEvent received: "+event.getClass().getName());
+         _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
          _clusterMap.handleClusterEvent((ClusterStateChangeEvent)event);
       } else {
          System.out.println("No events polled");
@@ -149,19 +155,13 @@ public class VHM implements EventConsumer {
             }
          }}, "VHM_Main_Thread").start();
    }
-
-   public void waitForClusterScaleCompletion() {
-      while (getEventPending() != null) {
-         try {
-            Thread.sleep(100);
-         } catch (InterruptedException e) {
-            e.printStackTrace();
-         }
-      }
-      _executionStrategy.waitForClusterScaleCompletion();
-   }
    
    VCActions getVCActions() {
       return _vcActions;
+   }
+
+   @Override
+   public void blockOnEventProcessingCompletion(ClusterScaleEvent event) {
+      _executionStrategy.waitForClusterScaleCompletion(event);
    }
 }

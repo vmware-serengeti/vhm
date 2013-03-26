@@ -1,16 +1,26 @@
 package com.vmware.vhadoop.vhm.vc;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
+import com.vmware.vim.binding.vim.Task;
+import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.vmomi.client.Client;
 
-public class VcAdapter implements com.vmware.vhadoop.api.vhm.VCActions {
+public class VcAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger("VcAdapter");
 
    private Client _cloneClient;   // used for stats polling and the main waitForPropertyChange loop
@@ -61,10 +71,51 @@ public class VcAdapter implements com.vmware.vhadoop.api.vhm.VCActions {
    }
    
    @Override
-   public void changeVMPowerState(String vmMoRef, boolean b) {
+   public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean powerOn) {
       validateConnection();
-      System.out.println(Thread.currentThread().getName()+": VCActions: changing power state of "+vmMoRef+" to "+b+"...");
-      System.out.println(Thread.currentThread().getName()+": VCActions: ...done changing power state of "+vmMoRef);
+      Map<String, Task> taskList = null;
+      if (powerOn) { 
+         taskList = _vcVlsi.powerOnVMs(vmMoRefs);
+      } else {
+         taskList = _vcVlsi.powerOffVMs(vmMoRefs);
+      }
+      return convertTaskListToFutures(taskList);
+   }
+
+   private Map<String, Future<Boolean>> convertTaskListToFutures(
+         Map<String, Task> taskList) {
+      Map<String, Future<Boolean>> result = new HashMap<String, Future<Boolean>>();
+      for (String moRef : taskList.keySet()) {
+         final Task task = taskList.get(moRef);
+         result.put(moRef, new Future<Boolean>(){
+            @Override
+            public boolean cancel(boolean arg0) {
+               return false;
+            }
+
+            @Override
+            public Boolean get() throws InterruptedException, ExecutionException {
+               return _vcVlsi.waitForTask(task);
+            }
+
+            @Override
+            public Boolean get(long arg0, TimeUnit arg1)
+                  throws InterruptedException, ExecutionException,
+                  TimeoutException {
+               return null;
+            }
+
+            @Override
+            public boolean isCancelled() {
+               return false;
+            }
+
+            @Override
+            public boolean isDone() {
+               return false;
+            }});
+      }
+      return result;
    }
 
    @Override

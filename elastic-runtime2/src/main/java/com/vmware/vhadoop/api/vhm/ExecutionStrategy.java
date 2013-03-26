@@ -7,6 +7,6 @@ public interface ExecutionStrategy {
 
    void handleClusterScaleEvent(ScaleStrategy scaleStrategy, ClusterScaleEvent event);
 
-   void waitForClusterScaleCompletion();
+   void waitForClusterScaleCompletion(ClusterScaleEvent event);
 
 }
