@@ -32,7 +32,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       public Object call() throws Exception {
          if (_event instanceof SerengetiLimitEvent) {
             SerengetiLimitEvent limitEvent = (SerengetiLimitEvent)_event;
-            ClusterMap clusterMap = getReadOnlyClusterMap();
+            ClusterMap clusterMap = getAndReadLockClusterMap();
             String clusterId = clusterMap.getClusterIdForFolder(limitEvent.getClusterFolderName());
             int poweredOnVms = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true).size();
             int delta = limitEvent.getToSize() - poweredOnVms;

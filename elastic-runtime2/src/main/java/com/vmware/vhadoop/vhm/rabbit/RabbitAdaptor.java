@@ -85,8 +85,13 @@ public class RabbitAdaptor implements MQClient {
    }
 
    @Override
-   public ClusterMap getReadOnlyClusterMap() {
+   public ClusterMap getAndReadLockClusterMap() {
       /* MQClient is an event producer that doesn't need ClusterMap access */
       return null;
+   }
+
+   @Override
+   public void unlockClusterMap(ClusterMap clusterMap) {
+      /* MQClient is an event producer that doesn't need ClusterMap access */
    }
 }

@@ -12,6 +12,11 @@ import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 
+/* Note that this class allows multiple readers and a single writer
+ * All of the methods in ClusterMap can be accessed by multiple threads, but should only ever read and are idempotent
+ * The writer of ClusterMap will block until the readers have finished reading and will block new readers until it has finished updating
+ * VHM controls the multi-threaded access to ClusterMap through ClusterMapAccess. 
+ * There should be no need for synchronization in this class provided this model is adhered to */
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
 

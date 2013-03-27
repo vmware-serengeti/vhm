@@ -1,9 +1,11 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.*;
+import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
@@ -23,6 +25,8 @@ public class VHM implements EventConsumer {
    private ClusterMapImpl _clusterMap;
    private ExecutionStrategy _executionStrategy;
    private VCActions _vcActions;
+   private static AtomicInteger _clusterMapReaderCntr;
+   private Object _clusterMapWriteLock;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
@@ -34,27 +38,55 @@ public class VHM implements EventConsumer {
       _vcActions = vcActions;
       initScaleStrategies();
       _executionStrategy = new ThreadPoolExecutionStrategy();
+      _clusterMapReaderCntr = new AtomicInteger();
+      _clusterMapWriteLock = new Object();
    }
    
    private void initScaleStrategies() {
       ScaleStrategy manual = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(_vcActions));
       _clusterMap.registerScaleStrategy("manual", manual);      /* TODO: Key should match key in VC cluster info */
-      manual.registerClusterMapAccess(new ClusterMapAccess());
+      manual.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
    }
    
-   /* Represents multi-threaded read-only access to the ClusterMap */
-   public class ClusterMapAccess implements com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess {
+   /* Represents multi-threaded read-only access to the ClusterMap. There should be one of these objects per thread */
+   public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAccess {
+      private ClusterMap _locked;
+      private Thread _lockedBy;
+      
       @Override
-      public com.vmware.vhadoop.api.vhm.ClusterMap accessClusterMap() {
-         /* TODO: Not theadsafe! */
-         return _clusterMap;
+      public ClusterMap lockClusterMap() {
+         if (_locked == null) {
+            /* All readers will be blocked during a ClusterMap write and while ClusterMap waits for the reader count to go to zero */
+            synchronized(_clusterMapWriteLock) {
+               _locked = _clusterMap;
+               _lockedBy = Thread.currentThread();
+               _clusterMapReaderCntr.incrementAndGet();
+            }
+            return _locked;
+         } else {
+            throw new RuntimeException("Attempt to double-lock ClusterMap!");
+         }
+      }
+
+      @Override
+      public void unlockClusterMap(ClusterMap clusterMap) {
+         if (_locked != null) {
+            if (_lockedBy == Thread.currentThread()) {
+               _locked = null;
+               _clusterMapReaderCntr.decrementAndGet();
+            } else {
+               throw new RuntimeException("Wrong thread trying to unlock ClusterMap!");
+            }
+         } else {
+            throw new RuntimeException("Attempt to double-unlock ClusterMap!");
+         }
       }
    }
    
    public void registerEventProducer(EventProducer eventProducer) {
       _eventProducers.add(eventProducer);
       eventProducer.registerEventConsumer(this);
-      eventProducer.registerClusterMapAccess(new ClusterMapAccess());
+      eventProducer.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
       eventProducer.start();
    }
 
@@ -139,7 +171,15 @@ public class VHM implements EventConsumer {
       } else 
       if (event instanceof ClusterStateChangeEvent) {
          _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
-         _clusterMap.handleClusterEvent((ClusterStateChangeEvent)event);
+         synchronized (_clusterMapWriteLock) {
+            /* Wait for the readers to stop reading. New readers will block on the write lock */
+            while (_clusterMapReaderCntr.get() > 0) {
+               try {
+                  Thread.sleep(10);
+               } catch (InterruptedException e) {}
+            }
+            _clusterMap.handleClusterEvent((ClusterStateChangeEvent)event);
+         }
       } else {
          System.out.println("No events polled");
       }
