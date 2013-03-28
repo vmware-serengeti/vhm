@@ -1,6 +1,5 @@
-package com.vmware.vhadoop.api.vhm;
+package com.vmware.vhadoop.api.vhm.events;
 
-import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 
 public interface ClusterStateChangeEvent extends NotificationEvent {
 

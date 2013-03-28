@@ -8,7 +8,7 @@ import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
-import com.vmware.vhadoop.vhm.events.SerengetiLimitEvent;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 import java.util.*;
 
@@ -22,16 +22,20 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    }
 
    class CallableStrategy implements Callable {
-      final ClusterScaleEvent _event;
+      final Set<ClusterScaleEvent> _events;
       
-      public CallableStrategy(ClusterScaleEvent event) {
-         _event = event;
+      public CallableStrategy(Set<ClusterScaleEvent> events) {
+         _events = events;
       }
 
       @Override
       public Object call() throws Exception {
-         if (_event instanceof SerengetiLimitEvent) {
-            SerengetiLimitEvent limitEvent = (SerengetiLimitEvent)_event;
+         if (_events.size() != 1) {
+            throw new RuntimeException("Manual scale strategy should only have one SerengetiLimitInstruction");
+         }
+         ClusterScaleEvent event = _events.iterator().next();
+         if (event instanceof SerengetiLimitInstruction) {
+            SerengetiLimitInstruction limitEvent = (SerengetiLimitInstruction)event;
             ClusterMap clusterMap = getAndReadLockClusterMap();
             String clusterId = clusterMap.getClusterIdForFolder(limitEvent.getClusterFolderName());
             int poweredOnVms = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true).size();
@@ -48,6 +52,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId, clusterMap);
                }
             }
+         } else {
+            throw new RuntimeException("Manual scale strategy event should be of type SerengetiLimitInstruction");
          }
          return null;
       }
@@ -55,7 +61,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    }
 
    @Override
-   public Callable getCallable(ClusterScaleEvent event) {
-      return new CallableStrategy(event);
+   public Callable getCallable(Set<ClusterScaleEvent> events) {
+      return new CallableStrategy(events);
    }
 }

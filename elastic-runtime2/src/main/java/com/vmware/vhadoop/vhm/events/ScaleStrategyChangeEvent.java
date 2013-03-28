@@ -1,8 +1,8 @@
 package com.vmware.vhadoop.vhm.events;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 
-public class ScaleStrategyChangeEvent extends NotificationEvent implements ClusterStateChangeEvent{
+public class ScaleStrategyChangeEvent extends AbstractNotificationEvent implements ClusterStateChangeEvent{
    private String _newStrategyKey;
    private String _clusterId;
    

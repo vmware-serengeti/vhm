@@ -1,13 +1,17 @@
 package com.vmware.vhadoop.vhm.events;
 
-public class NotificationEvent implements com.vmware.vhadoop.api.vhm.events.NotificationEvent {
-   private boolean _canClearQueue;
-   private boolean _canBeClearedFromQueue;
+import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
+
+public abstract class AbstractNotificationEvent implements NotificationEvent {
+   private final boolean _canClearQueue;
+   private final boolean _canBeClearedFromQueue;
    private String _shortName;
+   private final long _timestampCreated;
    
-   public NotificationEvent(boolean canClearQueue, boolean canBeClearedFromQueue) {
+   public AbstractNotificationEvent(boolean canClearQueue, boolean canBeClearedFromQueue) {
       _canClearQueue = canClearQueue;
       _canBeClearedFromQueue = canBeClearedFromQueue;
+      _timestampCreated = System.currentTimeMillis();
    }
    
    @Override
@@ -36,5 +40,10 @@ public class NotificationEvent implements com.vmware.vhadoop.api.vhm.events.Noti
    @Override
    public boolean isSameEventTypeAs(com.vmware.vhadoop.api.vhm.events.NotificationEvent next) {
       return this.getClass().equals(next.getClass());
+   }
+   
+   @Override
+   public long getTimestamp() {
+      return _timestampCreated;
    }
 }

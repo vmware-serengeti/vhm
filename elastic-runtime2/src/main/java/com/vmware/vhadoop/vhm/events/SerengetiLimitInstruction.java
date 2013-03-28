@@ -1,18 +1,15 @@
 package com.vmware.vhadoop.vhm.events;
 
-import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
-
-public class SerengetiLimitEvent extends NotificationEvent implements ClusterScaleEvent {
+public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    String _clusterFolderName;
    int _toSize;
 
-   public SerengetiLimitEvent(String clusterFolderName, int toSize) {
+   public SerengetiLimitInstruction(String clusterFolderName, int toSize) {
       super(false, false);
       _clusterFolderName = clusterFolderName;
       _toSize = toSize;
    }
 
-   @Override
    public String getClusterFolderName() {
       return _clusterFolderName;
    }

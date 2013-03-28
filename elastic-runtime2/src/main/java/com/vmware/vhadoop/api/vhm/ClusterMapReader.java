@@ -3,9 +3,11 @@ package com.vmware.vhadoop.api.vhm;
 public interface ClusterMapReader {
 
    public interface ClusterMapAccess {
-      public ClusterMap lockClusterMap();
+      ClusterMap lockClusterMap();
 
-      public void unlockClusterMap(ClusterMap clusterMap);
+      void unlockClusterMap(ClusterMap clusterMap);
+      
+      ClusterMapAccess clone();
    }
    
    void registerClusterMapAccess(ClusterMapAccess access);
@@ -13,4 +15,6 @@ public interface ClusterMapReader {
    ClusterMap getAndReadLockClusterMap();
 
    void unlockClusterMap(ClusterMap clusterMap);
+
+   ClusterMapAccess cloneClusterMapAccess();
 }

@@ -5,7 +5,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
 public abstract class AbstractClusterMapReader implements ClusterMapReader {
 
-   public ClusterMapAccess _clusterMapAccess;
+   private ClusterMapAccess _clusterMapAccess;
    
    @Override
    public void registerClusterMapAccess(ClusterMapAccess access) {
@@ -23,4 +23,11 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       _clusterMapAccess.unlockClusterMap(clusterMap);
    }
 
+   @Override
+   public ClusterMapAccess cloneClusterMapAccess() {
+      if (_clusterMapAccess != null) {
+         return _clusterMapAccess.clone();
+      }
+      return null;
+   }
 }

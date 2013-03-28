@@ -5,8 +5,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
@@ -242,6 +242,14 @@ public class ClusterMapImpl implements ClusterMap {
          }
       }
       return null;
+   }
+
+   public String getHostIdForVm(String vmId) {
+      return _vms.get(vmId)._host._moRef;
+   }
+
+   public String getClusterIdForVm(String vmId) {
+      return _vms.get(vmId)._cluster._masterUUID;
    }
    
 }
