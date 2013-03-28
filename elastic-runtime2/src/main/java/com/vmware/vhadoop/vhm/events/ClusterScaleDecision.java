@@ -44,6 +44,7 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
 
    public void setOutcomeCompleteBlock(Runnable completionCode, boolean spawnChildThread) {
       _completionCode = completionCode;
+      _spawnChildThread = spawnChildThread;
    }
    
    /* Note this will be run in the VHM main thread as part of an update with the ClusterMap locked, 

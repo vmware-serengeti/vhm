@@ -52,6 +52,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
          @Override
          public void run() {
             List<Set<ClusterScaleEvent>> toRemove = new ArrayList<Set<ClusterScaleEvent>>();
+            List<ClusterScaleCompletionEvent> completedTasks = new ArrayList<ClusterScaleCompletionEvent>();
             synchronized(_runningTasks) {
                while (true) {
                   for (Set<ClusterScaleEvent> key : _runningTasks.keySet()) {
@@ -61,7 +62,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                            ClusterScaleCompletionEvent completionEvent = task.get();
                            if (completionEvent != null) {
                               _log.info("Found completed task for cluster "+completionEvent.getClusterId());
-                              _consumer.placeEventOnQueue(completionEvent);
+                              completedTasks.add(completionEvent);
                            }
                         } catch (InterruptedException e) {
                            _log.warning("Cluster thread interrupted");
@@ -73,10 +74,17 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                         toRemove.add(key);
                      }
                   }
-                  for (Set<ClusterScaleEvent> key : toRemove) {
-                     _runningTasks.remove(key);
+                  /* Add the completed tasks in one block, ensuring a single ClusterMap update */
+                  if (completedTasks.size() > 0) {
+                     _consumer.placeEventCollectionOnQueue(completedTasks);
+                     completedTasks.clear();
                   }
-                  toRemove.clear();
+                  if (toRemove.size() > 0) {
+                     for (Set<ClusterScaleEvent> key : toRemove) {
+                        _runningTasks.remove(key);
+                     }
+                     toRemove.clear();
+                  }
                   try {
                      _runningTasks.wait(1000);
                   } catch (InterruptedException e) {}
