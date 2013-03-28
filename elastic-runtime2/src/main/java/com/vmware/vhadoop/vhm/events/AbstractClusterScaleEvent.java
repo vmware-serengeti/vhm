@@ -9,9 +9,8 @@ public class AbstractClusterScaleEvent extends AbstractNotificationEvent
    private String _hostId;
    private String _clusterId;
    
-   public AbstractClusterScaleEvent(boolean canClearQueue,
-         boolean canBeClearedFromQueue) {
-      super(canClearQueue, canBeClearedFromQueue);
+   public AbstractClusterScaleEvent() {
+      super(false, false);
    }
    
    @Override

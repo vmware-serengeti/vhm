@@ -2,6 +2,8 @@ package com.vmware.vhadoop.api.vhm;
 
 import java.util.Set;
 
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+
 /* Represents read-only and idempotent methods for ClusterMap */
 public interface ClusterMap {
 
@@ -9,4 +11,5 @@ public interface ClusterMap {
 
    String getClusterIdForFolder(String clusterFolderName);
 
+   ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId);
 }

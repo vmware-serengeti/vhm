@@ -5,6 +5,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
@@ -56,12 +57,14 @@ public class ClusterMapImpl implements ClusterMap {
    public class ClusterInfo {
       public ClusterInfo(String masterUUID) {
          this._masterUUID = masterUUID;
+         _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
       final String _masterUUID;
       String _folderName;
       String _name;
       int _minInstances;
       String _scaleStrategyKey;
+      LinkedList<ClusterScaleCompletionEvent> _completionEvents;
    }
    
    private HostInfo getHost(String hostMoRef) {
@@ -180,6 +183,11 @@ public class ClusterMapImpl implements ClusterMap {
       }
    }
 
+   public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
+      ClusterInfo cluster = getCluster(event.getClusterId());
+      cluster._completionEvents.addFirst(event);
+   }
+   
    public ScaleStrategy getScaleStrategyForCluster(String clusterId) {
       ClusterInfo cluster = _clusters.get(clusterId);
       return _scaleStrategies.get(cluster._scaleStrategyKey);
@@ -227,7 +235,7 @@ public class ClusterMapImpl implements ClusterMap {
       for (String moRef : vms) {
          try {
             clusterId = _vms.get(moRef)._cluster._masterUUID;
-            _clusters.get(clusterId)._folderName = folderName;
+            getCluster(clusterId)._folderName = folderName;
             break;
          } catch (NullPointerException e) {}
       }
@@ -251,5 +259,14 @@ public class ClusterMapImpl implements ClusterMap {
    public String getClusterIdForVm(String vmId) {
       return _vms.get(vmId)._cluster._masterUUID;
    }
-   
+
+   @Override
+   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
+      ClusterInfo info =  getCluster(clusterId);
+      if (info._completionEvents.size() > 0) {
+         return info._completionEvents.getFirst();
+      }
+      return null;
+   }
+
 }

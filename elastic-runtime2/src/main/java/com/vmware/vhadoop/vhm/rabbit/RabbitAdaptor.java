@@ -18,7 +18,6 @@ package com.vmware.vhadoop.vhm.rabbit;
 import java.util.logging.Logger;
 
 import com.rabbitmq.client.QueueingConsumer;
-import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
@@ -35,6 +34,12 @@ public class RabbitAdaptor implements MQClient {
 
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
+   public class RabbitConnectionCallback {
+      public void sendMessage(byte[] data) {
+         _connection.sendMessage(data);
+      }
+   }
+   
    public RabbitAdaptor(RabbitCredentials rabbitCredentials) {
       _connection = new RabbitConnection(rabbitCredentials);
    }
@@ -59,7 +64,8 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("Rabbit queue waiting for message");
                   QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                   VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                  ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(), message.getInstanceNum());
+                  ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(), 
+                        message.getInstanceNum(), new RabbitConnectionCallback());
                   _eventConsumer.placeEventOnQueue(event);
                   _log.info("New Serengeti limit event placed on queue");
                } catch (InterruptedException e) {
@@ -67,27 +73,5 @@ public class RabbitAdaptor implements MQClient {
                }
             }
          }}, "MQClientImpl").start();
-   }
-
-   @Override
-   public void registerClusterMapAccess(ClusterMapAccess access) {
-      /* No-op */
-   }
-
-   @Override
-   public ClusterMap getAndReadLockClusterMap() {
-      /* MQClient is an event producer that doesn't need ClusterMap access */
-      return null;
-   }
-
-   @Override
-   public void unlockClusterMap(ClusterMap clusterMap) {
-      /* MQClient is an event producer that doesn't need ClusterMap access */
-   }
-
-   @Override
-   public ClusterMapAccess cloneClusterMapAccess() {
-      /* MQClient is an event producer that doesn't need ClusterMap access */
-      return null;
    }
 }

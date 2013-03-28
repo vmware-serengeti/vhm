@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.*;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
@@ -37,9 +38,10 @@ public class VHM implements EventConsumer {
       _clusterMap = new ClusterMapImpl();
       _vcActions = vcActions;
       initScaleStrategies();
-      _executionStrategy = new ThreadPoolExecutionStrategy();
       _clusterMapReaderCntr = new AtomicInteger();
       _clusterMapWriteLock = new Object();
+      _executionStrategy = new ThreadPoolExecutionStrategy();
+      registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy);
    }
    
    private void initScaleStrategies() {
@@ -92,7 +94,9 @@ public class VHM implements EventConsumer {
    public void registerEventProducer(EventProducer eventProducer) {
       _eventProducers.add(eventProducer);
       eventProducer.registerEventConsumer(this);
-      eventProducer.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
+      if (eventProducer instanceof ClusterMapReader) {
+         ((ClusterMapReader)eventProducer).registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
+      }
       eventProducer.start();
    }
    
@@ -152,6 +156,7 @@ public class VHM implements EventConsumer {
                e.printStackTrace();
             }
          }
+         results = new HashSet<NotificationEvent>();
          while (_eventQueue.peek() != null) {
             /* Use of a Set ensured duplicates are eliminated */
             results.add(_eventQueue.poll());
@@ -229,6 +234,15 @@ public class VHM implements EventConsumer {
       return results;
    }
 
+   private Set<ClusterScaleCompletionEvent> getClusterScaleCompletionEvents(Set<NotificationEvent> events) {
+      Set<ClusterScaleCompletionEvent> results = new HashSet<ClusterScaleCompletionEvent>();
+      for (NotificationEvent event : events) {
+         if (event instanceof ClusterScaleCompletionEvent) {
+            results.add((ClusterScaleCompletionEvent)event);
+         }
+      }
+      return results;
+   }
 
    private Set<ClusterScaleEvent> consolidateClusterEvents(Set<ClusterScaleEvent> scaleEventsForCluster) {
       /* TODO: Some consolidation logic */
@@ -237,9 +251,10 @@ public class VHM implements EventConsumer {
 
    private void handleEvents(Set<NotificationEvent> events) {
       Set<ClusterStateChangeEvent> clusterStateChangeEvents = getClusterStateChangeEvents(events);
+      Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
       /* Update ClusterMap first */
-      if (clusterStateChangeEvents.size() > 0) {
+      if ((clusterStateChangeEvents.size() + completionEvents.size()) > 0) {
          synchronized (_clusterMapWriteLock) {
             /* Wait for the readers to stop reading. New readers will block on the write lock */
             while (_clusterMapReaderCntr.get() > 0) {
@@ -251,9 +266,13 @@ public class VHM implements EventConsumer {
                _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
                _clusterMap.handleClusterEvent(event);
             }
+            for (ClusterScaleCompletionEvent event : completionEvents) {
+               _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
+               _clusterMap.handleCompletionEvent(event);
+            }
          }
       }
-
+      
       Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = getScaleEventsForCluster(events);
 
       if (clusterScaleEvents.size() > 0) {

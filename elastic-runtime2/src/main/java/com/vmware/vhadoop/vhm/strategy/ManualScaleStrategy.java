@@ -3,11 +3,14 @@ package com.vmware.vhadoop.vhm.strategy;
 import java.util.concurrent.Callable;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
+import com.vmware.vhadoop.vhm.events.ClusterScaleDecisionExpand;
+import com.vmware.vhadoop.vhm.events.ClusterScaleDecisionShrink;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 import java.util.*;
@@ -21,7 +24,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       _enableDisablePolicy = edPolicy;
    }
 
-   class CallableStrategy implements Callable {
+   class CallableStrategy implements Callable<ClusterScaleCompletionEvent> {
       final Set<ClusterScaleEvent> _events;
       
       public CallableStrategy(Set<ClusterScaleEvent> events) {
@@ -29,7 +32,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       }
 
       @Override
-      public Object call() throws Exception {
+      public ClusterScaleCompletionEvent call() throws Exception {
+         ClusterScaleCompletionEvent returnEvent = null;
          if (_events.size() != 1) {
             throw new RuntimeException("Manual scale strategy should only have one SerengetiLimitInstruction");
          }
@@ -43,25 +47,30 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             Set<String> vmsToED;
             if (delta > 0) {
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, clusterMap, delta);
+               int targetSize = limitEvent.getToSize();
                if (vmsToED != null) {
-                  _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), clusterId, clusterMap);
+                  _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId, clusterMap);
                }
+               returnEvent = new ClusterScaleDecisionExpand(clusterId, (targetSize - delta), targetSize);
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, clusterMap, delta);
+               int targetSize = limitEvent.getToSize();
                if (vmsToED != null) {
                   _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId, clusterMap);
                }
+               returnEvent = new ClusterScaleDecisionShrink(clusterId, (targetSize - delta), targetSize);
             }
+            limitEvent.reportCompletion();
          } else {
             throw new RuntimeException("Manual scale strategy event should be of type SerengetiLimitInstruction");
          }
-         return null;
+         return returnEvent;
       }
       
    }
 
    @Override
-   public Callable getCallable(Set<ClusterScaleEvent> events) {
+   public Callable<ClusterScaleCompletionEvent> getCallable(Set<ClusterScaleEvent> events) {
       return new CallableStrategy(events);
    }
 }
