@@ -68,7 +68,7 @@ public class VHM implements EventConsumer {
             synchronized(_clusterMapWriteLock) {
                _locked = _clusterMap;
                _lockedBy = Thread.currentThread();
-               _clusterMapReaderCntr.incrementAndGet();
+               _log.info("Incrementing readerCntr to "+_clusterMapReaderCntr.incrementAndGet());
             }
             return _locked;
          } else {
@@ -81,7 +81,8 @@ public class VHM implements EventConsumer {
          if (_locked != null) {
             if (_lockedBy == Thread.currentThread()) {
                _locked = null;
-               _clusterMapReaderCntr.decrementAndGet();
+               _log.info("Decrementing readerCntr to "+_clusterMapReaderCntr.decrementAndGet())
+               ;
             } else {
                throw new RuntimeException("Wrong thread trying to unlock ClusterMap!");
             }
