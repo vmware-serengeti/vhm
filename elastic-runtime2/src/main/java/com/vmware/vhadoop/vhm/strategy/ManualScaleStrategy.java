@@ -51,14 +51,14 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                if (vmsToED != null) {
                   _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId, clusterMap);
                }
-               returnEvent = new ClusterScaleDecisionExpand(clusterId, (targetSize - delta), targetSize);
+               returnEvent = new ClusterScaleDecisionExpand(clusterId, vmsToED);
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, clusterMap, delta);
                int targetSize = limitEvent.getToSize();
                if (vmsToED != null) {
                   _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId, clusterMap);
                }
-               returnEvent = new ClusterScaleDecisionShrink(clusterId, (targetSize - delta), targetSize);
+               returnEvent = new ClusterScaleDecisionShrink(clusterId, vmsToED);
             }
             limitEvent.reportCompletion();
          } else {

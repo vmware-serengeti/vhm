@@ -1,21 +1,15 @@
 package com.vmware.vhadoop.vhm.events;
 
+import java.util.Set;
+
 public class ClusterScaleDecisionExpand extends AbstractClusterScaleDecision {
 
-   int _fromNodes, _toNodes;
+   Set<String> _vmIds;
    
-   public ClusterScaleDecisionExpand(String clusterId, int fromNodes, int toNodes) {
+   public ClusterScaleDecisionExpand(String clusterId, Set<String> vmIds) {
       super(clusterId);
-      _fromNodes = fromNodes;
-      _toNodes = toNodes;
+      _vmIds = vmIds;
    }
    
-   public int getFromNodes() {
-      return _fromNodes;
-   }
-
-   public int getToNodes() {
-      return _toNodes;
-   }
-
+   /* TODO: Update vmIds when ClusterStateChangeEvents come in */
 }
