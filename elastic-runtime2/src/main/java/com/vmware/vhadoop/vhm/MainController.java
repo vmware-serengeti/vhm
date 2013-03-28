@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
@@ -13,7 +15,20 @@ import com.vmware.vhadoop.vhm.vc.VcCredentials;
 public class MainController {
    private static Properties properties = null;
    private static String vhmConfigFileName = "vhm.properties";
+   private static String vhmLogFileName = "vhm.xml";
    
+   public static void setupLogger(String fileName) {
+      Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
+     try {
+          FileHandler handler = new FileHandler(fileName);
+          Logger.getLogger("").addHandler(handler);
+     } catch (SecurityException e) {
+        e.printStackTrace();
+     } catch (IOException e) {
+        e.printStackTrace();
+     }
+  }
+  
    public static String getVHMFileName(String subdir, String fileName) {
       String homeDir = System.getProperties().getProperty("serengeti.home.dir");
       StringBuilder builder = new StringBuilder();
@@ -60,8 +75,8 @@ public class MainController {
    public static void readConfigFile() {
       String configFileName = getVHMFileName("conf", vhmConfigFileName);
       readPropertiesFile(configFileName);
-
-
+      String logFileName = getVHMFileName("logs", vhmLogFileName);
+      setupLogger(logFileName);
    }
    
    public static Properties getProperties() {

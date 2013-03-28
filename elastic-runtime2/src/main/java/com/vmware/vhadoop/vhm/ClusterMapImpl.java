@@ -1,19 +1,26 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.ComputeVMEventData;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.MasterVMEventData;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.ClusterMap;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMAddedToClusterEvent;
-import com.vmware.vhadoop.vhm.events.VMHostChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMPowerStateChangeEvent;
+import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 
-public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
+/* Note that this class allows multiple readers and a single writer
+ * All of the methods in ClusterMap can be accessed by multiple threads, but should only ever read and are idempotent
+ * The writer of ClusterMap will block until the readers have finished reading and will block new readers until it has finished updating
+ * VHM controls the multi-threaded access to ClusterMap through ClusterMapAccess. 
+ * There should be no need for synchronization in this class provided this model is adhered to */
+public class ClusterMapImpl implements ClusterMap {
+   private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
+
    Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
@@ -30,32 +37,39 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
    }
    
    public class VMInfo {
-      public VMInfo(String moRef, HostInfo host, ClusterInfo cluster, boolean powerState, boolean isMaster) {
+      public VMInfo(String moRef) {
          this._moRef = moRef;
-         this._host = host;
-         this._cluster = cluster;
-         this._powerState = powerState;
-         this._isMaster = isMaster;
       }
-      final boolean _isMaster;
       final String _moRef;
       HostInfo _host;
-      final ClusterInfo _cluster;
+      ClusterInfo _cluster;
+      boolean _isMaster;
+      boolean _isElastic;
       boolean _powerState;
+      public String _myUUID;
+      public String _name;
+      
+      // temporary/cache holding fields until cluster object is created
+      Integer _cachedMinInstances;
+      String _cachedScaleStrategyKey;
    }
 
    public class ClusterInfo {
       public ClusterInfo(String masterUUID) {
          this._masterUUID = masterUUID;
+         _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
       final String _masterUUID;
+      String _folderName;
+      String _name;
       int _minInstances;
       String _scaleStrategyKey;
+      LinkedList<ClusterScaleCompletionEvent> _completionEvents;
    }
    
    private HostInfo getHost(String hostMoRef) {
       HostInfo host = _hosts.get(hostMoRef);
-      if (host == null) {
+      if ((host == null) && (hostMoRef != null)) {
          host = new HostInfo(hostMoRef);
          _hosts.put(hostMoRef, host);
       }
@@ -64,50 +78,91 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
 
    private ClusterInfo getCluster(String masterUUID) {
       ClusterInfo cluster = _clusters.get(masterUUID);
-      if (cluster == null) {
+      if ((cluster == null) && (masterUUID != null)) {
          cluster = new ClusterInfo(masterUUID);
          _clusters.put(masterUUID, cluster);
       }
       return cluster;
    }
 
-   private void changePowerState(String vmMoRef, boolean powerState) {
-      VMInfo vm = _vms.get(vmMoRef);
-      vm._powerState = powerState;
-      System.out.println(Thread.currentThread().getName()+": ClusterMap setting power state to "+powerState+" for VM "+vmMoRef);
-   }
-   
-   private void changeHost(String vmMoRef, String hostMoRef) {
-      VMInfo vm = _vms.get(vmMoRef);
-      vm._host = getHost(hostMoRef);
-      System.out.println(Thread.currentThread().getName()+": ClusterMap setting host to "+hostMoRef+" for VM "+vmMoRef);
-   }
-   
-   private void addVMToCluster(VMEventData vmd) {
-      ClusterInfo ci = null;
-      boolean isMaster = false;
-      if (vmd instanceof ComputeVMEventData) {
-         ComputeVMEventData cved = (ComputeVMEventData)vmd;
-         ci = getCluster(cved._masterUUID);
-      } else if (vmd instanceof MasterVMEventData) {
-         MasterVMEventData mved = (MasterVMEventData)vmd;
-         ci = getCluster(mved._masterUUID);
-         ci._minInstances = mved._minInstances;
-         ci._scaleStrategyKey = mved._enableAutomation ? "automatic" : "manual";
-         isMaster = true;
+   private void updateVMState(VMEventData vmd) {
+      
+      VMInfo vmInfo = _vms.get(vmd._vmMoRef);
+      if (vmInfo == null) {
+         vmInfo = new VMInfo(vmd._vmMoRef);
+         _vms.put(vmd._vmMoRef, vmInfo);
+         _log.log(Level.INFO, "New VM " + vmInfo._moRef);
       }
-      HostInfo host = getHost(vmd._hostMoRef);
-      _vms.put(vmd._vmMoRef, new VMInfo(vmd._vmMoRef, host, ci, vmd._powerState, isMaster));
+
+      if (vmd._hostMoRef != null) {
+         vmInfo._host = getHost(vmd._hostMoRef);
+      }
+      if (vmd._masterUUID != null) {
+         vmInfo._cluster = getCluster(vmd._masterUUID);
+         if (vmInfo._cachedMinInstances != null) {
+            vmInfo._cluster._minInstances = vmInfo._cachedMinInstances;
+         }
+         if (vmInfo._cachedScaleStrategyKey != null) {
+            vmInfo._cluster._scaleStrategyKey = vmInfo._cachedScaleStrategyKey;
+         }
+      }
+      if (vmd._powerState != null) {
+         vmInfo._powerState = vmd._powerState;
+      }
+      if (vmd._myName != null) {
+         vmInfo._name = vmd._myName;
+      }
+      if (vmd._myUUID != null) {
+         vmInfo._myUUID = vmd._myUUID;
+      }
+      if (vmd._isElastic != null) {
+         vmInfo._isElastic = vmd._isElastic;
+      }
+      
+      ClusterInfo ci = vmInfo._cluster;
+      if (vmd._enableAutomation != null) {
+         vmInfo._isMaster = true;
+         String scaleStrategyKey = vmd._enableAutomation ? "automatic" : "manual";
+         if (ci != null) {
+            ci._scaleStrategyKey = scaleStrategyKey;
+         } else {
+            vmInfo._cachedScaleStrategyKey = scaleStrategyKey;
+         }
+      }
+      if (vmd._minInstances != null) {
+         vmInfo._isMaster = true;
+         if (ci != null) {
+            ci._minInstances = vmd._minInstances;
+         } else {
+            vmInfo._cachedMinInstances = vmd._minInstances;
+         }
+      }
+      if ((vmInfo._myUUID != null) && (ci != null) && (ci._masterUUID == vmInfo._myUUID)) {
+         vmInfo._isMaster = true;
+      }
+      if (vmInfo._isMaster && (ci != null)) {
+         ci._name = vmInfo._name; 
+      }
+      dumpState();
    }
    
-   private void removeVMFromCluster(String clusterId, String vmMoRef) {
-      ClusterInfo cluster = _clusters.get(clusterId);
-      VMInfo vm = _vms.get(vmMoRef);
-      if (vm._cluster == cluster) {
+   private void removeCluster(ClusterInfo cluster) {
+      if (cluster != null) {
+         _log.log(Level.INFO, "Remove cluster " + cluster._name + " uuid=" + cluster._masterUUID);
+         _clusters.remove(cluster._masterUUID);
+      }
+   }
+
+   private void removeVM(String vmMoRef) {
+      VMInfo vmInfo = _vms.get(vmMoRef);
+      if (vmInfo != null) {
+         if (vmInfo._isMaster) {
+            removeCluster(vmInfo._cluster);
+         }
+         _log.log(Level.INFO, "Remove VM " + vmInfo._moRef);
          _vms.remove(vmMoRef);
-      } else {
-         throw new RuntimeException("WRONG!");
       }
+      dumpState();
    }
    
    private void changeScaleStrategy(String clusterId, String newStrategyKey) {
@@ -116,24 +171,23 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
    }
 
    public void handleClusterEvent(ClusterStateChangeEvent event) {
-      if (event instanceof VMAddedToClusterEvent) {
-         VMAddedToClusterEvent ace = (VMAddedToClusterEvent)event;
-         addVMToCluster(ace.getVm());
-      } else if (event instanceof VMHostChangeEvent) {
-         VMHostChangeEvent hce = (VMHostChangeEvent)event;
-         changeHost(hce.getVmMoRef(), hce.getHostMoRef());
-      } else if (event instanceof VMPowerStateChangeEvent) {
-         VMPowerStateChangeEvent pce = (VMPowerStateChangeEvent)event;
-         changePowerState(pce.getVmMoRef(), pce.getNewPowerState());
+      if (event instanceof VMUpdatedEvent) {
+         VMUpdatedEvent ace = (VMUpdatedEvent)event;
+         updateVMState(ace.getVm());
       } else if (event instanceof VMRemovedFromClusterEvent) {
          VMRemovedFromClusterEvent rce = (VMRemovedFromClusterEvent)event;
-         removeVMFromCluster(rce.getClusterId(), rce.getVmMoRef());
+         removeVM(rce.getVmMoRef());
       } else if (event instanceof ScaleStrategyChangeEvent) {
          ScaleStrategyChangeEvent sce = (ScaleStrategyChangeEvent)event;
          changeScaleStrategy(sce.getClusterId(), sce.getNewStrategyKey());
       }
    }
 
+   public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
+      ClusterInfo cluster = getCluster(event.getClusterId());
+      cluster._completionEvents.addFirst(event);
+   }
+   
    public ScaleStrategy getScaleStrategyForCluster(String clusterId) {
       ClusterInfo cluster = _clusters.get(clusterId);
       return _scaleStrategies.get(cluster._scaleStrategyKey);
@@ -149,11 +203,70 @@ public class ClusterMapImpl implements com.vmware.vhadoop.api.vhm.ClusterMap {
       for (VMInfo vminfo : _vms.values()) {
          String masterUUID = vminfo._cluster._masterUUID;
          
-         if (masterUUID.equals(clusterId) && !(vminfo._isMaster) &&
+         if (masterUUID.equals(clusterId) && (vminfo._isElastic) &&
                (vminfo._powerState == powerState)) {
             result.add(vminfo._moRef);
          }
       }
       return result;
    }
+   
+   private void dumpState() {
+      for (ClusterInfo ci : _clusters.values()) {
+         _log.log(Level.INFO, "Cluster " + ci._name + " strategy=" + ci._scaleStrategyKey +
+               " min=" + ci._minInstances + " uuid= " + ci._masterUUID);
+      }
+      
+      for (VMInfo vmInfo : _vms.values()) {
+         String powerState = vmInfo._powerState ? " ON" : " OFF";
+         String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
+         String cluster = (vmInfo._cluster == null) ? "N/A" : vmInfo._cluster._name;
+         String role = vmInfo._isElastic ? "compute" : "other";
+         if (vmInfo._isMaster) {
+            role = "master";
+         }
+         _log.log(Level.INFO, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + 
+               " host=" + host + " cluster=" + cluster);
+      }
+   }
+
+   String getClusterIdFromVMsInFolder(String folderName, List<String> vms) {
+      String clusterId = null;
+      for (String moRef : vms) {
+         try {
+            clusterId = _vms.get(moRef)._cluster._masterUUID;
+            getCluster(clusterId)._folderName = folderName;
+            break;
+         } catch (NullPointerException e) {}
+      }
+      return clusterId;
+   }
+
+   @Override
+   public String getClusterIdForFolder(String clusterFolderName) {
+      for (ClusterInfo ci : _clusters.values()) {
+         if (ci._folderName.equals(clusterFolderName)) {
+            return ci._masterUUID;
+         }
+      }
+      return null;
+   }
+
+   public String getHostIdForVm(String vmId) {
+      return _vms.get(vmId)._host._moRef;
+   }
+
+   public String getClusterIdForVm(String vmId) {
+      return _vms.get(vmId)._cluster._masterUUID;
+   }
+
+   @Override
+   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
+      ClusterInfo info =  getCluster(clusterId);
+      if (info._completionEvents.size() > 0) {
+         return info._completionEvents.getFirst();
+      }
+      return null;
+   }
+
 }

@@ -1,22 +1,17 @@
 package com.vmware.vhadoop.vhm.events;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 
-public class VMRemovedFromClusterEvent extends NotificationEvent implements ClusterStateChangeEvent {
+public class VMRemovedFromClusterEvent extends AbstractNotificationEvent implements ClusterStateChangeEvent {
    String _vmMoRef;
-   String _clusterId;
    
-   public VMRemovedFromClusterEvent(String vmMoRef, String clusterId) {
+   public VMRemovedFromClusterEvent(String vmMoRef) {
       super(false, false);
       _vmMoRef = vmMoRef;
-      _clusterId = clusterId;
    }
 
    public String getVmMoRef() {
       return _vmMoRef;
    }
 
-   public String getClusterId() {
-      return _clusterId;
-   }
 }
