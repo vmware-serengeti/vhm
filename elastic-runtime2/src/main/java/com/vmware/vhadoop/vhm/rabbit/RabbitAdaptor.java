@@ -15,18 +15,13 @@
 
 package com.vmware.vhadoop.vhm.rabbit;
 
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.rabbitmq.client.ConsumerCancelledException;
 import com.rabbitmq.client.QueueingConsumer;
-import com.rabbitmq.client.ShutdownSignalException;
-import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.MQClient;
-import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
-import com.vmware.vhadoop.vhm.events.SerengetiLimitEvent;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
 
 /**
@@ -39,6 +34,12 @@ public class RabbitAdaptor implements MQClient {
 
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
+   public class RabbitConnectionCallback {
+      public void sendMessage(byte[] data) {
+         _connection.sendMessage(data);
+      }
+   }
+   
    public RabbitAdaptor(RabbitCredentials rabbitCredentials) {
       _connection = new RabbitConnection(rabbitCredentials);
    }
@@ -63,30 +64,14 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("Rabbit queue waiting for message");
                   QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                   VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                  ClusterScaleEvent event = new SerengetiLimitEvent(message.getClusterId(), message.getInstanceNum());
+                  ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(), 
+                        message.getInstanceNum(), new RabbitConnectionCallback());
                   _eventConsumer.placeEventOnQueue(event);
                   _log.info("New Serengeti limit event placed on queue");
-                  _eventConsumer.blockOnEventProcessingCompletion(event);
-                  /* TODO: Currently assumes success */
-                  _log.info("Serengti event completed. Sending completion event");
-                  VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
-                  sendMessage(msg.getRawPayload());
-                  _log.info("Message sent. Over and out.");
                } catch (InterruptedException e) {
                   /* TODO: Worth logging? */
                }
             }
          }}, "MQClientImpl").start();
-   }
-
-   @Override
-   public void registerClusterMapAccess(ClusterMapAccess access) {
-      /* No-op */
-   }
-
-   @Override
-   public ClusterMap getReadOnlyClusterMap() {
-      /* MQClient is an event producer that doesn't need ClusterMap access */
-      return null;
    }
 }

@@ -6,4 +6,6 @@ public interface NotificationEvent {
    public boolean getCanBeClearedFromQueue();
    
    public boolean isSameEventTypeAs(NotificationEvent next);
+   
+   public long getTimestamp();
 }

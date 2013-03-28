@@ -9,14 +9,17 @@ import java.util.logging.Logger;
 import java.util.*;
 
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
+import com.vmware.vhadoop.api.vhm.events.EventConsumer;
+import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 
-public class ThreadPoolExecutionStrategy implements ExecutionStrategy {
+public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
    ExecutorService _threadPool;
-   Object _runningTaskLock;
-   Map<ClusterScaleEvent, Future<Object>> _runningTasks;
+   Map<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>> _runningTasks;
    static int _threadCounter = 0;
+   EventConsumer _consumer;
 
    private static final Logger _log = Logger.getLogger(ThreadPoolExecutionStrategy.class.getName());
 
@@ -27,42 +30,60 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy {
             return new Thread(r, "Cluster_Thread_"+(_threadCounter++));
          }
       });
-      _runningTaskLock = new Object();
-      _runningTasks = new HashMap<ClusterScaleEvent, Future<Object>>();
+      _runningTasks = new HashMap<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>>();
    }
    
    @Override
-   public void handleClusterScaleEvent(ScaleStrategy scaleStrategy, ClusterScaleEvent event) {
-      _log.info("Handle cluster scale event for "+event.hashCode());
-      Future<Object> task = _threadPool.submit(scaleStrategy.getCallable(event));
-      synchronized(_runningTaskLock) {
-         _log.info("Associating task "+task.hashCode()+" with event "+event.hashCode());
-         _runningTasks.put(event, task);
+   public void handleClusterScaleEvents(ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
+      Future<ClusterScaleCompletionEvent> task = _threadPool.submit(scaleStrategy.getCallable(events));
+      synchronized(_runningTasks) {
+         _runningTasks.put(events, task);
       }
    }
 
    @Override
-   public void waitForClusterScaleCompletion(ClusterScaleEvent event) {
-      Future<Object> task;
-      try {
-         synchronized(_runningTaskLock) {
-            _log.info("wait for completion of "+event.hashCode());
-            do {
-               task = _runningTasks.get(event);
-               _runningTaskLock.wait(100);
-               /* TODO: Potenital infinite loop */
-            } while (task == null);
-            _log.info("done waiting for completion of "+event.hashCode());
+   public void registerEventConsumer(EventConsumer consumer) {
+      _consumer = consumer;
+   }
+
+   @Override
+   public void start() {
+      new Thread(new Runnable() {
+         @Override
+         public void run() {
+            List<Set<ClusterScaleEvent>> toRemove = new ArrayList<Set<ClusterScaleEvent>>();
+            synchronized(_runningTasks) {
+               while (true) {
+                  for (Set<ClusterScaleEvent> key : _runningTasks.keySet()) {
+                     Future<ClusterScaleCompletionEvent> task = _runningTasks.get(key);
+                     if (task.isDone()) {
+                        try {
+                           ClusterScaleCompletionEvent completionEvent = task.get();
+                           if (completionEvent != null) {
+                              _log.info("Found completed task for cluster "+completionEvent.getClusterId());
+                              _consumer.placeEventOnQueue(completionEvent);
+                           }
+                        } catch (InterruptedException e) {
+                           _log.warning("Cluster thread interrupted");
+                           e.printStackTrace();
+                        } catch (ExecutionException e) {
+                           _log.warning("ExecutionException in cluster thread");
+                           e.printStackTrace();
+                        }
+                        toRemove.add(key);
+                     }
+                  }
+                  for (Set<ClusterScaleEvent> key : toRemove) {
+                     _runningTasks.remove(key);
+                  }
+                  toRemove.clear();
+                  try {
+                     _runningTasks.wait(1000);
+                  } catch (InterruptedException e) {}
+               }
+            }
          }
-         Object result = task.get();
-         synchronized(_runningTaskLock) {
-            _runningTasks.remove(event);
-         }
-      } catch (InterruptedException e) {
-         e.printStackTrace();
-      } catch (ExecutionException e) {
-         e.printStackTrace();
-      }
+      }, "ScaleStrategyCompletionListener").start();
    }
 
 }

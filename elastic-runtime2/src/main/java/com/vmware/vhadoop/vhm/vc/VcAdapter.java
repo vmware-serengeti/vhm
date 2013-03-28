@@ -1,6 +1,5 @@
 package com.vmware.vhadoop.vhm.vc;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,12 +11,11 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 import com.vmware.vim.binding.vim.Task;
-import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VcAdapter implements VCActions {

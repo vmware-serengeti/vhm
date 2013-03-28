@@ -15,7 +15,6 @@
 
 package com.vmware.vhadoop.vhm.rabbit;
 
-import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

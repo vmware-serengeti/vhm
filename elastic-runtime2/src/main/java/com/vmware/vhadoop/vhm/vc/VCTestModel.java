@@ -1,13 +1,12 @@
 package com.vmware.vhadoop.vhm.vc;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Future;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VCTestModel implements com.vmware.vhadoop.api.vhm.VCActions {

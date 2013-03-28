@@ -5,13 +5,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 
+/* Note that this class allows multiple readers and a single writer
+ * All of the methods in ClusterMap can be accessed by multiple threads, but should only ever read and are idempotent
+ * The writer of ClusterMap will block until the readers have finished reading and will block new readers until it has finished updating
+ * VHM controls the multi-threaded access to ClusterMap through ClusterMapAccess. 
+ * There should be no need for synchronization in this class provided this model is adhered to */
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
 
@@ -51,12 +57,14 @@ public class ClusterMapImpl implements ClusterMap {
    public class ClusterInfo {
       public ClusterInfo(String masterUUID) {
          this._masterUUID = masterUUID;
+         _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
       final String _masterUUID;
       String _folderName;
       String _name;
       int _minInstances;
       String _scaleStrategyKey;
+      LinkedList<ClusterScaleCompletionEvent> _completionEvents;
    }
    
    private HostInfo getHost(String hostMoRef) {
@@ -175,6 +183,11 @@ public class ClusterMapImpl implements ClusterMap {
       }
    }
 
+   public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
+      ClusterInfo cluster = getCluster(event.getClusterId());
+      cluster._completionEvents.addFirst(event);
+   }
+   
    public ScaleStrategy getScaleStrategyForCluster(String clusterId) {
       ClusterInfo cluster = _clusters.get(clusterId);
       return _scaleStrategies.get(cluster._scaleStrategyKey);
@@ -222,7 +235,7 @@ public class ClusterMapImpl implements ClusterMap {
       for (String moRef : vms) {
          try {
             clusterId = _vms.get(moRef)._cluster._masterUUID;
-            _clusters.get(clusterId)._folderName = folderName;
+            getCluster(clusterId)._folderName = folderName;
             break;
          } catch (NullPointerException e) {}
       }
@@ -238,5 +251,22 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return null;
    }
-   
+
+   public String getHostIdForVm(String vmId) {
+      return _vms.get(vmId)._host._moRef;
+   }
+
+   public String getClusterIdForVm(String vmId) {
+      return _vms.get(vmId)._cluster._masterUUID;
+   }
+
+   @Override
+   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
+      ClusterInfo info =  getCluster(clusterId);
+      if (info._completionEvents.size() > 0) {
+         return info._completionEvents.getFirst();
+      }
+      return null;
+   }
+
 }

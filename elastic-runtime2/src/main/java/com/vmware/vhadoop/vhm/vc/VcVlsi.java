@@ -12,23 +12,20 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.ssl.SSLException;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.Folder;
 import com.vmware.vim.binding.vim.ServiceInstance;
@@ -38,7 +35,6 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
-import com.vmware.vim.binding.vim.fault.FileFault;
 import com.vmware.vim.binding.vim.fault.InvalidLocale;
 import com.vmware.vim.binding.vim.fault.InvalidLogin;
 import com.vmware.vim.binding.vim.fault.NoClientCertificate;
@@ -53,7 +49,6 @@ import com.vmware.vim.binding.vim.view.ViewManager;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
-import com.vmware.vim.binding.vmodl.query.InvalidCollectorVersion;
 import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.Change;
@@ -76,7 +71,6 @@ import com.vmware.vim.vmomi.client.exception.ConnectionException;
 import com.vmware.vim.vmomi.client.http.HttpClientConfiguration;
 import com.vmware.vim.vmomi.client.http.ThumbprintVerifier;
 import com.vmware.vim.vmomi.client.http.impl.HttpConfigurationImpl;
-import com.vmware.vim.vmomi.core.Future;
 import com.vmware.vim.vmomi.core.types.VmodlContext;
 
 public class VcVlsi {

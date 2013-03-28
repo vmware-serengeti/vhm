@@ -1,14 +1,12 @@
 package com.vmware.vhadoop.vhm;
 
-import static org.junit.Assert.*;
-
 import java.util.ArrayList;
 import java.util.Properties;
 
 import org.junit.Test;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 
 
 public class VlsiTest {
