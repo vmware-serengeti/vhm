@@ -4,14 +4,18 @@ import java.util.*;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
+import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
+import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
-public class DumbVMChooser implements VMChooser {
+public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser {
    private static final Logger _log = Logger.getLogger(DumbVMChooser.class.getName());
 
-   public Set<String> chooseVMs(String clusterId, ClusterMap clusterMap, int delta, boolean powerState) {
+   public Set<String> chooseVMs(String clusterId, int delta, boolean powerState) {
       _log.info("DumbVMChooser choosing VMs for cluster "+clusterId+" where delta="+delta+", powerState="+powerState);
+      ClusterMap clusterMap = getAndReadLockClusterMap();
       Set<String> vms = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, powerState);
+      unlockClusterMap(clusterMap);
       if (vms.size() <= delta) {
          return vms;
       }
@@ -26,13 +30,13 @@ public class DumbVMChooser implements VMChooser {
    }
    
    @Override
-   public Set<String> chooseVMsToEnable(String clusterId, ClusterMap clusterMap, int delta) {
-      return chooseVMs(clusterId, clusterMap, delta, false);
+   public Set<String> chooseVMsToEnable(String clusterId, int delta) {
+      return chooseVMs(clusterId, delta, false);
    }
 
    @Override
-   public Set<String> chooseVMsToDisable(String clusterId, ClusterMap clusterMap, int delta) {
-      return chooseVMs(clusterId, clusterMap, 0-delta, true);
+   public Set<String> chooseVMsToDisable(String clusterId, int delta) {
+      return chooseVMs(clusterId, 0-delta, true);
    }
 
 }
