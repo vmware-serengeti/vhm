@@ -6,11 +6,9 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent.Decision;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
-import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
@@ -84,39 +82,39 @@ public class ClusterMapImpl implements ClusterMap {
       return cluster;
    }
 
-   private void updatePowerState(VMInfo vmInfo, VMEventData vmd) {
-      boolean oldPowerState = vmInfo._powerState;
-      boolean newPowerState = vmd._powerState;
-      String vmId = vmInfo._moRef;
-      if (oldPowerState == newPowerState) {
-         _log.warning("Power state change of "+newPowerState+" for vm "+vmId+" is a no-op");
-         return;
-      }
-      String clusterId = getClusterIdForVm(vmId);
-      ClusterInfo ci = getCluster(clusterId);
-      if (ci._completionEvents != null) {
-         /* Walk through completion events, finding the first decision for the vmId without an outcome */
-         /* If the unset outcome matches the decision, set the outcome */
-         for (ClusterScaleCompletionEvent csce : ci._completionEvents) {
-            if (csce instanceof ClusterScaleDecision) {
-               Decision decision = csce.getDecisionForVM(vmId);
-               if (decision != null) {
-                  if (((decision.equals(ClusterScaleCompletionEvent.ENABLE)) && newPowerState) ||
-                      ((decision.equals(ClusterScaleCompletionEvent.DISABLE)) && !newPowerState)) {
-                        _log.info("Setting "+decision+" outcome complete for VM "+vmId);
-                         ((ClusterScaleDecision)csce).setOutcomeComplete(vmId);
-                         if (csce.getOutcomeCompleteForAllVMs()) {
-                            _log.info("Outcome complete for scale strategy on cluster "+clusterId);
-                            ((ClusterScaleDecision) csce).runOutcomeCompleteBlock();
-                         }
-                         break;
-                  }
-               }
-            }
-         }
-      }
-      vmInfo._powerState = newPowerState;
-   }
+//   private void updatePowerState(VMInfo vmInfo, VMEventData vmd) {
+//      boolean oldPowerState = vmInfo._powerState;
+//      boolean newPowerState = vmd._powerState;
+//      String vmId = vmInfo._moRef;
+//      if (oldPowerState == newPowerState) {
+//         _log.warning("Power state change of "+newPowerState+" for vm "+vmId+" is a no-op");
+//         return;
+//      }
+//      String clusterId = getClusterIdForVm(vmId);
+//      ClusterInfo ci = getCluster(clusterId);
+//      if (ci._completionEvents != null) {
+//         /* Walk through completion events, finding the first decision for the vmId without an outcome */
+//         /* If the unset outcome matches the decision, set the outcome */
+//         for (ClusterScaleCompletionEvent csce : ci._completionEvents) {
+//            if (csce instanceof ClusterScaleDecision) {
+//               Decision decision = csce.getDecisionForVM(vmId);
+//               if (decision != null) {
+//                  if (((decision.equals(ClusterScaleCompletionEvent.ENABLE)) && newPowerState) ||
+//                      ((decision.equals(ClusterScaleCompletionEvent.DISABLE)) && !newPowerState)) {
+//                        _log.info("Setting "+decision+" outcome complete for VM "+vmId);
+//                         ((ClusterScaleDecision)csce).setOutcomeComplete(vmId);
+//                         if (csce.getOutcomeCompleteForAllVMs()) {
+//                            _log.info("Outcome complete for scale strategy on cluster "+clusterId);
+//                            ((ClusterScaleDecision) csce).runOutcomeCompleteBlock();
+//                         }
+//                         break;
+//                  }
+//               }
+//            }
+//         }
+//      }
+//      vmInfo._powerState = newPowerState;
+//   }
 
    private void updateVMState(VMEventData vmd) {
       VMInfo vmInfo = _vms.get(vmd._vmMoRef);
@@ -139,7 +137,7 @@ public class ClusterMapImpl implements ClusterMap {
          }
       }
       if (vmd._powerState != null) {
-         updatePowerState(vmInfo, vmd);
+         vmInfo._powerState = vmd._powerState;
       }
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;

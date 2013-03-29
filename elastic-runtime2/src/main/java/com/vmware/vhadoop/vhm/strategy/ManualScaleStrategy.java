@@ -3,7 +3,6 @@ package com.vmware.vhadoop.vhm.strategy;
 import java.util.concurrent.Callable;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
@@ -71,12 +70,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   }
                }
             }
-            returnEvent.setOutcomeCompleteBlock(new Runnable() {
-               @Override
-               public void run() {
-                  limitEvent.reportCompletion();
-               }
-            }, true);
+            limitEvent.reportCompletion();
          } else {
             throw new RuntimeException("Manual scale strategy event should be of type SerengetiLimitInstruction");
          }

@@ -8,6 +8,7 @@ public interface ClusterScaleCompletionEvent extends NotificationEvent {
       public Decision(String name) {
          _value = name;
       }
+      @Override
       public String toString() {
          return _value;
       }
@@ -20,7 +21,7 @@ public interface ClusterScaleCompletionEvent extends NotificationEvent {
    
    Decision getDecisionForVM(String vmId);
    
-   boolean getOutcomeCompleteForVM(String vmId);
-   
-   boolean getOutcomeCompleteForAllVMs();
+//   boolean getOutcomeCompleteForVM(String vmId);
+//   
+//   boolean getOutcomeCompleteForAllVMs();
 }

@@ -2,7 +2,6 @@ package com.vmware.vhadoop.api.vhm.strategy;
 
 import java.util.*;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
 public interface VMChooser extends ClusterMapReader {
