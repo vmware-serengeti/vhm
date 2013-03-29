@@ -100,14 +100,17 @@ public class ClusterMapImpl implements ClusterMap {
          for (ClusterScaleCompletionEvent csce : ci._completionEvents) {
             if (csce instanceof ClusterScaleDecision) {
                Decision decision = csce.getDecisionForVM(vmId);
-               if (((decision.equals(ClusterScaleCompletionEvent.ENABLE)) && newPowerState) ||
-                   ((decision.equals(ClusterScaleCompletionEvent.DISABLE)) && !newPowerState)) {
-                     _log.info("Setting "+decision+" outcome complete for VM "+vmId);
-                      ((ClusterScaleDecision)csce).setOutcomeComplete(vmId);
-                      if (csce.getOutcomeCompleteForAllVMs()) {
-                         _log.info("Outcome complete for scale strategy on cluster "+clusterId);
-                         ((ClusterScaleDecision) csce).runOutcomeCompleteBlock();
-                      }
+               if (decision != null) {
+                  if (((decision.equals(ClusterScaleCompletionEvent.ENABLE)) && newPowerState) ||
+                      ((decision.equals(ClusterScaleCompletionEvent.DISABLE)) && !newPowerState)) {
+                        _log.info("Setting "+decision+" outcome complete for VM "+vmId);
+                         ((ClusterScaleDecision)csce).setOutcomeComplete(vmId);
+                         if (csce.getOutcomeCompleteForAllVMs()) {
+                            _log.info("Outcome complete for scale strategy on cluster "+clusterId);
+                            ((ClusterScaleDecision) csce).runOutcomeCompleteBlock();
+                         }
+                         break;
+                  }
                }
             }
          }
