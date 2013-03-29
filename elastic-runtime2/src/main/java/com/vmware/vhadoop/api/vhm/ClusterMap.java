@@ -12,4 +12,6 @@ public interface ClusterMap {
    String getClusterIdForFolder(String clusterFolderName);
 
    ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId);
+
+   boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 }

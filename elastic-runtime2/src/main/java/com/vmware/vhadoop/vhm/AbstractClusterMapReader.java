@@ -1,5 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Set;
+
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
@@ -29,5 +31,22 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
          return _clusterMapAccess.clone();
       }
       return null;
+   }
+   
+   @Override
+   public void blockOnPowerStateChange(Set<String> vmIds, boolean expectedPowerState, long timeout) {
+      long timeoutTime = System.currentTimeMillis() + timeout;
+      long pollSleepTime = 500;
+      do {
+         try {
+            ClusterMap clusterMap = _clusterMapAccess.lockClusterMap();
+            boolean completed = clusterMap.checkPowerStateOfVms(vmIds, expectedPowerState);
+            _clusterMapAccess.unlockClusterMap(clusterMap);
+            if (completed) {
+               break;
+            }
+            Thread.sleep(Math.min(pollSleepTime, timeout));
+         } catch (InterruptedException e) { }
+      } while (System.currentTimeMillis() <= timeoutTime);
    }
 }

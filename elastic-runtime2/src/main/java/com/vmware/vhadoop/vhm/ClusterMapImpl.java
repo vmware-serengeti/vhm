@@ -299,4 +299,19 @@ public class ClusterMapImpl implements ClusterMap {
       return null;
    }
 
+   @Override
+   public boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState) {
+      for (String vmId : vmIds) {
+         VMInfo vm = _vms.get(vmId);
+         if (vmId != null) {
+            if (vm._powerState != expectedPowerState) {
+               return false;
+            }
+         } else {
+            _log.warning("VM "+vmId+" does not exist in ClusterMap!");
+         }
+      }
+      return true;
+   }
+
 }

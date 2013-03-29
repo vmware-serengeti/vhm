@@ -68,7 +68,6 @@ public class VHM implements EventConsumer {
             synchronized(_clusterMapWriteLock) {
                _locked = _clusterMap;
                _lockedBy = Thread.currentThread();
-               _log.info("Incrementing readerCntr to "+_clusterMapReaderCntr.incrementAndGet());
             }
             return _locked;
          } else {
@@ -81,7 +80,6 @@ public class VHM implements EventConsumer {
          if (_locked != null) {
             if (_lockedBy == Thread.currentThread()) {
                _locked = null;
-               _log.info("Decrementing readerCntr to "+_clusterMapReaderCntr.decrementAndGet())
                ;
             } else {
                throw new RuntimeException("Wrong thread trying to unlock ClusterMap!");
@@ -258,9 +256,17 @@ public class VHM implements EventConsumer {
       if ((clusterStateChangeEvents.size() + completionEvents.size()) > 0) {
          synchronized (_clusterMapWriteLock) {
             /* Wait for the readers to stop reading. New readers will block on the write lock */
+            long readerTimeout = 1000;
+            long pollSleep = 10;
+            long killCntr = readerTimeout / pollSleep;
             while (_clusterMapReaderCntr.get() > 0) {
                try {
-                  Thread.sleep(10);
+                  Thread.sleep(pollSleep);
+                  if (--killCntr < 0) {
+                     _log.severe("Reader lock left open. Whacking to 0!");
+                     _clusterMapReaderCntr.set(0);
+                     break;
+                  }
                } catch (InterruptedException e) {}
             }
             for (ClusterStateChangeEvent event : clusterStateChangeEvents) {
