@@ -241,6 +241,14 @@ public class ClusterMapImpl implements ClusterMap {
       return result;
    }
    
+   public Set<String> listComputeVMsForPowerState(boolean powerState) {
+      Set<String> result = new HashSet<String>();
+      for (String ci : _clusters.keySet()) {
+         result.addAll(listComputeVMsForClusterAndPowerState(ci, powerState));
+      }
+      return result;
+   }
+   
    private void dumpState() {
       for (ClusterInfo ci : _clusters.values()) {
          _log.log(Level.INFO, "Cluster " + ci._name + " strategy=" + ci._scaleStrategyKey +

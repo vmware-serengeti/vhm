@@ -8,6 +8,8 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 public interface ClusterMap {
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);
+   
+   Set<String> listComputeVMsForPowerState(boolean powerState);
 
    String getClusterIdForFolder(String clusterFolderName);
 
