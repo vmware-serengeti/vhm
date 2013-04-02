@@ -9,5 +9,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 
 public interface ScaleStrategy extends ClusterMapReader {
 
+   String getName();
+   
    Callable<ClusterScaleCompletionEvent> getCallable(Set<ClusterScaleEvent> events);
 }

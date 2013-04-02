@@ -30,6 +30,11 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       _enableDisablePolicy.registerClusterMapAccess(access);
    }
 
+   @Override
+   public String getName() {
+      return "manual";     /* TODO: Needs to be consistent with key put in VM extraInfo */
+   }
+
    class CallableStrategy implements Callable<ClusterScaleCompletionEvent> {
       final Set<ClusterScaleEvent> _events;
       

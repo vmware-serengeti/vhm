@@ -223,8 +223,8 @@ public class ClusterMapImpl implements ClusterMap {
       return _scaleStrategies.get(cluster._scaleStrategyKey);
    }
 
-   public void registerScaleStrategy(String strategyName, ScaleStrategy strategy) {
-      _scaleStrategies.put(strategyName, strategy);
+   public void registerScaleStrategy(ScaleStrategy strategy) {
+      _scaleStrategies.put(strategy.getName(), strategy);
    }
 
    @Override
@@ -241,6 +241,7 @@ public class ClusterMapImpl implements ClusterMap {
       return result;
    }
    
+   @Override
    public Set<String> listComputeVMsForPowerState(boolean powerState) {
       Set<String> result = new HashSet<String>();
       for (String ci : _clusters.keySet()) {
