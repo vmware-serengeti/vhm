@@ -323,4 +323,16 @@ public class ClusterMapImpl implements ClusterMap {
       return true;
    }
 
+   @Override
+   public Map<String, String> getHostIdsForVMs(Set<String> vms) {
+      Map<String, String> result = new HashMap<String, String>();
+      for (String vmId : vms) {
+         VMInfo vm = _vms.get(vmId);
+         if (vm != null) {
+            result.put(vmId, vm._host._moRef);
+         }
+      }
+      return result;
+   }
+
 }

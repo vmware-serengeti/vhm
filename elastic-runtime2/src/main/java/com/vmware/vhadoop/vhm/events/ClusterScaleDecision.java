@@ -9,16 +9,6 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
    String _clusterId;
    Map<String, Decision> _decisions;
    Runnable _completionCode;
-//   boolean _outcomeComplete;
-//   boolean _spawnChildThread;
-
-//   private class DecisionAndOutcome {
-//      DecisionAndOutcome(Decision decision) {
-//         _decision = decision;
-//      }
-//      Decision _decision;
-//      boolean _outcome;
-//   }
    
    public ClusterScaleDecision(String clusterId) {
       super(false, false);
@@ -31,56 +21,12 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
       return _clusterId;
    }
    
-   public void addDecision(String vmId, Decision decision) {
-      _decisions.put(vmId, decision);
+   public void addDecision(String hostId, Decision decision) {
+      _decisions.put(hostId, decision);
    }
-   
-//   public void setOutcomeComplete(String vmId) {
-//      DecisionAndOutcome dao = _decisions.get(vmId);
-//      if (dao != null) {
-//         dao._outcome = true;
-//      }
-//   }
-//
-//   public void setOutcomeCompleteBlock(Runnable completionCode, boolean spawnChildThread) {
-//      _completionCode = completionCode;
-//      _spawnChildThread = spawnChildThread;
-//   }
-//   
-//   /* Note this will be run in the VHM main thread as part of an update with the ClusterMap locked, 
-//    * so anything that may block for any time must be invoked in a separate thread */
-//   public boolean runOutcomeCompleteBlock() {
-//      if (_outcomeComplete && (_completionCode != null)) {
-//         if (_spawnChildThread) {
-//            new Thread(_completionCode).start();
-//         } else {
-//            _completionCode.run();
-//         }
-//         _completionCode = null;
-//         return true;
-//      }
-//      return false;
-//   }
 
    @Override
-   public Decision getDecisionForVM(String vmId) {
-      return _decisions.get(vmId);
+   public Decision getDecisionForHost(String hostId) {
+      return _decisions.get(hostId);
    }
-
-//   @Override
-//   public boolean getOutcomeCompleteForVM(String vmId) {
-//      DecisionAndOutcome dao = _decisions.get(vmId);
-//      return (dao != null) ? dao._outcome : null;
-//   }
-//
-//   @Override
-//   public boolean getOutcomeCompleteForAllVMs() {
-//      for (String vmId : _decisions.keySet()) {
-//         if (!getOutcomeCompleteForVM(vmId)) {
-//            return false;
-//         }
-//      }
-//      return (_outcomeComplete = true);
-//   }
-   
 }

@@ -38,4 +38,16 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
       return chooseVMs(clusterId, 0-delta, true);
    }
 
+   @Override
+   public String chooseVMToEnableOnHost(Set<String> candidates) {
+      /* Not implemented */
+      return null;
+   }
+
+   @Override
+   public String chooseVMToDisableOnHost(Set<String> candidates) {
+      /* Not implemented */
+      return null;
+   }
+
 }

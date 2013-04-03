@@ -14,14 +14,10 @@ public interface ClusterScaleCompletionEvent extends NotificationEvent {
       }
    }
 
-   public static final Decision ENABLE = new Decision("ENABLE");
-   public static final Decision DISABLE = new Decision("DISABLE");
+   public static final Decision EXPAND = new Decision("EXPAND");
+   public static final Decision SHRINK = new Decision("SHRINK");
       
    String getClusterId();
    
-   Decision getDecisionForVM(String vmId);
-   
-//   boolean getOutcomeCompleteForVM(String vmId);
-//   
-//   boolean getOutcomeCompleteForAllVMs();
+   Decision getDecisionForHost(String vmId);
 }
