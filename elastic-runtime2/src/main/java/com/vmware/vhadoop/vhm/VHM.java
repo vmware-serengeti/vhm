@@ -15,9 +15,6 @@ import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
-import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
-import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
-import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHM implements EventConsumer {
    private Set<EventProducer> _eventProducers;
@@ -31,23 +28,24 @@ public class VHM implements EventConsumer {
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
-   public VHM(VCActions vcActions) {
+   public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
       _clusterMap = new ClusterMapImpl();
       _vcActions = vcActions;
-      initScaleStrategies();
+      initScaleStrategies(scaleStrategies);
       _clusterMapReaderCntr = new AtomicInteger();
       _clusterMapWriteLock = new Object();
       _executionStrategy = new ThreadPoolExecutionStrategy();
       registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy);
    }
    
-   private void initScaleStrategies() {
-      ScaleStrategy manual = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(_vcActions));
-      _clusterMap.registerScaleStrategy("manual", manual);      /* TODO: Key should match key in VC cluster info */
-      manual.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
+   private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
+      for (ScaleStrategy strategy : scaleStrategies) {
+         _clusterMap.registerScaleStrategy(strategy);
+         strategy.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
+      }
    }
 
    /* Represents multi-threaded read-only access to the ClusterMap. There should be one of these objects per thread */
@@ -68,7 +66,6 @@ public class VHM implements EventConsumer {
             synchronized(_clusterMapWriteLock) {
                _locked = _clusterMap;
                _lockedBy = Thread.currentThread();
-               _log.info("Incrementing readerCntr to "+_clusterMapReaderCntr.incrementAndGet());
             }
             return _locked;
          } else {
@@ -81,7 +78,6 @@ public class VHM implements EventConsumer {
          if (_locked != null) {
             if (_lockedBy == Thread.currentThread()) {
                _locked = null;
-               _log.info("Decrementing readerCntr to "+_clusterMapReaderCntr.decrementAndGet())
                ;
             } else {
                throw new RuntimeException("Wrong thread trying to unlock ClusterMap!");
@@ -258,9 +254,17 @@ public class VHM implements EventConsumer {
       if ((clusterStateChangeEvents.size() + completionEvents.size()) > 0) {
          synchronized (_clusterMapWriteLock) {
             /* Wait for the readers to stop reading. New readers will block on the write lock */
+            long readerTimeout = 1000;
+            long pollSleep = 10;
+            long killCntr = readerTimeout / pollSleep;
             while (_clusterMapReaderCntr.get() > 0) {
                try {
-                  Thread.sleep(10);
+                  Thread.sleep(pollSleep);
+                  if (--killCntr < 0) {
+                     _log.severe("Reader lock left open. Whacking to 0!");
+                     _clusterMapReaderCntr.set(0);
+                     break;
+                  }
                } catch (InterruptedException e) {}
             }
             for (ClusterStateChangeEvent event : clusterStateChangeEvents) {

@@ -1,11 +1,8 @@
 package com.vmware.vhadoop.vhm.strategy;
 
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;

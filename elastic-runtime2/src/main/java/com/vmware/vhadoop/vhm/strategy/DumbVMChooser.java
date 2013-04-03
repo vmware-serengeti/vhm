@@ -4,7 +4,6 @@ import java.util.*;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
@@ -37,6 +36,18 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
    @Override
    public Set<String> chooseVMsToDisable(String clusterId, int delta) {
       return chooseVMs(clusterId, 0-delta, true);
+   }
+
+   @Override
+   public String chooseVMToEnableOnHost(Set<String> candidates) {
+      /* Not implemented */
+      return null;
+   }
+
+   @Override
+   public String chooseVMToDisableOnHost(Set<String> candidates) {
+      /* Not implemented */
+      return null;
    }
 
 }

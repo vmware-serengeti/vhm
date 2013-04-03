@@ -1,5 +1,7 @@
 package com.vmware.vhadoop.api.vhm;
 
+import java.util.Set;
+
 public interface ClusterMapReader {
 
    public interface ClusterMapAccess {
@@ -17,4 +19,6 @@ public interface ClusterMapReader {
    void unlockClusterMap(ClusterMap clusterMap);
 
    ClusterMapAccess cloneClusterMapAccess();
+   
+   void blockOnPowerStateChange(Set<String> vmIds, boolean expectedPowerState, long timeout);
 }

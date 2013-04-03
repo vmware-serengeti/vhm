@@ -3,8 +3,8 @@ package com.vmware.vhadoop.vhm.strategy;
 import java.util.concurrent.Callable;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent.Decision;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
@@ -29,6 +29,11 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       super.registerClusterMapAccess(access);
       _vmChooser.registerClusterMapAccess(access);
       _enableDisablePolicy.registerClusterMapAccess(access);
+   }
+
+   @Override
+   public String getName() {
+      return "manual";     /* TODO: Needs to be consistent with key put in VM extraInfo */
    }
 
    class CallableStrategy implements Callable<ClusterScaleCompletionEvent> {
@@ -58,29 +63,37 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                if (vmsToED != null) {
                   _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), clusterId);
-                  for (String vmId : vmsToED) {
-                     returnEvent.addDecision(vmId, ClusterScaleCompletionEvent.ENABLE);
-                  }
+                  returnEvent = createClusterScaleCompletionEventFromVMs(clusterId, vmsToED, ClusterScaleCompletionEvent.EXPAND);
+                  blockOnPowerStateChange(vmsToED, true, 120000);
                }
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                if (vmsToED != null) {
                   _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId);
-                  for (String vmId : vmsToED) {
-                     returnEvent.addDecision(vmId, ClusterScaleCompletionEvent.DISABLE);
-                  }
+                  returnEvent = createClusterScaleCompletionEventFromVMs(clusterId, vmsToED, ClusterScaleCompletionEvent.SHRINK);
+                  blockOnPowerStateChange(vmsToED, false, 120000);
                }
             }
-            returnEvent.setOutcomeCompleteBlock(new Runnable() {
-               @Override
-               public void run() {
-                  limitEvent.reportCompletion();
-               }
-            }, true);
+            limitEvent.reportCompletion();
          } else {
             throw new RuntimeException("Manual scale strategy event should be of type SerengetiLimitInstruction");
          }
          return returnEvent;
+      }
+
+      private ClusterScaleDecision createClusterScaleCompletionEventFromVMs(String clusterId, Set<String> vmsToED, Decision decision) {
+         ClusterScaleDecision result = null;
+         ClusterMap clusterMap = getAndReadLockClusterMap();
+         Map<String, String> hostIds = clusterMap.getHostIdsForVMs(vmsToED);
+         unlockClusterMap(clusterMap);
+         Set<String> uniqueHostIds = new HashSet<String>(hostIds.values());
+         if (uniqueHostIds.size() > 0) {
+            result = new ClusterScaleDecision(clusterId);
+            for (String hostId : uniqueHostIds) {
+               result.addDecision(hostId, decision);
+            }
+         }
+         return result;
       }
       
    }
