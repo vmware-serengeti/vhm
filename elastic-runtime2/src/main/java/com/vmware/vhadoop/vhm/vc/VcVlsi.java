@@ -333,13 +333,19 @@ public class VcVlsi {
          return _propertyCollector;
       }
 
-      public ObjectContent[] retrieveProperties() throws InvalidProperty {
+      public RetrieveResult retrieveProperties() throws InvalidProperty {
          init();
          RetrieveOptions retrieveOptions = new RetrieveOptions();
-         RetrieveResult rr = _propertyCollector.retrievePropertiesEx(new FilterSpec[] {_propertyFilterSpec}, retrieveOptions);
-         return rr.getObjects();
+
+         return _propertyCollector.retrievePropertiesEx(new FilterSpec[] {_propertyFilterSpec}, retrieveOptions);
       }
 
+      public RetrieveResult continueRetrieve(String token) throws InvalidProperty {
+         RetrieveOptions retrieveOptions = new RetrieveOptions();
+
+         return _propertyCollector.continueRetrievePropertiesEx(token);
+      }
+      
       public void cleanup() {
          if (_filter != null) {
             _filter.destroy();
@@ -363,21 +369,35 @@ public class VcVlsi {
       PropertyFilter propFilter = new PropertyFilter(defaultClient, cView, type);
       propFilter.setPropToFilter("name");
 
-      ObjectContent[] oca = propFilter.retrieveProperties();
+      RetrieveResult rr = propFilter.retrieveProperties();
+      boolean done = false;
 
-      for (ObjectContent oc : oca) {
-         if (restrictToName == null) {
-            resultRefs.add(oc.getObj());
-         } else {
-            // filter out by name
-            DynamicProperty[] dps = oc.getPropSet();
-            for (DynamicProperty dp : dps) {
-               if (dp.getName().equals("name") && dp.getVal().equals(restrictToName)) {
-                  resultRefs.add(oc.getObj());
+      while (!done) {
+         ObjectContent[] oca = rr.getObjects();
+
+         for (ObjectContent oc : oca) {
+            if (restrictToName == null) {
+               resultRefs.add(oc.getObj());
+            } else {
+               // filter out by name
+               DynamicProperty[] dps = oc.getPropSet();
+               for (DynamicProperty dp : dps) {
+                  if (dp.getName().equals("name") && dp.getVal().equals(restrictToName)) {
+                     resultRefs.add(oc.getObj());
+                     done = true;
+                     break;
+                  }
                }
             }
          }
-      }
+         if (rr.getToken() == null) {
+            done = true;
+         } else if (!done) {
+            // get the next batch of results from VC
+            rr = propFilter.continueRetrieve(rr.getToken());
+         }
+      }  
+      
       propFilter.cleanup();
       return resultRefs;
    }
