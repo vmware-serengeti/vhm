@@ -45,6 +45,8 @@ public class ClusterMapImpl implements ClusterMap {
       boolean _powerState;
       public String _myUUID;
       public String _name;
+      String _ipAddr;
+      Integer _jobTrackerPort;
       
       // temporary/cache holding fields until cluster object is created
       Integer _cachedMinInstances;
@@ -144,6 +146,12 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._myUUID != null) {
          vmInfo._myUUID = vmd._myUUID;
+      }
+      if (vmd._ipAddr != null) {
+         vmInfo._ipAddr = vmd._ipAddr;
+      }
+      if (vmd._jobTrackerPort != null) {
+         vmInfo._jobTrackerPort = vmd._jobTrackerPort;
       }
       if (vmd._isElastic != null) {
          vmInfo._isElastic = vmd._isElastic;
@@ -261,11 +269,16 @@ public class ClusterMapImpl implements ClusterMap {
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
          String cluster = (vmInfo._cluster == null) ? "N/A" : vmInfo._cluster._name;
          String role = vmInfo._isElastic ? "compute" : "other";
+         String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
+         String jtPort = "";
          if (vmInfo._isMaster) {
             role = "master";
+            if (vmInfo._jobTrackerPort != null) {
+               jtPort = " JTport=" + vmInfo._jobTrackerPort;
+            }
          }
          _log.log(Level.INFO, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + 
-               " host=" + host + " cluster=" + cluster);
+               " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + jtPort);
       }
    }
 

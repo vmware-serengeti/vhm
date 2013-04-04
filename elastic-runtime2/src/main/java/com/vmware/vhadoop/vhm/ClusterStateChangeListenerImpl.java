@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 
 public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements com.vmware.vhadoop.api.vhm.ClusterStateChangeListener {
    private static final Logger _log = Logger.getLogger("ChangeListener");
+   private static final int backoffPeriodMS = 60000; // 1 minute in milliseconds
 
    EventConsumer _eventConsumer;
    VCActions _vcActions;
@@ -89,13 +90,27 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
             while (true) {
                ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 
                version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
-               for (VMEventData vmData : vmDataList) {
-                  _log.log(Level.INFO, "Detected change moRef= " + vmData._vmMoRef + " leaving= " + vmData._isLeaving);
-                  
-                  if (vmData._isLeaving) {
-                     _eventConsumer.placeEventOnQueue(new VMRemovedFromClusterEvent(vmData._vmMoRef));
-                  } else {
-                     _eventConsumer.placeEventOnQueue(new VMUpdatedEvent(vmData));
+               if (vmDataList.isEmpty() && (version.equals(""))) {
+                  /*
+                   *  No data received from VC so far -- can happen if user hasn't created any VMs yet
+                   *  Adding a sleep to reduce spam.
+                   */
+                  try {
+                     Thread.sleep(backoffPeriodMS);
+                  } catch (InterruptedException e) {
+                     // TODO Auto-generated catch block
+                     e.printStackTrace();
+                  }
+
+               } else {
+                  for (VMEventData vmData : vmDataList) {
+                     _log.log(Level.INFO, "Detected change moRef= " + vmData._vmMoRef + " leaving= " + vmData._isLeaving);
+
+                     if (vmData._isLeaving) {
+                        _eventConsumer.placeEventOnQueue(new VMRemovedFromClusterEvent(vmData._vmMoRef));
+                     } else {
+                        _eventConsumer.placeEventOnQueue(new VMUpdatedEvent(vmData));
+                     }
                   }
                }
             }

@@ -87,6 +87,7 @@ public class VcVlsi {
    private static final String VC_PROP_VM_UUID = "config.uuid";
    private static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
    private static final String VC_PROP_VM_HOST = "runtime.host";
+   private static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
    
    private static final String VC_MOREF_TYPE_TASK = "Task";
    private static final String VC_MOREF_TYPE_VM = "VirtualMachine";
@@ -106,6 +107,7 @@ public class VcVlsi {
    private static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
    private static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
    private static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
+   private static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";
 
@@ -477,6 +479,8 @@ public class VcVlsi {
             vmData._enableAutomation = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
             vmData._minInstances = Integer.valueOf(value);
+         } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
+            vmData._jobTrackerPort = Integer.valueOf(value);
          }
       }
    }
@@ -509,6 +513,8 @@ public class VcVlsi {
                   }
                } else if (pcName.equals(VC_PROP_VM_HOST)) {
                   vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
+               } else if (pcName.equals(VC_PROP_VM_GUEST_IP)) {
+                  vmData._ipAddr = (String)pcValue; 
                } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
                   // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
                   OptionValue[] ecl = (OptionValue[]) pcValue;
@@ -549,7 +555,7 @@ public class VcVlsi {
       }
       if (version.equals("")) {
          String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID,
-               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST};
+               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST, VC_PROP_VM_GUEST_IP};
          setupWaitForUpdates(vcClient, folder, typeVM, props);
       }
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
@@ -647,6 +653,11 @@ public class VcVlsi {
    public String waitForUpdates(Client vcClient, String baseFolderName, String version, List<VMEventData> vmDataList) {
       try {
          Folder f = getFolderForName(baseFolderName);
+         if (f == null) {
+            // This is normal state when user hasn't created any hadoop clusters yet
+            _log.log(Level.INFO, "Couldn't find folder " + baseFolderName);
+            return version;
+         }
          return pcVMsInFolder(vcClient, f, version, vmDataList);
       } catch (Exception e) {
          _log.log(Level.INFO, "Unexpected exception waiting for updates: " + e);
