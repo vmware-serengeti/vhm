@@ -320,4 +320,13 @@ public class ClusterMapImpl implements ClusterMap {
       return result;
    }
 
+   @Override
+   public Set<String> getAllKnownClusterIds() {
+      /* TODO: Should maybe return a clone */
+      if (_clusters != null) {
+         return Collections.unmodifiableSet(_clusters.keySet());
+      }
+      return null;
+   }
+
 }
