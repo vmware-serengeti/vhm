@@ -7,6 +7,6 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 
 public interface ExecutionStrategy {
 
-   void handleClusterScaleEvents(ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events);
+   void handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events);
 
 }

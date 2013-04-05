@@ -2,13 +2,13 @@ package com.vmware.vhadoop.vhm.events;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 
 public class ClusterScaleDecision extends AbstractNotificationEvent implements ClusterScaleCompletionEvent {
    String _clusterId;
    Map<String, Decision> _decisions;
-   Runnable _completionCode;
    
    public ClusterScaleDecision(String clusterId) {
       super(false, false);
@@ -21,12 +21,18 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
       return _clusterId;
    }
    
-   public void addDecision(String hostId, Decision decision) {
-      _decisions.put(hostId, decision);
+   public void addDecision(String vmId, Decision decision) {
+      _decisions.put(vmId, decision);
+   }
+
+   public void addDecision(Set<String> vmIds, Decision decision) {
+      for (String vmId : vmIds) {
+         _decisions.put(vmId, decision);
+      }
    }
 
    @Override
-   public Decision getDecisionForHost(String hostId) {
-      return _decisions.get(hostId);
+   public Decision getDecisionForVM(String vmId) {
+      return _decisions.get(vmId);
    }
 }

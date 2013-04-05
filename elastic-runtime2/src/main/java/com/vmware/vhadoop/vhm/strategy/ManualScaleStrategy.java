@@ -4,10 +4,10 @@ import java.util.concurrent.Callable;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent.Decision;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
@@ -65,14 +65,14 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                if (vmsToED != null) {
                   _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), clusterId);
-                  returnEvent = createClusterScaleCompletionEventFromVMs(clusterId, vmsToED, ClusterScaleCompletionEvent.EXPAND);
+                  returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
                   blockOnPowerStateChange(vmsToED, true, 120000);
                }
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                if (vmsToED != null) {
                   _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId);
-                  returnEvent = createClusterScaleCompletionEventFromVMs(clusterId, vmsToED, ClusterScaleCompletionEvent.SHRINK);
+                  returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
                   blockOnPowerStateChange(vmsToED, false, 120000);
                }
             }
@@ -83,25 +83,10 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
          return returnEvent;
       }
 
-      private ClusterScaleDecision createClusterScaleCompletionEventFromVMs(String clusterId, Set<String> vmsToED, Decision decision) {
-         ClusterScaleDecision result = null;
-         ClusterMap clusterMap = getAndReadLockClusterMap();
-         Map<String, String> hostIds = clusterMap.getHostIdsForVMs(vmsToED);
-         unlockClusterMap(clusterMap);
-         Set<String> uniqueHostIds = new HashSet<String>(hostIds.values());
-         if (uniqueHostIds.size() > 0) {
-            result = new ClusterScaleDecision(clusterId);
-            for (String hostId : uniqueHostIds) {
-               result.addDecision(hostId, decision);
-            }
-         }
-         return result;
-      }
-      
    }
 
    @Override
-   public Callable<ClusterScaleCompletionEvent> getCallable(Set<ClusterScaleEvent> events) {
+   public Callable<ClusterScaleCompletionEvent> getCallable(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context) {
       return new CallableStrategy(events);
    }
 }

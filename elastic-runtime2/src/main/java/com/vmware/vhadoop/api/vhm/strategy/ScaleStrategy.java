@@ -11,5 +11,5 @@ public interface ScaleStrategy extends ClusterMapReader {
 
    String getName();
    
-   Callable<ClusterScaleCompletionEvent> getCallable(Set<ClusterScaleEvent> events);
+   Callable<ClusterScaleCompletionEvent> getCallable(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context);
 }

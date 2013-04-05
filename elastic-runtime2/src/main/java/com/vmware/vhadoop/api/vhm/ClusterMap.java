@@ -26,6 +26,6 @@ public interface ClusterMap {
 
    boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 
-   Set<String> getAllKnownClusterIds();
+   String[] getAllKnownClusterIds();
 
 }

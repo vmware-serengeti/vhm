@@ -14,10 +14,12 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 
 public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
    ExecutorService _threadPool;
    Map<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>> _runningTasks;
+   Map<String, ScaleStrategyContext> _contextMap;
    static int _threadCounter = 0;
    EventConsumer _consumer;
 
@@ -34,11 +36,24 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
    }
    
    @Override
-   public void handleClusterScaleEvents(ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
-      Future<ClusterScaleCompletionEvent> task = _threadPool.submit(scaleStrategy.getCallable(events));
+   public void handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
+      ScaleStrategyContext context = getContextForCluster(clusterId);
+      Future<ClusterScaleCompletionEvent> task = _threadPool.submit(scaleStrategy.getCallable(clusterId, events, context));
       synchronized(_runningTasks) {
          _runningTasks.put(events, task);
       }
+   }
+
+   private ScaleStrategyContext getContextForCluster(String clusterId) {
+      if (_contextMap == null) {
+         _contextMap = new HashMap<String, ScaleStrategyContext>();
+      }
+      ScaleStrategyContext context = _contextMap.get(clusterId);
+      if (context == null) {
+         context = new ScaleStrategyContext();
+      }
+      _contextMap.put(clusterId, context);
+      return context;
    }
 
    @Override
