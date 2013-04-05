@@ -20,20 +20,26 @@ import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
  * There should be no need for synchronization in this class provided this model is adhered to */
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
-
+   
    Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
    Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
    
-   public class HostInfo {
+   final ExtraInfoToScaleStrategyMapper _strategyMapper;
+   
+   public ClusterMapImpl(ExtraInfoToScaleStrategyMapper mapper) {
+      _strategyMapper = mapper;
+   }
+   
+   class HostInfo {
       public HostInfo(String moRef) {
          this._moRef = moRef;
       }
       final String _moRef;
    }
    
-   public class VMInfo {
+   class VMInfo {
       public VMInfo(String moRef) {
          this._moRef = moRef;
       }
@@ -53,7 +59,7 @@ public class ClusterMapImpl implements ClusterMap {
       String _cachedScaleStrategyKey;
    }
 
-   public class ClusterInfo {
+   class ClusterInfo {
       public ClusterInfo(String masterUUID) {
          this._masterUUID = masterUUID;
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
@@ -83,40 +89,6 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return cluster;
    }
-
-//   private void updatePowerState(VMInfo vmInfo, VMEventData vmd) {
-//      boolean oldPowerState = vmInfo._powerState;
-//      boolean newPowerState = vmd._powerState;
-//      String vmId = vmInfo._moRef;
-//      if (oldPowerState == newPowerState) {
-//         _log.warning("Power state change of "+newPowerState+" for vm "+vmId+" is a no-op");
-//         return;
-//      }
-//      String clusterId = getClusterIdForVm(vmId);
-//      ClusterInfo ci = getCluster(clusterId);
-//      if (ci._completionEvents != null) {
-//         /* Walk through completion events, finding the first decision for the vmId without an outcome */
-//         /* If the unset outcome matches the decision, set the outcome */
-//         for (ClusterScaleCompletionEvent csce : ci._completionEvents) {
-//            if (csce instanceof ClusterScaleDecision) {
-//               Decision decision = csce.getDecisionForVM(vmId);
-//               if (decision != null) {
-//                  if (((decision.equals(ClusterScaleCompletionEvent.ENABLE)) && newPowerState) ||
-//                      ((decision.equals(ClusterScaleCompletionEvent.DISABLE)) && !newPowerState)) {
-//                        _log.info("Setting "+decision+" outcome complete for VM "+vmId);
-//                         ((ClusterScaleDecision)csce).setOutcomeComplete(vmId);
-//                         if (csce.getOutcomeCompleteForAllVMs()) {
-//                            _log.info("Outcome complete for scale strategy on cluster "+clusterId);
-//                            ((ClusterScaleDecision) csce).runOutcomeCompleteBlock();
-//                         }
-//                         break;
-//                  }
-//               }
-//            }
-//         }
-//      }
-//      vmInfo._powerState = newPowerState;
-//   }
 
    private void updateVMState(VMEventData vmd) {
       VMInfo vmInfo = _vms.get(vmd._vmMoRef);
@@ -160,7 +132,7 @@ public class ClusterMapImpl implements ClusterMap {
       ClusterInfo ci = vmInfo._cluster;
       if (vmd._enableAutomation != null) {
          vmInfo._isMaster = true;
-         String scaleStrategyKey = vmd._enableAutomation ? "automatic" : "manual";
+         String scaleStrategyKey = _strategyMapper.getStrategyKey(vmd);
          if (ci != null) {
             ci._scaleStrategyKey = scaleStrategyKey;
          } else {

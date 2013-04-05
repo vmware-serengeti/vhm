@@ -4,9 +4,15 @@ import java.util.Map;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 
 /* Represents read-only and idempotent methods for ClusterMap */
 public interface ClusterMap {
+   
+   public interface ExtraInfoToScaleStrategyMapper {
+
+      String getStrategyKey(VMEventData vmd);
+   }
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);
    
@@ -19,4 +25,5 @@ public interface ClusterMap {
    ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId);
 
    boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
+
 }

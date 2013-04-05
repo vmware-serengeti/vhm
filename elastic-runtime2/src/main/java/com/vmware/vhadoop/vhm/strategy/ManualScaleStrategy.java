@@ -19,6 +19,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    final VMChooser _vmChooser;
    final EDPolicy _enableDisablePolicy;
    
+   public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
+   
    public ManualScaleStrategy(VMChooser vmChooser, EDPolicy edPolicy) {
       _vmChooser = vmChooser;
       _enableDisablePolicy = edPolicy;
@@ -33,7 +35,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
 
    @Override
    public String getName() {
-      return "manual";     /* TODO: Needs to be consistent with key put in VM extraInfo */
+      return MANUAL_SCALE_STRATEGY_KEY;
    }
 
    class CallableStrategy implements Callable<ClusterScaleCompletionEvent> {

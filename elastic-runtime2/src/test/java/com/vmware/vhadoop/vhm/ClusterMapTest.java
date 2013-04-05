@@ -6,6 +6,8 @@ import org.junit.Test;
 
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
@@ -30,8 +32,15 @@ public class ClusterMapTest {
             properties.getProperty("routeKeyStatus")));
       
       ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(vcActions));
+
+      ExtraInfoToScaleStrategyMapper strategyMapper = new ExtraInfoToScaleStrategyMapper() {
+         @Override
+         public String getStrategyKey(VMEventData vmd) {
+            return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
+         }
+      };
       
-      _vhm = new VHM(vcActions, new ScaleStrategy[]{manualScaleStrategy});
+      _vhm = new VHM(vcActions, new ScaleStrategy[]{manualScaleStrategy}, strategyMapper);
       _cscl = new ClusterStateChangeListenerImpl(_vhm.getVCActions(), properties.getProperty("uuid"));
       
       _vhm.registerEventProducer(_cscl);

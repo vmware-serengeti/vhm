@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.*;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
@@ -28,11 +29,12 @@ public class VHM implements EventConsumer {
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
-   public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies) {
+   public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies, 
+         ExtraInfoToScaleStrategyMapper strategyMapper) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
-      _clusterMap = new ClusterMapImpl();
+      _clusterMap = new ClusterMapImpl(strategyMapper);
       _vcActions = vcActions;
       initScaleStrategies(scaleStrategies);
       _clusterMapReaderCntr = new AtomicInteger();

@@ -89,7 +89,8 @@ public class MainController {
       ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(vcActions, 
             properties.getProperty("uuid"));
       
-      VHM vhm = new VHM(vcActions, null);
+      /* TODO: Need to fix! */
+      VHM vhm = new VHM(vcActions, null, null);
       
       vhm.registerEventProducer(cscl);
             
