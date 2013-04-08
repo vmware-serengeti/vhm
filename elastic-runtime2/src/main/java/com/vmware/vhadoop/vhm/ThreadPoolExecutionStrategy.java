@@ -37,20 +37,27 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
    
    @Override
    public void handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
-      ScaleStrategyContext context = getContextForCluster(clusterId);
+      ScaleStrategyContext context = getContextForCluster(clusterId, scaleStrategy.getStrategyContextType());
       Future<ClusterScaleCompletionEvent> task = _threadPool.submit(scaleStrategy.getCallable(clusterId, events, context));
       synchronized(_runningTasks) {
          _runningTasks.put(events, task);
       }
    }
 
-   private ScaleStrategyContext getContextForCluster(String clusterId) {
+   private ScaleStrategyContext getContextForCluster(String clusterId, Class<? extends ScaleStrategyContext> type) {
+      if (type == null) {
+         return null;
+      }
       if (_contextMap == null) {
          _contextMap = new HashMap<String, ScaleStrategyContext>();
       }
       ScaleStrategyContext context = _contextMap.get(clusterId);
       if (context == null) {
-         context = new ScaleStrategyContext();
+         try {
+            context = type.newInstance();
+         } catch (Exception e) {
+            _log.severe("Cannot instantiate ScaleStrategyContext: "+e.getMessage());
+         }
       }
       _contextMap.put(clusterId, context);
       return context;

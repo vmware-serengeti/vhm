@@ -89,4 +89,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    public Callable<ClusterScaleCompletionEvent> getCallable(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context) {
       return new CallableStrategy(events);
    }
+
+   @Override
+   public Class<? extends ScaleStrategyContext> getStrategyContextType() {
+      return null;
+   }
 }
