@@ -11,7 +11,7 @@ public interface ClusterMapReader {
       
       ClusterMapAccess clone();
    }
-   
+      
    void registerClusterMapAccess(ClusterMapAccess access);
    
    ClusterMap getAndReadLockClusterMap();

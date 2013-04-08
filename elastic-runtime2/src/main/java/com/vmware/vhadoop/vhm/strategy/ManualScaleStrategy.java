@@ -1,7 +1,5 @@
 package com.vmware.vhadoop.vhm.strategy;
 
-import java.util.concurrent.Callable;
-
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
@@ -38,10 +36,11 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       return MANUAL_SCALE_STRATEGY_KEY;
    }
 
-   class CallableStrategy implements Callable<ClusterScaleCompletionEvent> {
+   class CallableStrategy extends ClusterScaleOperation {
       final Set<ClusterScaleEvent> _events;
       
       public CallableStrategy(Set<ClusterScaleEvent> events) {
+         super(cloneClusterMapAccess());
          _events = events;
       }
 
@@ -86,7 +85,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    }
 
    @Override
-   public Callable<ClusterScaleCompletionEvent> getCallable(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context) {
+   public ClusterScaleOperation getClusterScaleOperation(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context) {
       return new CallableStrategy(events);
    }
 
