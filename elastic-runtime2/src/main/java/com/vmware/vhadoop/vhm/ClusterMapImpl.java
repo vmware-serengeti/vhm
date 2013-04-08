@@ -208,17 +208,23 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
+   public Set<String> listComputeVMsForClusterHostAndPowerState(
+         String clusterId, String hostId, boolean powerState) {
       Set<String> result = new HashSet<String>();
       for (VMInfo vminfo : _vms.values()) {
-         String masterUUID = vminfo._cluster._masterUUID;
-         
-         if (masterUUID.equals(clusterId) && (vminfo._isElastic) &&
-               (vminfo._powerState == powerState)) {
+         boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._host._moRef));
+         boolean clusterTest = vminfo._cluster._masterUUID.equals(clusterId);
+         boolean powerStateTest = (vminfo._powerState == powerState);
+         if ((vminfo._isElastic) && hostTest && clusterTest && powerStateTest) {
             result.add(vminfo._moRef);
          }
       }
       return result;
+   }
+
+   @Override
+   public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
+      return listComputeVMsForClusterHostAndPowerState(clusterId, null, powerState);
    }
    
    @Override
@@ -230,6 +236,17 @@ public class ClusterMapImpl implements ClusterMap {
       return result;
    }
    
+   @Override
+   public Set<String> listHostsWithComputeVMsForCluster(String clusterId) {
+      Set<String> result = new HashSet<String>();
+      for (VMInfo vminfo : _vms.values()) {
+         if ((vminfo._isElastic) && vminfo._cluster._masterUUID.equals(clusterId)) {
+            result.add(vminfo._host._moRef);
+         }
+      }
+      return result;
+   }
+
    private void dumpState() {
       for (ClusterInfo ci : _clusters.values()) {
          _log.log(Level.INFO, "Cluster " + ci._name + " strategy=" + ci._scaleStrategyKey +

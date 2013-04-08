@@ -15,8 +15,12 @@ public interface ClusterMap {
    }
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);
-   
+
+   Set<String> listComputeVMsForClusterHostAndPowerState(String clusterId, String hostId, boolean powerState);
+
    Set<String> listComputeVMsForPowerState(boolean powerState);
+
+   Set<String> listHostsWithComputeVMsForCluster(String clusterId);
 
    String getClusterIdForFolder(String clusterFolderName);
 
