@@ -31,5 +31,6 @@ public interface ClusterMap {
    boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 
    String[] getAllKnownClusterIds();
-
+   
+   String getScaleStrategyKey(String clusterId);
 }

@@ -345,4 +345,9 @@ public class ClusterMapImpl implements ClusterMap {
       return null;
    }
 
+   @Override
+   public String getScaleStrategyKey(String clusterId) {
+      return _clusters.get(clusterId)._scaleStrategyKey;
+   }
+
 }
