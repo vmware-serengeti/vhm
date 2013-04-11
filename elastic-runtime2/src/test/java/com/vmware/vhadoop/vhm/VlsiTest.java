@@ -8,14 +8,13 @@ import org.junit.Test;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 
-
 public class VlsiTest {
 
    @Test
    public void test() {
-      MainController.readConfigFile();
-      VCActions vcActions = MainController.setupVC(); 
-      Properties properties = MainController.getProperties();
+      MainController mc = new MainController();
+      VCActions vcActions = mc.getVCInterface();
+      Properties properties = mc.getProperties();
       String version = "";
       while (true) {
          ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 

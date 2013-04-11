@@ -8,16 +8,41 @@ import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
+import com.vmware.vhadoop.api.vhm.ClusterStateChangeListener;
+import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
+import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
+import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
+import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
+import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
 public class MainController {
-   private static Properties properties = null;
-   private static String vhmConfigFileName = "vhm.properties";
-   private static String vhmLogFileName = "vhm.xml";
+   public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
+   public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";
+   public static final String DEFAULT_VHM_HOME_DIR = "/tmp";
+   public static final String DEFAULT_LOGS_SUBDIR = "/logs";
+   public static final String DEFAULT_CONF_SUBDIR = "/conf";
+   public static final String SERENGETI_HOME_DIR_PROP_KEY = "serengeti.home.dir";
+
+   private VCActions _vcActions;
+   private Properties _properties;
    
-   public static void setupLogger(String fileName) {
+   public MainController() {
+      this(DEFAULT_VHM_CONFIG_FILENAME, DEFAULT_VHM_LOG_FILENAME);
+   }
+   
+   public MainController(String configFileName, String logFileName) {
+      _properties = readPropertiesFile(buildVHMFilePath(DEFAULT_CONF_SUBDIR, configFileName));
+      setupLogger(buildVHMFilePath(DEFAULT_LOGS_SUBDIR, logFileName));
+   }
+
+   private void setupLogger(String fileName) {
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
      try {
           FileHandler handler = new FileHandler(fileName);
@@ -27,75 +52,88 @@ public class MainController {
      } catch (IOException e) {
         e.printStackTrace();
      }
-  }
+   }
   
-   public static String getVHMFileName(String subdir, String fileName) {
-      String homeDir = System.getProperties().getProperty("serengeti.home.dir");
+   private String buildVHMFilePath(String subdir, String fileName) {
+      String homeDir = System.getProperties().getProperty(SERENGETI_HOME_DIR_PROP_KEY);
       StringBuilder builder = new StringBuilder();
       if (homeDir != null && homeDir.length() > 0) {
          builder.append(homeDir).append(File.separator).append(subdir).append(File.separator).append(fileName);
       } else {
-         builder.append("/tmp").append(File.separator).append(fileName);
+         builder.append(DEFAULT_VHM_HOME_DIR).append(File.separator).append(fileName);
       }
-      String configFileName = builder.toString();
-      return configFileName;
+      return builder.toString();
    }
 
-   public static boolean readPropertiesFile(String fileName) {
+   private Properties readPropertiesFile(String fileName) {
       try {
           File file = new File(fileName);
           FileInputStream fileInput = new FileInputStream(file);
-          properties = new Properties();
+          Properties properties = new Properties();
           properties.load(fileInput);
           fileInput.close();
-          return true;
+          return properties;
       } catch (FileNotFoundException e) {
           e.printStackTrace();
       } catch (IOException e) {
           e.printStackTrace();
       }
-      return false;
-  }
-  
-   public static VCActions setupVC() {
-      VcCredentials vcCreds = new VcCredentials();
-      vcCreds.vcIP = properties.getProperty("vCenterId");
-      vcCreds.vcThumbprint = properties.getProperty("vCenterThumbprint");
-      
-      vcCreds.user = properties.getProperty("vCenterUser");
-      vcCreds.password = properties.getProperty("vCenterPwd");
-      
-      vcCreds.keyStoreFile = properties.getProperty("keyStorePath");
-      vcCreds.keyStorePwd = properties.getProperty("keyStorePwd");
-      vcCreds.vcExtKey = properties.getProperty("extensionKey");
-      
-      return new VcAdapter(vcCreds);
+      return null;
    }
 
-   public static void readConfigFile() {
-      String configFileName = getVHMFileName("conf", vhmConfigFileName);
-      readPropertiesFile(configFileName);
-      String logFileName = getVHMFileName("logs", vhmLogFileName);
-      setupLogger(logFileName);
-   }
-   
-   public static Properties getProperties() {
-      return properties;
-   }
-   
    public static void main(String[] args) {
-      readConfigFile();
-      VCActions vcActions = setupVC();
-      ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(vcActions, 
-            properties.getProperty("uuid"));
+      MainController mc = new MainController();
+      VHM vhm = mc.initVHM();
+      vhm.start();
+   }
+
+   public VCActions getVCInterface() {
+      if (_vcActions == null) {
+         VcCredentials vcCreds = new VcCredentials();
+         vcCreds.vcIP = _properties.getProperty("vCenterId");
+         vcCreds.vcThumbprint = _properties.getProperty("vCenterThumbprint");
+         
+         vcCreds.user = _properties.getProperty("vCenterUser");
+         vcCreds.password = _properties.getProperty("vCenterPwd");
+         
+         vcCreds.keyStoreFile = _properties.getProperty("keyStorePath");
+         vcCreds.keyStorePwd = _properties.getProperty("keyStorePwd");
+         vcCreds.vcExtKey = _properties.getProperty("extensionKey");
+         
+         return new VcAdapter(vcCreds);
+      }
+      return _vcActions;
+   }
+
+   public Properties getProperties() {
+      return _properties;
+   }
+
+   private VHM initVHM() {
+      VHM vhm;
+            
+      MQClient mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"),
+            _properties.getProperty("exchangeName"),
+            _properties.getProperty("routeKeyCommand"),
+            _properties.getProperty("routeKeyStatus")));
+
+      VCActions vcActions = getVCInterface();
       
-      /* TODO: Need to fix! */
-      VHM vhm = new VHM(vcActions, null, null);
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(vcActions));
+      ExtraInfoToScaleStrategyMapper strategyMapper = new ExtraInfoToScaleStrategyMapper() {
+         @Override
+         public String getStrategyKey(VMEventData vmd) {
+            return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
+         }
+      };
+      
+      
+      vhm = new VHM(vcActions, new ScaleStrategy[]{manualScaleStrategy}, strategyMapper);
+      ClusterStateChangeListener cscl = new ClusterStateChangeListenerImpl(vcActions, _properties.getProperty("uuid"));
       
       vhm.registerEventProducer(cscl);
-            
-      vhm.start();
+      vhm.registerEventProducer(mqClient);
       
+      return vhm;
    }
-
 }

@@ -22,9 +22,9 @@ public class ClusterMapTest {
 
    @Test
    public void test() {
-      MainController.readConfigFile();
-      VCActions vcActions = MainController.setupVC(); 
-      Properties properties = MainController.getProperties();
+      MainController mc = new MainController();
+      VCActions vcActions = mc.getVCInterface();
+      Properties properties = mc.getProperties();
       
       _mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(properties.getProperty("msgHostName"),
             properties.getProperty("exchangeName"),
