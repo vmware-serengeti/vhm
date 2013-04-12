@@ -293,15 +293,17 @@ public class VHM implements EventConsumer {
       }
    }
 
-   public void start() {
-      new Thread(new Runnable() {
+   public Thread start() {
+      Thread t = new Thread(new Runnable() {
          @Override
          public void run() {
             while (true) {
                Set<NotificationEvent> events = pollForEvents();
                handleEvents(events);
             }
-         }}, "VHM_Main_Thread").start();
+         }}, "VHM_Main_Thread");
+      t.start();
+      return t;
    }
    
    VCActions getVCActions() {
