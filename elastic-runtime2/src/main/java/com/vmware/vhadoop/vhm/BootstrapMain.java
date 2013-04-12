@@ -82,8 +82,8 @@ public class BootstrapMain {
    }
 
    public static void main(String[] args) {
-      BootstrapMain mc = new BootstrapMain();
-      VHM vhm = mc.initVHM();
+      BootstrapMain bm = new BootstrapMain();
+      VHM vhm = bm.initVHM();
       vhm.start();
    }
 
@@ -109,7 +109,21 @@ public class BootstrapMain {
       return _properties;
    }
 
-   private VHM initVHM() {
+   ScaleStrategy[] getScaleStrategies() {
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(getVCInterface()));
+      return new ScaleStrategy[]{manualScaleStrategy};
+   }
+   
+   ExtraInfoToScaleStrategyMapper getStrategyMapper() {
+      return new ExtraInfoToScaleStrategyMapper() {
+         @Override
+         public String getStrategyKey(VMEventData vmd) {
+            return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
+         }
+      };
+   }
+   
+   VHM initVHM() {
       VHM vhm;
             
       MQClient mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"),
@@ -117,19 +131,8 @@ public class BootstrapMain {
             _properties.getProperty("routeKeyCommand"),
             _properties.getProperty("routeKeyStatus")));
 
-      VCActions vcActions = getVCInterface();
-      
-      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(vcActions));
-      ExtraInfoToScaleStrategyMapper strategyMapper = new ExtraInfoToScaleStrategyMapper() {
-         @Override
-         public String getStrategyKey(VMEventData vmd) {
-            return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
-         }
-      };
-      
-      
-      vhm = new VHM(vcActions, new ScaleStrategy[]{manualScaleStrategy}, strategyMapper);
-      ClusterStateChangeListener cscl = new ClusterStateChangeListenerImpl(vcActions, _properties.getProperty("uuid"));
+      vhm = new VHM(getVCInterface(), getScaleStrategies(), getStrategyMapper());
+      ClusterStateChangeListener cscl = new ClusterStateChangeListenerImpl(getVCInterface(), _properties.getProperty("uuid"));
       
       vhm.registerEventProducer(cscl);
       vhm.registerEventProducer(mqClient);
