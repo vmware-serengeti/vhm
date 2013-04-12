@@ -13,7 +13,7 @@
  * limitations under the License.
  ***************************************************************************/
 
-package com.vmware.vhadoop.vhm;
+package com.vmware.vhadoop.util;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

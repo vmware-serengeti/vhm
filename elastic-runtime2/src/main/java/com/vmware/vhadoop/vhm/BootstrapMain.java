@@ -9,15 +9,20 @@ import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterStateChangeListener;
+import com.vmware.vhadoop.api.vhm.HadoopActions;
+import com.vmware.vhadoop.api.vhm.HadoopActions.JTConfigInfo;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.LogFormatter;
+import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
+import com.vmware.vhadoop.vhm.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
-import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
-import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
+import com.vmware.vhadoop.vhm.strategy.BalancedVMChooser;
+import com.vmware.vhadoop.vhm.strategy.JobTrackerEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
@@ -31,6 +36,7 @@ public class BootstrapMain {
    public static final String SERENGETI_HOME_DIR_PROP_KEY = "serengeti.home.dir";
 
    private VCActions _vcActions;
+   private HadoopActions _hadoopActions;
    private Properties _properties;
    
    public BootstrapMain() {
@@ -105,12 +111,27 @@ public class BootstrapMain {
       return _vcActions;
    }
 
+   private HadoopActions getHadoopInterface() {
+      if (_hadoopActions == null) {
+         _hadoopActions = new HadoopAdaptor(
+               new SimpleHadoopCredentials(
+                     _properties.getProperty("vHadoopUser"), 
+                     _properties.getProperty("vHadoopPwd"),
+                     _properties.getProperty("vHadoopPrvkeyFile")),
+                     new JTConfigInfo(
+                           _properties.getProperty("vHadoopHome"),
+                           _properties.getProperty("vHadoopExcludeTTFile")));      
+      }
+      return _hadoopActions;
+   }
+
    public Properties getProperties() {
       return _properties;
    }
 
    ScaleStrategy[] getScaleStrategies() {
-      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(getVCInterface()));
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
+            new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface()));
       return new ScaleStrategy[]{manualScaleStrategy};
    }
    

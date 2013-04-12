@@ -5,6 +5,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
+import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
@@ -66,7 +67,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       final String _masterUUID;
       String _folderName;
-      String _name;
+      VMInfo _masterVM;
       int _minInstances;
       String _scaleStrategyKey;
       LinkedList<ClusterScaleCompletionEvent> _completionEvents;
@@ -151,14 +152,14 @@ public class ClusterMapImpl implements ClusterMap {
          vmInfo._isMaster = true;
       }
       if (vmInfo._isMaster && (ci != null)) {
-         ci._name = vmInfo._name; 
+         ci._masterVM = vmInfo; 
       }
       dumpState();
    }
    
    private void removeCluster(ClusterInfo cluster) {
       if (cluster != null) {
-         _log.log(Level.INFO, "Remove cluster " + cluster._name + " uuid=" + cluster._masterUUID);
+         _log.log(Level.INFO, "Remove cluster " + cluster._folderName + " uuid=" + cluster._masterUUID);
          _clusters.remove(cluster._masterUUID);
       }
    }
@@ -226,7 +227,7 @@ public class ClusterMapImpl implements ClusterMap {
    public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
       return listComputeVMsForClusterHostAndPowerState(clusterId, null, powerState);
    }
-   
+
    @Override
    public Set<String> listComputeVMsForPowerState(boolean powerState) {
       Set<String> result = new HashSet<String>();
@@ -249,14 +250,14 @@ public class ClusterMapImpl implements ClusterMap {
 
    private void dumpState() {
       for (ClusterInfo ci : _clusters.values()) {
-         _log.log(Level.INFO, "Cluster " + ci._name + " strategy=" + ci._scaleStrategyKey +
+         _log.log(Level.INFO, "Cluster " + ci._folderName + " strategy=" + ci._scaleStrategyKey +
                " min=" + ci._minInstances + " uuid= " + ci._masterUUID);
       }
       
       for (VMInfo vmInfo : _vms.values()) {
          String powerState = vmInfo._powerState ? " ON" : " OFF";
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
-         String cluster = (vmInfo._cluster == null) ? "N/A" : vmInfo._cluster._name;
+         String cluster = (vmInfo._cluster == null) ? "N/A" : vmInfo._cluster._masterVM._name;
          String role = vmInfo._isElastic ? "compute" : "other";
          String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
          String jtPort = "";
@@ -348,6 +349,28 @@ public class ClusterMapImpl implements ClusterMap {
    @Override
    public String getScaleStrategyKey(String clusterId) {
       return _clusters.get(clusterId)._scaleStrategyKey;
+   }
+
+   @Override
+   public HadoopClusterInfo getHadoopInfoForCluster(String clusterId) {
+      ClusterInfo ci = _clusters.get(clusterId);
+      HadoopClusterInfo result = null;
+      if (ci != null) {
+         result = new HadoopClusterInfo(ci._folderName, ci._masterVM._ipAddr);
+      }
+      return result;
+   }
+
+   @Override
+   public Set<String> getIpAddressForVMs(Set<String> vms) {
+      Set<String> results = new HashSet<String>();
+      for (String vm : vms) {
+         VMInfo vminfo = _vms.get(vm);
+         if (vminfo != null) {
+            results.add(vminfo._ipAddr);
+         }
+      }
+      return results;
    }
 
 }

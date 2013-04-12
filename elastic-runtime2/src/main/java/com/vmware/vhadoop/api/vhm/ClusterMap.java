@@ -3,6 +3,7 @@ package com.vmware.vhadoop.api.vhm;
 import java.util.Map;
 import java.util.Set;
 
+import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 
@@ -33,4 +34,8 @@ public interface ClusterMap {
    String[] getAllKnownClusterIds();
    
    String getScaleStrategyKey(String clusterId);
+
+   HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
+
+   Set<String> getIpAddressForVMs(Set<String> toEnable);
 }
