@@ -71,7 +71,7 @@
          <configuration>
              <archive>
                  <manifest>
-                     <mainClass>com.vmware.vhadoop.vhm.MainController</mainClass>
+                     <mainClass>com.vmware.vhadoop.vhm.BootstrapMain</mainClass>
                  </manifest>
              </archive>
              <descriptorRefs>

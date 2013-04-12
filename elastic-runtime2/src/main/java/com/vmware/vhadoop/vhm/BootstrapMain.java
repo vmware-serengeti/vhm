@@ -22,7 +22,7 @@ import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
-public class MainController {
+public class BootstrapMain {
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
    public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";
    public static final String DEFAULT_VHM_HOME_DIR = "/tmp";
@@ -33,11 +33,11 @@ public class MainController {
    private VCActions _vcActions;
    private Properties _properties;
    
-   public MainController() {
+   public BootstrapMain() {
       this(DEFAULT_VHM_CONFIG_FILENAME, DEFAULT_VHM_LOG_FILENAME);
    }
    
-   public MainController(String configFileName, String logFileName) {
+   public BootstrapMain(String configFileName, String logFileName) {
       _properties = readPropertiesFile(buildVHMFilePath(DEFAULT_CONF_SUBDIR, configFileName));
       setupLogger(buildVHMFilePath(DEFAULT_LOGS_SUBDIR, logFileName));
    }
@@ -82,7 +82,7 @@ public class MainController {
    }
 
    public static void main(String[] args) {
-      MainController mc = new MainController();
+      BootstrapMain mc = new BootstrapMain();
       VHM vhm = mc.initVHM();
       vhm.start();
    }
