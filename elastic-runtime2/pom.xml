@@ -22,27 +22,27 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.vmware</groupId>
+      <groupId>com.vmware.aurora</groupId>
       <artifactId>vlsiCore</artifactId>
       <version>1.0.8</version>
     </dependency>
     <dependency>
-      <groupId>com.vmware</groupId>
+      <groupId>com.vmware.aurora</groupId>
       <artifactId>vlsiClient</artifactId>
       <version>1.0.8</version>
     </dependency>
     <dependency>
-      <groupId>com.vmware</groupId>
+      <groupId>com.vmware.aurora</groupId>
       <artifactId>vimVmodl</artifactId>
       <version>1.0.8</version>
     </dependency>
     <dependency>
-      <groupId>com.vmware</groupId>
+      <groupId>com.vmware.aurora</groupId>
       <artifactId>queryVmodl</artifactId>
       <version>1.0.8</version>
     </dependency>
     <dependency>
-      <groupId>com.vmware</groupId>
+      <groupId>com.vmware.aurora</groupId>
       <artifactId>reflectVmodl</artifactId>
       <version>1.0.8</version>
     </dependency>
