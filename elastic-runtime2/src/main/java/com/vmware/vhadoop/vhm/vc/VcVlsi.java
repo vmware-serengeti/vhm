@@ -490,7 +490,7 @@ public class VcVlsi {
       vmData._vmMoRef = obj.getObj().getValue();
 
       Kind kind = obj.getKind();
-      _log.log(Level.INFO, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
+      //_log.log(Level.INFO, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
       if (kind == Kind.leave) {
          vmData._isLeaving = true;
       } else if (kind == Kind.modify || kind == Kind.enter) {
@@ -498,7 +498,7 @@ public class VcVlsi {
          for (Change pc : obj.getChangeSet()) {
             String pcName = pc.getName();
             Object pcValue = pc.getVal();
-            _log.log(Level.INFO, "Pobj prop= " + pcName + " val= " + pcValue);
+            //_log.log(Level.INFO, "Pobj prop= " + pcName + " val= " + pcValue);
             if (pcValue != null) {
                if (pcName.equals(VC_PROP_VM_UUID)) {
                   vmData._myUUID = (String)pcValue;
@@ -527,7 +527,6 @@ public class VcVlsi {
                   // individual extraConfig entries (pcName = config.extraConfig["xxx"].value)
                   String [] parts = pcName.split("\"",3);
                   if (parts.length > 1) {
-                     _log.log(Level.INFO, "Pobj key = " + parts[1]);
                      if (parts[1].startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
                         // sometimes pcValue is a String, and sometimes its OptionValue...
                         String valueString;
