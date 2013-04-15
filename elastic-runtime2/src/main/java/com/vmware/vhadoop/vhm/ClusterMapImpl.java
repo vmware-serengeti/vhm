@@ -250,14 +250,16 @@ public class ClusterMapImpl implements ClusterMap {
 
    private void dumpState() {
       for (ClusterInfo ci : _clusters.values()) {
-         _log.log(Level.INFO, "Cluster " + ci._folderName + " strategy=" + ci._scaleStrategyKey +
+         String clusterName = (ci._masterVM == null) ? "N/A" : ci._masterVM._name;
+         _log.log(Level.INFO, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
                " min=" + ci._minInstances + " uuid= " + ci._masterUUID);
       }
       
       for (VMInfo vmInfo : _vms.values()) {
          String powerState = vmInfo._powerState ? " ON" : " OFF";
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
-         String cluster = (vmInfo._cluster == null) ? "N/A" : vmInfo._cluster._masterVM._name;
+         VMInfo masterVM = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterVM;
+         String cluster = (masterVM == null) ? "N/A" : masterVM._name;
          String role = vmInfo._isElastic ? "compute" : "other";
          String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
          String jtPort = "";
