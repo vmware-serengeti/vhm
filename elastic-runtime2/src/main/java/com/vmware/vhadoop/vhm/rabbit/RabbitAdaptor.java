@@ -35,8 +35,20 @@ public class RabbitAdaptor implements MQClient {
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
    public class RabbitConnectionCallback {
+      private String _routeKey;
+      
+      public RabbitConnectionCallback(String routeKey) {
+         _routeKey = routeKey;
+         _log.info("RCC init routeKey=" + _routeKey);
+      }
+      
       public void sendMessage(byte[] data) {
-         _connection.sendMessage(data);
+         _log.info("RCC send msg");
+         if (_routeKey == null) {
+            _connection.sendMessage(data);
+         } else {
+            _connection.sendMessage(_routeKey, data);
+         }
       }
    }
    
@@ -65,7 +77,7 @@ public class RabbitAdaptor implements MQClient {
                   QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                   VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
                   ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(), 
-                        message.getInstanceNum(), new RabbitConnectionCallback());
+                        message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey()));
                   _eventConsumer.placeEventOnQueue(event);
                   _log.info("New Serengeti limit event placed on queue");
                } catch (InterruptedException e) {

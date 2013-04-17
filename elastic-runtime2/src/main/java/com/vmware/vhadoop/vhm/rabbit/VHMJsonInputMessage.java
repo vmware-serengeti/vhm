@@ -33,6 +33,7 @@ public class VHMJsonInputMessage {
       int instance_num;     // number of desired instances (-1 for unlimit)
       String[] node_groups; // list of nodegroups (vm folders) on which to apply the setting
       String serengeti_instance; // VM folder for the instance of serengeti that sent the command
+      String route_key;     // routing key to use for progress and completion update messages 
    }
 
    private VHMCommandMessage _command; 
@@ -45,7 +46,7 @@ public class VHMJsonInputMessage {
       try {
          _command = gson.fromJson(jsonString, VHMCommandMessage.class);
 
-         if (_command.version != 1) {
+         if ((_command.version != 1) && (_command.version != 2)) {
             _log.log(Level.WARNING, "Unknown version = " + _command.version);
             _command = new VHMCommandMessage();
          }
@@ -61,6 +62,10 @@ public class VHMJsonInputMessage {
 
    public int getInstanceNum() {
       return _command.instance_num;
+   }
+
+   public String getRouteKey() {
+      return _command.route_key;
    }
 
 }
