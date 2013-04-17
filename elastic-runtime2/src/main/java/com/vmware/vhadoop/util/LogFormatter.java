@@ -65,6 +65,10 @@ public class LogFormatter extends Formatter {
          result.append((rawMessage = record.getMessage()));
       }
       result.append(NEWLINE);
+      if (record.getThrown() != null) {
+         result.append(record.getThrown().getMessage());
+         /* TODO: Add stack trace */
+      }
       return result.toString();
    }
 
