@@ -114,7 +114,7 @@ public class BootstrapMain {
       return _vcActions;
    }
 
-   private HadoopActions getHadoopInterface() {
+   HadoopActions getHadoopInterface() {
       if (_hadoopActions == null) {
          _hadoopActions = new HadoopAdaptor(
                new SimpleHadoopCredentials(

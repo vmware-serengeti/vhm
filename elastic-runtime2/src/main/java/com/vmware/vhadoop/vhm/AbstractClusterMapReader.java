@@ -19,6 +19,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       return _threadLocalStatus.get();
    }
    
+   /* Any subclass wishing to add status to this thread's execution should call this method */
    public ThreadLocalCompoundStatus getThreadLocalCompoundStatus() {
       return _threadLocalStatus;
    }
