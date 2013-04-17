@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.api.vhm.events;
 
+/* An event generated once a cluster scale operation has completed representing Decisions for a given VM */
 public interface ClusterScaleCompletionEvent extends NotificationEvent {
 
    /* No such thing as an extensible enumeration */

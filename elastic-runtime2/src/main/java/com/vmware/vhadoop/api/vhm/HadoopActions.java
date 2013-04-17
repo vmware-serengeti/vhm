@@ -17,6 +17,7 @@ package com.vmware.vhadoop.api.vhm;
 
 import com.vmware.vhadoop.util.CompoundStatus;
 
+/* Represents actions which can be invoked on the Hadoop subsystem */
 public interface HadoopActions {
 
    public class HadoopClusterInfo {

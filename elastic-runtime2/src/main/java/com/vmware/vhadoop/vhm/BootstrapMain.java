@@ -8,7 +8,6 @@ import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeListener;
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.HadoopActions.JTConfigInfo;
 import com.vmware.vhadoop.api.vhm.MQClient;
@@ -17,6 +16,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.LogFormatter;
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
 import com.vmware.vhadoop.vhm.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
@@ -89,11 +89,12 @@ public class BootstrapMain {
 
    public static void main(String[] args) {
       BootstrapMain bm = new BootstrapMain();
-      VHM vhm = bm.initVHM();
+      ThreadLocalCompoundStatus tlcs = new ThreadLocalCompoundStatus();
+      VHM vhm = bm.initVHM(tlcs);
       vhm.start();
    }
 
-   public VCActions getVCInterface() {
+   public VCActions getVCInterface(ThreadLocalCompoundStatus tlcs) {
       if (_vcActions == null) {
          VcCredentials vcCreds = new VcCredentials();
          vcCreds.vcIP = _properties.getProperty("vCenterId");
@@ -106,12 +107,13 @@ public class BootstrapMain {
          vcCreds.keyStorePwd = _properties.getProperty("keyStorePwd");
          vcCreds.vcExtKey = _properties.getProperty("extensionKey");
          
-         return new VcAdapter(vcCreds);
+         _vcActions = new VcAdapter(vcCreds);
+         ((VcAdapter)_vcActions).setThreadLocalCompoundStatus(tlcs);
       }
       return _vcActions;
    }
 
-   private HadoopActions getHadoopInterface() {
+   HadoopActions getHadoopInterface() {
       if (_hadoopActions == null) {
          _hadoopActions = new HadoopAdaptor(
                new SimpleHadoopCredentials(
@@ -129,9 +131,9 @@ public class BootstrapMain {
       return _properties;
    }
 
-   ScaleStrategy[] getScaleStrategies() {
+   ScaleStrategy[] getScaleStrategies(ThreadLocalCompoundStatus tlcs) {
       ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
-            new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface()));
+            new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
       return new ScaleStrategy[]{manualScaleStrategy};
    }
    
@@ -144,16 +146,16 @@ public class BootstrapMain {
       };
    }
    
-   VHM initVHM() {
+   VHM initVHM(ThreadLocalCompoundStatus tlcs) {
       VHM vhm;
-            
+      
       MQClient mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"),
             _properties.getProperty("exchangeName"),
             _properties.getProperty("routeKeyCommand"),
             _properties.getProperty("routeKeyStatus")));
 
-      vhm = new VHM(getVCInterface(), getScaleStrategies(), getStrategyMapper());
-      ClusterStateChangeListener cscl = new ClusterStateChangeListenerImpl(getVCInterface(), _properties.getProperty("uuid"));
+      vhm = new VHM(getVCInterface(tlcs), getScaleStrategies(tlcs), getStrategyMapper(), tlcs);
+      ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
       
       vhm.registerEventProducer(cscl);
       vhm.registerEventProducer(mqClient);

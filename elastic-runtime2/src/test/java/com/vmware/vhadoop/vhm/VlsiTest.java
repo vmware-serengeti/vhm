@@ -13,7 +13,7 @@ public class VlsiTest {
    @Test
    public void test() {
       BootstrapMain mc = new BootstrapMain();
-      VCActions vcActions = mc.getVCInterface();
+      VCActions vcActions = mc.getVCInterface(null);
       Properties properties = mc.getProperties();
       String version = "";
       while (true) {

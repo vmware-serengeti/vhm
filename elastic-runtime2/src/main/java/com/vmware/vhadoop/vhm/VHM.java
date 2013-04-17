@@ -14,6 +14,7 @@ import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
@@ -26,11 +27,13 @@ public class VHM implements EventConsumer {
    private VCActions _vcActions;
    private static AtomicInteger _clusterMapReaderCntr;
    private Object _clusterMapWriteLock;
+   private ThreadLocalCompoundStatus _threadLocalStatus;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
    public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies, 
-         ExtraInfoToScaleStrategyMapper strategyMapper) {
+         ExtraInfoToScaleStrategyMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
+      _threadLocalStatus = threadLocalStatus;
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
@@ -46,7 +49,7 @@ public class VHM implements EventConsumer {
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
       for (ScaleStrategy strategy : scaleStrategies) {
          _clusterMap.registerScaleStrategy(strategy);
-         strategy.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
+         strategy.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess(), _threadLocalStatus);
       }
    }
 
@@ -94,7 +97,7 @@ public class VHM implements EventConsumer {
       _eventProducers.add(eventProducer);
       eventProducer.registerEventConsumer(this);
       if (eventProducer instanceof ClusterMapReader) {
-         ((ClusterMapReader)eventProducer).registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess());
+         ((ClusterMapReader)eventProducer).registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess(), _threadLocalStatus);
       }
       eventProducer.start();
    }

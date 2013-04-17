@@ -25,7 +25,10 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLException;
 
+import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.Folder;
 import com.vmware.vim.binding.vim.ServiceInstance;
@@ -110,6 +113,19 @@ public class VcVlsi {
    private static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";
+      
+   private ThreadLocalCompoundStatus _threadLocalStatus;
+   
+   void setThreadLocalCompoundStatus(ThreadLocalCompoundStatus tlcs) {
+      _threadLocalStatus = tlcs;
+   }
+   
+   private CompoundStatus getCompoundStatus() {
+      if (_threadLocalStatus == null) {
+         return new CompoundStatus("DUMMY_STATUS");
+      }
+      return _threadLocalStatus.get();
+   }
 
    private ThumbprintVerifier getThumbprintVerifier() {
       return new ThumbprintVerifier() {
@@ -182,7 +198,6 @@ public class VcVlsi {
       SessionManager sm = defaultClient.createStub(SessionManager.class, sic.getSessionManager());
       return sm.acquireCloneTicket();
    }
-
    
    public Client connect(VcCredentials credentials, boolean useKey, boolean cloneSession) 
          throws Exception {
@@ -597,6 +612,8 @@ public class VcVlsi {
    }
 
    boolean waitForTask(Task task) {
+      CompoundStatus status = new CompoundStatus("waitForTask");
+      boolean result = false;
       PropertyFilter propFilter = new PropertyFilter(defaultClient, task);
       try {
          propFilter.setPropsToFilter(new String [] {TASK_INFO_STATE });
@@ -606,7 +623,7 @@ public class VcVlsi {
          WaitOptions waitOptions = new WaitOptions();
          waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
 
-         while (true) {
+         _mainLoop: while (true) {
 
             _log.log(Level.INFO, "WFT waiting vesrion=" + version);
             updateSet = propFilter.getPropertyCollector().waitForUpdatesEx(version, waitOptions);
@@ -627,9 +644,11 @@ public class VcVlsi {
                               if (pcName.lastIndexOf(TASK_INFO_STATE) >= 0) {
                                  TaskInfo.State state = (TaskInfo.State)pcValue;
                                  if (state == TaskInfo.State.error) {
-                                    return false;
+                                    result = false;
+                                    break _mainLoop;
                                  } else if (state == TaskInfo.State.success) {
-                                    return true;
+                                    result = true;
+                                    break _mainLoop;
                                  }
                               }
                            }
@@ -639,33 +658,38 @@ public class VcVlsi {
                }
             }
          }
-
+         status.registerTaskSucceeded();
       } catch (Exception e) {
-         _log.log(Level.INFO, "Unexpected exception waiting for task completion" + e);
+         reportException("Unexpected exception waiting for task completion", e, status);
       } finally {
          propFilter.cleanup();
       }
-      return false;
+      getCompoundStatus().addStatus(status);
+      return result;
    }
 
    
    public String waitForUpdates(Client vcClient, String baseFolderName, String version, List<VMEventData> vmDataList) {
+      CompoundStatus status = new CompoundStatus("waitForUpdates");
+      String result = version;
       try {
          Folder f = getFolderForName(baseFolderName);
          if (f == null) {
             // This is normal state when user hasn't created any hadoop clusters yet
             _log.log(Level.INFO, "Couldn't find folder " + baseFolderName);
-            return version;
+         } else {
+            result = pcVMsInFolder(vcClient, f, version, vmDataList);
          }
-         return pcVMsInFolder(vcClient, f, version, vmDataList);
+         status.registerTaskSucceeded();
       } catch (Exception e) {
-         _log.log(Level.INFO, "Unexpected exception waiting for updates: " + e);
-         e.printStackTrace();
+         reportException("Unexpected exception waiting for updates", e, status);
       }
-      return version;
+      getCompoundStatus().addStatus(status);
+      return result;
    }
 
    public List<String> getVMsInFolder(String baseFolderName) {
+      CompoundStatus status = new CompoundStatus("getVMsInFolder");
       List<String> result = null;
       try {
          Folder baseFolder = getFolderForName(baseFolderName);
@@ -676,14 +700,21 @@ public class VcVlsi {
                result.add(ref.getValue());
             }
          }
+         status.registerTaskSucceeded();
       } catch (Exception e) {
-         _log.log(Level.INFO, "Unexpected exception in getVMsInFolder: " + e);
-         e.printStackTrace();
+         reportException("Unexpected exception in getVMsInFolder", e, status);
       }
+      getCompoundStatus().addStatus(status);
       return result;
+   }
+   
+   private void reportException(String msg, Exception e, CompoundStatus status) {
+      _log.log(Level.INFO, msg, e);
+      status.registerTaskFailed(false, msg+": "+e.getMessage());
    }
 
    public Map<String, Task> powerOnVMs(Set<String> vmMoRefs) {
+      CompoundStatus status = new CompoundStatus(VCActions.VC_POWER_ON_STATUS_KEY);
       Map<String, Task> result = new HashMap<String, Task>();
       for (String moRef : vmMoRefs) {
          ManagedObjectReference ref = new ManagedObjectReference();
@@ -693,14 +724,17 @@ public class VcVlsi {
             ManagedObjectReference taskRef = vm.powerOn(null);
             Task task = defaultClient.createStub(Task.class, taskRef);
             result.put(moRef, task);
+            status.registerTaskSucceeded();
          } catch (Exception e) {
-            _log.info("Error powering on VM "+e.getMessage());
+            reportException("Error powering on VM", e, status);
          }
       }
+      getCompoundStatus().addStatus(status);
       return result;
    }
 
    public Map<String, Task> powerOffVMs(Set<String> vmMoRefs) {
+      CompoundStatus status = new CompoundStatus(VCActions.VC_POWER_OFF_STATUS_KEY);
       Map<String, Task> result = new HashMap<String, Task>();
       for (String moRef : vmMoRefs) {
          ManagedObjectReference ref = new ManagedObjectReference();
@@ -710,10 +744,12 @@ public class VcVlsi {
             ManagedObjectReference taskRef = vm.powerOff();
             Task task = defaultClient.createStub(Task.class, taskRef);
             result.put(moRef, task);
+            status.registerTaskSucceeded();
          } catch (Exception e) {
-            _log.info("Error powering off VM "+e.getMessage());
+            reportException("Error powering off VM", e, status);
          }
       }
+      getCompoundStatus().addStatus(status);
       return result;
    }
 
