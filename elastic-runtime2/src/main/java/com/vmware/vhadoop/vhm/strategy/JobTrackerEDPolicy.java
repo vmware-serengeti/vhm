@@ -7,6 +7,7 @@ import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
+import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
 public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPolicy {
@@ -25,9 +26,13 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
       String[] hostNames = clusterMap.getIpAddressForVMs(toEnable).toArray(new String[0]);
       
-      _hadoopActions.recommissionTTs(hostNames, hadoopCluster);
+      CompoundStatus status = getCompoundStatus();
+      /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
+      status.addStatus(_hadoopActions.recommissionTTs(hostNames, hadoopCluster));
       _vcActions.changeVMPowerState(toEnable, true);
-      _hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster);
+      if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
+         status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster));
+      }
       
       unlockClusterMap(clusterMap);
    }
@@ -38,8 +43,10 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
       String[] hostNames = clusterMap.getIpAddressForVMs(toDisable).toArray(new String[0]);
 
-      _hadoopActions.decommissionTTs(hostNames, hadoopCluster);
-      _hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster);
+      CompoundStatus status = getCompoundStatus();
+      /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
+      status.addStatus(_hadoopActions.decommissionTTs(hostNames, hadoopCluster));
+      status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster));
       _vcActions.changeVMPowerState(toDisable, false);
 
       unlockClusterMap(clusterMap);

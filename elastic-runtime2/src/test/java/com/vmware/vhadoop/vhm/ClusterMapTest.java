@@ -9,6 +9,7 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
@@ -23,7 +24,7 @@ public class ClusterMapTest {
    @Test
    public void test() {
       BootstrapMain mc = new BootstrapMain();
-      VCActions vcActions = mc.getVCInterface();
+      VCActions vcActions = mc.getVCInterface(null);
       Properties properties = mc.getProperties();
       
       _mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(properties.getProperty("msgHostName"),
@@ -40,7 +41,7 @@ public class ClusterMapTest {
          }
       };
       
-      _vhm = new VHM(vcActions, new ScaleStrategy[]{manualScaleStrategy}, strategyMapper);
+      _vhm = new VHM(vcActions, new ScaleStrategy[]{manualScaleStrategy}, strategyMapper, new ThreadLocalCompoundStatus());
       _cscl = new ClusterStateChangeListenerImpl(_vhm.getVCActions(), properties.getProperty("uuid"));
       
       _vhm.registerEventProducer(_cscl);
