@@ -38,4 +38,6 @@ public interface ClusterMap {
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
 
    Set<String> getIpAddressForVMs(Set<String> toEnable);
+
+   String getHostIdForVm(String vmid);
 }
