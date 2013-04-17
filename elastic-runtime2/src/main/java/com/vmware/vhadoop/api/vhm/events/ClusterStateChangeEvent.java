@@ -1,6 +1,6 @@
 package com.vmware.vhadoop.api.vhm.events;
 
-
+/* If the ClusterStateChangeListenerImpl notices a delta change, it generates one of these events for the VHM to consume */
 public interface ClusterStateChangeEvent extends NotificationEvent {
 
    public class VMEventData {

@@ -25,6 +25,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       ClusterMap clusterMap = getAndReadLockClusterMap();
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
       String[] hostNames = clusterMap.getIpAddressForVMs(toEnable).toArray(new String[0]);
+      unlockClusterMap(clusterMap);
       
       CompoundStatus status = getCompoundStatus();
       /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
@@ -33,8 +34,6 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
          status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster));
       }
-      
-      unlockClusterMap(clusterMap);
    }
    @Override
    public void disableTTs(Set<String> toDisable, int totalTargetEnabled,
@@ -42,14 +41,13 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       ClusterMap clusterMap = getAndReadLockClusterMap();
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
       String[] hostNames = clusterMap.getIpAddressForVMs(toDisable).toArray(new String[0]);
+      unlockClusterMap(clusterMap);
 
       CompoundStatus status = getCompoundStatus();
       /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
       status.addStatus(_hadoopActions.decommissionTTs(hostNames, hadoopCluster));
       status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster));
       _vcActions.changeVMPowerState(toDisable, false);
-
-      unlockClusterMap(clusterMap);
    }
    
 }

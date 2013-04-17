@@ -8,6 +8,7 @@ import java.util.concurrent.Future;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vim.vmomi.client.Client;
 
+/* Represents actions which can be invoked on the VC subsystem */
 public interface VCActions {
 
    public static final String VC_POWER_ON_STATUS_KEY = "powerOnVM";

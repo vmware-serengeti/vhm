@@ -8,7 +8,6 @@ import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterStateChangeListener;
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.HadoopActions.JTConfigInfo;
 import com.vmware.vhadoop.api.vhm.MQClient;
@@ -156,7 +155,7 @@ public class BootstrapMain {
             _properties.getProperty("routeKeyStatus")));
 
       vhm = new VHM(getVCInterface(tlcs), getScaleStrategies(tlcs), getStrategyMapper(), tlcs);
-      ClusterStateChangeListener cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
+      ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
       
       vhm.registerEventProducer(cscl);
       vhm.registerEventProducer(mqClient);

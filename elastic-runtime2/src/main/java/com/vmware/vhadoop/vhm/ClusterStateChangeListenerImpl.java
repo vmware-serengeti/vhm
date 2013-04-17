@@ -2,6 +2,7 @@ package com.vmware.vhadoop.vhm;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
+import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
@@ -10,7 +11,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements com.vmware.vhadoop.api.vhm.ClusterStateChangeListener {
+public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer {
    private static final Logger _log = Logger.getLogger("ChangeListener");
    private static final int backoffPeriodMS = 60000; // 1 minute in milliseconds
 
