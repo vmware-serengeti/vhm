@@ -107,14 +107,14 @@ public class HadoopAdaptor implements HadoopActions {
    }
    
    private HadoopConnection getConnectionForCluster(HadoopClusterInfo cluster) {
-      HadoopConnection result = _connections.get(cluster.getClusterName());
+      HadoopConnection result = _connections.get(cluster.getClusterId());
       if (result == null) {
          /* TODO: SshUtils could be a single shared thread-safe object or non threadsafe object per connection */
          result = new HadoopConnection(cluster, _connectionProperties, new NonThreadSafeSshUtils());
          result.setHadoopCredentials(_credentials);
          result.setHadoopExcludeTTPath(_jtConfig.getExcludeTTPath());
          result.setHadoopHomePath(_jtConfig.getHadoopHomePath());
-         _connections.put(cluster.getClusterName(), result);
+         _connections.put(cluster.getClusterId(), result);
       }
       setErrorParamValue(ParamTypes.HADOOP_HOME, result.getHadoopHome());
       setErrorParamValue(ParamTypes.JOBTRACKER, result.getJobTrackerName());

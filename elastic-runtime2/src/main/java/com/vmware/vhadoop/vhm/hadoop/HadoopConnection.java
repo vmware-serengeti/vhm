@@ -158,6 +158,6 @@ public class HadoopConnection {
    
    @Override
    public String toString() {
-      return _hadoopCluster.getClusterName();
+      return _hadoopCluster.getClusterId();
    }
 }

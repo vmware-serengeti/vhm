@@ -66,7 +66,7 @@ public class ClusterMapImpl implements ClusterMap {
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
       final String _masterUUID;
-      String _folderName;
+      String _folderName;        /* Note this field is only set by SerengetiLimitEvents */
       VMInfo _masterVM;
       int _minInstances;
       String _scaleStrategyKey;
@@ -159,7 +159,7 @@ public class ClusterMapImpl implements ClusterMap {
    
    private void removeCluster(ClusterInfo cluster) {
       if (cluster != null) {
-         _log.log(Level.INFO, "Remove cluster " + cluster._folderName + " uuid=" + cluster._masterUUID);
+         _log.log(Level.INFO, "Remove cluster " + cluster._masterUUID + " uuid=" + cluster._masterUUID);
          _clusters.remove(cluster._masterUUID);
       }
    }
@@ -358,7 +358,7 @@ public class ClusterMapImpl implements ClusterMap {
       ClusterInfo ci = _clusters.get(clusterId);
       HadoopClusterInfo result = null;
       if (ci != null) {
-         result = new HadoopClusterInfo(ci._folderName, ci._masterVM._ipAddr);
+         result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr);
       }
       return result;
    }

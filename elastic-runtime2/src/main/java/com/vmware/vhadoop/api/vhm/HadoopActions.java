@@ -20,16 +20,16 @@ import com.vmware.vhadoop.util.CompoundStatus;
 public interface HadoopActions {
 
    public class HadoopClusterInfo {
-      private String _clusterName;
+      private String _clusterId;
       private String _jobTrackerName;
       
-      public HadoopClusterInfo(String clusterName, String jobTrackerName) {
-         _clusterName = clusterName;
+      public HadoopClusterInfo(String clusterId, String jobTrackerName) {
+         _clusterId = clusterId;
          _jobTrackerName = jobTrackerName;
       }
       
-      public String getClusterName() {
-         return _clusterName;
+      public String getClusterId() {
+         return _clusterId;
       }
       
       public String getJobTrackerName() {
