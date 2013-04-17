@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.util;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.IllegalFormatConversionException;
@@ -66,8 +68,12 @@ public class LogFormatter extends Formatter {
       }
       result.append(NEWLINE);
       if (record.getThrown() != null) {
-         result.append(record.getThrown().getMessage());
-         /* TODO: Add stack trace */
+         ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         PrintWriter pw = new PrintWriter(baos);
+         record.getThrown().printStackTrace(pw);
+         pw.close();
+         result.append(baos.toString());
+         result.append(NEWLINE);
       }
       return result.toString();
    }
