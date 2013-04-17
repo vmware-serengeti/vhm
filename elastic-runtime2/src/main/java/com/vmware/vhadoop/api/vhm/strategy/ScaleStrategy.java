@@ -45,8 +45,8 @@ public interface ScaleStrategy extends ClusterMapReader {
          _threadLocalStatus.initialize();
          try {
             result = localCall();
-         } catch (Exception e) {
-            _log.log(Level.SEVERE, "Unexpected exception in ClusterScaleOperation", e);
+         } catch (Throwable t) {
+            _log.log(Level.SEVERE, "Unexpected exception in ClusterScaleOperation", t);
          }
          _threadLocalStatus.remove();
          return result;
