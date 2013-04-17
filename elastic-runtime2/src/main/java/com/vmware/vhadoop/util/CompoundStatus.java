@@ -15,11 +15,8 @@
 
 package com.vmware.vhadoop.util;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
+import java.util.Set;
+import java.util.TreeSet;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
 
 /**
@@ -38,13 +35,10 @@ import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
  */
 public class CompoundStatus {
    
-   private static final ProgressLogger _pLog = ProgressLogger.getProgressLogger(CompoundStatus.class.getName());
-   private static final Logger _log = _pLog.getLogger();
+   private Set<TaskStatus> _taskStatusList;     /* Ordered by timestamp for audit */
+   private String _name;
    
-   public List<TaskStatus> _taskStatusList;     /* TODO: Order by timestamp for audit */
-   public String _name;
-   
-   public static class TaskStatus {
+   public static class TaskStatus implements Comparable<TaskStatus> {
       public enum TaskState{SUCCEEDED, INCOMPLETE, FAILED};
       private String _compoundName;
       private final long _timeOccurred = System.currentTimeMillis();
@@ -78,11 +72,21 @@ public class CompoundStatus {
       public String getCompoundName() {
          return _compoundName;
       }
+
+      @Override
+      public int compareTo(TaskStatus comparator) {
+         return (int)(comparator._timeOccurred - _timeOccurred);
+      }
+      
+      @Override
+      public String toString() {
+         return _timeOccurred+": "+_compoundName+" -> "+_message;
+      }
    }
    
    /* Create a new compound status. The name is typically the class/method name that created the status */
    public CompoundStatus(String name) {
-      _taskStatusList = new ArrayList<TaskStatus>();
+      _taskStatusList = new TreeSet<TaskStatus>();
       _name = name;
    }
    
@@ -110,24 +114,22 @@ public class CompoundStatus {
       return _taskStatusList.size();
    }
    
-   public int getFailedTaskCount() {
+   private int getTaskCountForState(TaskState state) {
       int result = 0;
       for (TaskStatus status : _taskStatusList) {
-         if (status.getTaskState().equals(TaskState.FAILED)) {
+         if (status.getTaskState().equals(state)) {
             result++;
          }
       }
       return result;
    }
    
+   public int getFailedTaskCount() {
+      return getTaskCountForState(TaskState.FAILED);
+   }
+   
    public int getIncompleteTaskCount() {
-      int result = 0;
-      for (TaskStatus status : _taskStatusList) {
-         if (status.getTaskState().equals(TaskState.INCOMPLETE)) {
-            result++;
-         }
-      }
-      return result;
+      return getTaskCountForState(TaskState.INCOMPLETE);
    }
    
    public int getFatalFailureCount() {
@@ -140,41 +142,27 @@ public class CompoundStatus {
       return result;
    }
 
-   /* Utility method to look through the array of CompoundStatuses and find the failure with the earliest timestamp */
-   public static TaskStatus getFirstFailure(CompoundStatus[] statuses) {
-      TaskStatus result = null;
-      for (CompoundStatus compStatus : statuses) {
-         if (compStatus == null) {
-            continue;
-         }
-         for (TaskStatus taskStatus : compStatus._taskStatusList) {
-            if (!taskStatus._taskState.equals(TaskState.SUCCEEDED) && (taskStatus._message != null)) {
-               if (result == null) {
-                  result = taskStatus;
-               } else if (taskStatus._timeOccurred < result._timeOccurred) {
-                  result = taskStatus;
-               }
-            }
-            _log.log(Level.INFO, "TaskStatus: " + taskStatus.getCompoundName() + " " + taskStatus.getMessage() + " "  + taskStatus.getTaskState());
+   public TaskStatus getFirstFailure() {
+      for (TaskStatus taskStatus : _taskStatusList) {
+         if (!taskStatus._taskState.equals(TaskState.SUCCEEDED)
+               && (taskStatus._message != null)) {
+            return taskStatus;
          }
       }
-      return result;
+      return null;
    }
-   
-   /* Utility method to check if all the poweron/off operations succeeded */
-   public static boolean allPowerOpsSucceeded(CompoundStatus edpStatus) {
-	  boolean powerTestExists = false;
-      if (edpStatus == null) {
-         return false;
+
+   /* true == no failure found */
+   public boolean screenStatusesForSpecificFailures(String[] failedCompoundNames) {
+      for (TaskStatus taskStatus : _taskStatusList) {
+         for (String failureName : failedCompoundNames) {
+            if (taskStatus._compoundName.equals(failureName) && 
+                  !taskStatus._taskState.equals(TaskState.SUCCEEDED) &&
+                  (taskStatus._message != null)) {
+               return false;
+            }
+         }
       }
-	  for (TaskStatus taskStatus : edpStatus._taskStatusList) {
-    	  if (taskStatus.getCompoundName().equals("testForPowerState")) { 
-    		  powerTestExists = true;
-    		  if ((!taskStatus._taskState.equals(TaskState.SUCCEEDED))) {
-    			  return false;
-    		  }
-    	  }
-      }
-	  return powerTestExists;
+      return true;
    }
 }

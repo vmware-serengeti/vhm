@@ -13,6 +13,8 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 import com.vmware.vim.binding.vim.Task;
@@ -26,6 +28,19 @@ public class VcAdapter implements VCActions {
    private VcVlsi _vcVlsi;
    private VcCredentials _vcCreds;
 
+   private ThreadLocalCompoundStatus _threadLocalStatus;
+   
+   public void setThreadLocalCompoundStatus(ThreadLocalCompoundStatus tlcs) {
+      _threadLocalStatus = tlcs;
+      _vcVlsi.setThreadLocalCompoundStatus(tlcs);
+   }
+   
+   private CompoundStatus getCompoundStatus() {
+      if (_threadLocalStatus == null) {
+         return new CompoundStatus("DUMMY_STATUS");
+      }
+      return _threadLocalStatus.get();
+   }
    
    private boolean initClients(boolean useCert) {
       try {
