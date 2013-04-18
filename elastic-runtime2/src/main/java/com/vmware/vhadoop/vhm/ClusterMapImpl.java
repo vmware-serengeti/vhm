@@ -289,7 +289,9 @@ public class ClusterMapImpl implements ClusterMap {
    @Override
    public String getClusterIdForFolder(String clusterFolderName) {
       for (ClusterInfo ci : _clusters.values()) {
-         if (ci._folderName.equals(clusterFolderName)) {
+         //JG: Note that since foldername is only set by Serengeti Limit commands, foldername
+         //    for other clusters will be null, which needs to be ignored...
+         if (ci._folderName != null && ci._folderName.equals(clusterFolderName)) {
             return ci._masterUUID;
          }
       }

@@ -22,6 +22,8 @@ import com.vmware.vhadoop.vhm.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
 import com.vmware.vhadoop.vhm.strategy.BalancedVMChooser;
+import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
+import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
 import com.vmware.vhadoop.vhm.strategy.JobTrackerEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
@@ -133,7 +135,9 @@ public class BootstrapMain {
 
    ScaleStrategy[] getScaleStrategies(ThreadLocalCompoundStatus tlcs) {
       ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
-            new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
+            //JG: reverting to dumb vmchooser and edpolicy until others are fixed...
+            new DumbVMChooser(), new DumbEDPolicy(getVCInterface(tlcs)));
+            //new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
       return new ScaleStrategy[]{manualScaleStrategy};
    }
    
