@@ -62,12 +62,12 @@ public class TestBalancedVMChooser {
          Assert.assertEquals(1, vms.size());
          String vmid = vms.iterator().next();
          Assert.assertEquals("hostY", _map.getHostIdForVm(vmid));
-         _map.setPowerStateForVM(vmid, true);
+         Assert.assertFalse(_map.setPowerStateForVM(vmid, true));
       }
 
       /* power off 3 on hostX */
       for (i = 0; i < 3; i++) {
-         _map.setPowerStateForVM("vm"+i, false);
+         Assert.assertTrue(_map.setPowerStateForVM("vm"+i, false));
       }
 
       /* now hostX should have 4 on, and hostY should have 6, power on 3 should have 2 on hostX and 1 on either  */
@@ -85,5 +85,75 @@ public class TestBalancedVMChooser {
 
       Assert.assertTrue("expected 2 or 3 VMs powered on on hostX", x >= 2);
       Assert.assertTrue("expected at most 1 VM powered on on hostY", y <= 1);
+   }
+
+   private void createUnevenDistribution() {
+      _map.clearMap();
+      int vm = 0;
+      for (int i = 0; i < 6; i++, vm++) {
+         _map.addVMToMap("vm"+vm, "clusterA", "hostX", true);
+      }
+      for (int i = 0; i < 3; i++, vm++) {
+         _map.addVMToMap("vm"+vm, "clusterA", "hostX", false);
+      }
+      for (int i = 0; i < 10; i++, vm++) {
+         _map.addVMToMap("vm"+vm, "clusterA", "hostY", true);
+      }
+
+      _map.addVMToMap("vm"+vm++, "clusterA", "hostA", true);
+
+      for (int i = 0; i < 10; i++, vm++) {
+         _map.addVMToMap("vm"+vm, "clusterA", "hostA", false);
+      }
+
+      _map.addVMToMap("vm"+vm++, "clusterA", "hostB", true);
+      for (int i = 0; i < 10; i++, vm++) {
+         _map.addVMToMap("vm"+vm, "clusterA", "hostB", false);
+      }
+      _map.addVMToMap("vm"+vm++, "clusterA", "hostB", false);
+      _map.addVMToMap("vm"+vm++, "clusterA", "hostC", true);
+   }
+
+   @Test
+   public void testUnevenDistributionPowerOff() {
+      createUnevenDistribution();
+
+      Set<String> vms = _chooser.chooseVMsToDisable("clusterA", 9);
+      for (String vmid : vms) {
+         Assert.assertTrue(_map.setPowerStateForVM(vmid, false));
+      }
+
+      Assert.assertTrue("Expected no change in hostA", _map.listComputeVMsForClusterHostAndPowerState("clusterA", "hostA", true).size() == 1);
+      Assert.assertTrue("Expected no change in hostB", _map.listComputeVMsForClusterHostAndPowerState("clusterA", "hostB", true).size() == 1);
+      Assert.assertTrue("Expected no change in hostC", _map.listComputeVMsForClusterHostAndPowerState("clusterA", "hostC", true).size() == 1);
+
+      int num = _map.listComputeVMsForClusterHostAndPowerState("clusterA", "hostX", true).size();
+      Assert.assertTrue("Expected hostX to have 3 or 4 VMs powered on, found "+num, num == 3 || num == 4);
+
+      num = _map.listComputeVMsForClusterHostAndPowerState("clusterA", "hostY", true).size();
+      Assert.assertTrue("Expected hostY to have 3 or 4 VMs powered on, found "+num, num == 3 || num == 4);
+   }
+
+   @Test
+   public void testUnevenDistributionPowerOffAndOn() {
+      createUnevenDistribution();
+
+      Set<String> vms = _chooser.chooseVMsToDisable("clusterA", 9);
+      for (String vmid : vms) {
+         Assert.assertTrue(_map.setPowerStateForVM(vmid, false));
+      }
+      vms = _chooser.chooseVMsToEnable("clusterA", 11);
+      for (String vmid : vms) {
+         Assert.assertFalse(_map.setPowerStateForVM(vmid, true));
+      }
+
+      String hosts[] = new String[] { "hostX", "hostY", "hostA", "hostB"} ;
+      for (String host : hosts) {
+         int num = _map.listComputeVMsForClusterHostAndPowerState("clusterA", host, true).size();
+         Assert.assertEquals("Expected "+host+" to have 5 VMs powered on, found "+num, 5, num);
+      }
+
+      int num = _map.listComputeVMsForClusterHostAndPowerState("clusterA", "hostC", true).size();
+      Assert.assertEquals("Expected hostC to have 1 VMs powered on, found "+num, 1, num);
    }
 }
