@@ -185,12 +185,6 @@ public class StandaloneSimpleClusterMap extends AbstractClusterMapReader impleme
 	}
 
 	@Override
-	public Set<String> getIpAddressForVMs(final Set<String> toEnable) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public ClusterMapAccess clone() {
 		return this;
 	}
@@ -206,4 +200,10 @@ public class StandaloneSimpleClusterMap extends AbstractClusterMapReader impleme
 			throw new RuntimeException("Trying to unlock wrong cluster map!");
 		}
 	}
+
+   @Override
+   public Set<String> getDnsNameForVMs(Set<String> vms) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }

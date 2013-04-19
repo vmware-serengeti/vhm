@@ -20,6 +20,7 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
       public Integer _minInstances;
       public Boolean _isElastic;
       public String _ipAddr;
+      public String _dnsName;
       public Integer _jobTrackerPort;
    }
 }

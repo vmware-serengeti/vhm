@@ -91,6 +91,7 @@ public class VcVlsi {
    private static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
    private static final String VC_PROP_VM_HOST = "runtime.host";
    private static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
+   private static final String VC_PROP_VM_GUEST_HOSTNAME = "guest.hostName";
    
    private static final String VC_MOREF_TYPE_TASK = "Task";
    private static final String VC_MOREF_TYPE_VM = "VirtualMachine";
@@ -530,6 +531,8 @@ public class VcVlsi {
                   vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
                } else if (pcName.equals(VC_PROP_VM_GUEST_IP)) {
                   vmData._ipAddr = (String)pcValue; 
+               } else if (pcName.equals(VC_PROP_VM_GUEST_HOSTNAME)) {
+                  vmData._dnsName = (String)pcValue; 
                } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
                   // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
                   OptionValue[] ecl = (OptionValue[]) pcValue;
@@ -569,7 +572,7 @@ public class VcVlsi {
       }
       if (version.equals("")) {
          String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID,
-               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST, VC_PROP_VM_GUEST_IP};
+               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST, VC_PROP_VM_GUEST_IP, VC_PROP_VM_GUEST_HOSTNAME};
          setupWaitForUpdates(vcClient, folder, typeVM, props);
       }
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);

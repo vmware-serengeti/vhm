@@ -53,6 +53,7 @@ public class ClusterMapImpl implements ClusterMap {
       public String _myUUID;
       public String _name;
       String _ipAddr;
+      String _dnsName;
       Integer _jobTrackerPort;
       
       // temporary/cache holding fields until cluster object is created
@@ -122,6 +123,9 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._ipAddr != null) {
          vmInfo._ipAddr = vmd._ipAddr;
+      }
+      if (vmd._dnsName != null) {
+         vmInfo._dnsName = vmd._dnsName;
       }
       if (vmd._jobTrackerPort != null) {
          vmInfo._jobTrackerPort = vmd._jobTrackerPort;
@@ -262,6 +266,7 @@ public class ClusterMapImpl implements ClusterMap {
          String cluster = (masterVM == null) ? "N/A" : masterVM._name;
          String role = vmInfo._isElastic ? "compute" : "other";
          String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
+         String dnsName = (vmInfo._dnsName == null) ? "N/A" : vmInfo._dnsName;
          String jtPort = "";
          if (vmInfo._isMaster) {
             role = "master";
@@ -270,7 +275,7 @@ public class ClusterMapImpl implements ClusterMap {
             }
          }
          _log.log(Level.INFO, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + 
-               " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + jtPort);
+               " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }
 
@@ -366,12 +371,12 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public Set<String> getIpAddressForVMs(Set<String> vms) {
+   public Set<String> getDnsNameForVMs(Set<String> vms) {
       Set<String> results = new HashSet<String>();
       for (String vm : vms) {
          VMInfo vminfo = _vms.get(vm);
          if (vminfo != null) {
-            results.add(vminfo._ipAddr);
+            results.add(vminfo._dnsName);
          }
       }
       return results;
