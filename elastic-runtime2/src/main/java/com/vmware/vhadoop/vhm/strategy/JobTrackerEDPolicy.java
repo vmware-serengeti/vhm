@@ -24,7 +24,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          String clusterId) throws Exception {
       ClusterMap clusterMap = getAndReadLockClusterMap();
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-      String[] hostNames = clusterMap.getIpAddressForVMs(toEnable).toArray(new String[0]);
+      String[] hostNames = clusterMap.getDnsNameForVMs(toEnable).toArray(new String[0]);
       unlockClusterMap(clusterMap);
       
       CompoundStatus status = getCompoundStatus();
@@ -40,7 +40,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          String clusterId) throws Exception {
       ClusterMap clusterMap = getAndReadLockClusterMap();
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-      String[] hostNames = clusterMap.getIpAddressForVMs(toDisable).toArray(new String[0]);
+      String[] hostNames = clusterMap.getDnsNameForVMs(toDisable).toArray(new String[0]);
       unlockClusterMap(clusterMap);
 
       CompoundStatus status = getCompoundStatus();
