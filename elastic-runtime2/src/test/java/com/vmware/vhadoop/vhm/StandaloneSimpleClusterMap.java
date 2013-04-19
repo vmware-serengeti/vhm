@@ -181,14 +181,6 @@ public class StandaloneSimpleClusterMap extends AbstractClusterMapReader impleme
 		return null;
 	}
 
-	/*
-	@Override
-	public Set<String> getIpAddressForVMs(final Set<String> toEnable) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	*/
-
 	@Override
 	public ClusterMapAccess clone() {
 		return this;
