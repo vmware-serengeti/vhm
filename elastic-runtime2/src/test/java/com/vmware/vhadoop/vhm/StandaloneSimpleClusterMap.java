@@ -59,13 +59,16 @@ public class StandaloneSimpleClusterMap extends AbstractClusterMapReader impleme
 	   vms.add(new VM(name, cluster, host, power));
 	}
 
-	public void setPowerStateForVM(final String name, final boolean power) {
+	public boolean setPowerStateForVM(final String name, final boolean power) {
 	   for (VM vm : vms) {
 	      if (vm.id.equals(name)) {
+	         boolean result = vm.power;
 	         vm.power = power;
-	         return;
+	         return result;
 	      }
 	   }
+
+	   return false;
 	}
 
 	@Override
