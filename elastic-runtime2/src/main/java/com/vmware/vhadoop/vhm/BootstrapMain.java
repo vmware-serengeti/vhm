@@ -135,9 +135,7 @@ public class BootstrapMain {
 
    ScaleStrategy[] getScaleStrategies(ThreadLocalCompoundStatus tlcs) {
       ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
-            //JG: reverting to dumb vmchooser and edpolicy until others are fixed...
-            new BalancedVMChooser(), new DumbEDPolicy(getVCInterface(tlcs)));
-            //new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
+            new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
       return new ScaleStrategy[]{manualScaleStrategy};
    }
    
