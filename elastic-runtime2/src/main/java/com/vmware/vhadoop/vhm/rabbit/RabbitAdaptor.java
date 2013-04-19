@@ -39,11 +39,9 @@ public class RabbitAdaptor implements MQClient {
       
       public RabbitConnectionCallback(String routeKey) {
          _routeKey = routeKey;
-         _log.info("RCC init routeKey=" + _routeKey);
       }
       
       public void sendMessage(byte[] data) {
-         _log.info("RCC send msg");
          if (_routeKey == null) {
             _connection.sendMessage(data);
          } else {

@@ -597,7 +597,7 @@ public class VcVlsi {
          version = updateSet.getVersion();
          FilterUpdate[] updates = updateSet.getFilterSet();
 
-         _log.log(Level.INFO, "WFU new version= " + version + " fs= " + updates);
+         //_log.log(Level.INFO, "WFU new version= " + version + " fs= " + updates);
          if (updates != null) {
             for (FilterUpdate pfu : updates) {
                ObjectUpdate[] objectSet = pfu.getObjectSet();
