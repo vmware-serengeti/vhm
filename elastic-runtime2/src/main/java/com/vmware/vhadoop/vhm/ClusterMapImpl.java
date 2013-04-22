@@ -217,12 +217,14 @@ public class ClusterMapImpl implements ClusterMap {
          String clusterId, String hostId, boolean powerState) {
       Set<String> result = new HashSet<String>();
       for (VMInfo vminfo : _vms.values()) {
-         boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._host._moRef));
-         boolean clusterTest = (clusterId == null) ? true : (vminfo._cluster._masterUUID.equals(clusterId));
-         boolean powerStateTest = (vminfo._powerState == powerState);
-         if ((vminfo._isElastic) && hostTest && clusterTest && powerStateTest) {
-            result.add(vminfo._moRef);
-         }
+         try {
+            boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._host._moRef));
+            boolean clusterTest = (clusterId == null) ? true : (vminfo._cluster._masterUUID.equals(clusterId));
+            boolean powerStateTest = (vminfo._powerState == powerState);
+            if ((vminfo._isElastic) && hostTest && clusterTest && powerStateTest) {
+               result.add(vminfo._moRef);
+            }
+         } catch (NullPointerException e) {} //vminfo.xxx could be null for VMs where we only have partial data from VC
       }
       return result;
    }
