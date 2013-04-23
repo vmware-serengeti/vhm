@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 import java.util.logging.FileHandler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
@@ -53,6 +54,7 @@ public class BootstrapMain {
      try {
           FileHandler handler = new FileHandler(fileName);
           Logger.getLogger("").addHandler(handler);
+          Logger.getLogger("").setLevel(Level.INFO);
      } catch (SecurityException e) {
         e.printStackTrace();
      } catch (IOException e) {

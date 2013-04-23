@@ -202,8 +202,19 @@ public class StandaloneSimpleClusterMap extends AbstractClusterMapReader impleme
 	}
 
    @Override
-   public Set<String> getDnsNameForVMs(Set<String> vms) {
+   public Set<String> getDnsNameForVMs(final Set<String> vms) {
       // TODO Auto-generated method stub
+      return null;
+   }
+
+   @Override
+   public String getClusterIdForVm(final String vm) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            return target.cluster;
+         }
+      }
+
       return null;
    }
 }

@@ -7,11 +7,11 @@ import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 
-/* Represents read-only and idempotent methods for ClusterMap 
- * Everything returned by this interface should be a deep copy of the ClusterMap data 
+/* Represents read-only and idempotent methods for ClusterMap
+ * Everything returned by this interface should be a deep copy of the ClusterMap data
  * TODO: Check that this is correct */
 public interface ClusterMap {
-   
+
    public interface ExtraInfoToScaleStrategyMapper {
 
       String getStrategyKey(VMEventData vmd);
@@ -34,7 +34,7 @@ public interface ClusterMap {
    boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 
    String[] getAllKnownClusterIds();
-   
+
    String getScaleStrategyKey(String clusterId);
 
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
@@ -42,4 +42,6 @@ public interface ClusterMap {
    Set<String> getDnsNameForVMs(Set<String> vms);
 
    String getHostIdForVm(String vmid);
+
+   String getClusterIdForVm(String vm);
 }

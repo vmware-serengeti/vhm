@@ -1,6 +1,11 @@
 package com.vmware.vhadoop.vhm;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -11,37 +16,37 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
+import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 
 /* Note that this class allows multiple readers and a single writer
  * All of the methods in ClusterMap can be accessed by multiple threads, but should only ever read and are idempotent
  * The writer of ClusterMap will block until the readers have finished reading and will block new readers until it has finished updating
- * VHM controls the multi-threaded access to ClusterMap through ClusterMapAccess. 
+ * VHM controls the multi-threaded access to ClusterMap through ClusterMapAccess.
  * There should be no need for synchronization in this class provided this model is adhered to */
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
-   
+
    Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
    Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
-   
+
    final ExtraInfoToScaleStrategyMapper _strategyMapper;
-   
-   public ClusterMapImpl(ExtraInfoToScaleStrategyMapper mapper) {
+
+   public ClusterMapImpl(final ExtraInfoToScaleStrategyMapper mapper) {
       _strategyMapper = mapper;
    }
-   
+
    class HostInfo {
-      public HostInfo(String moRef) {
+      public HostInfo(final String moRef) {
          this._moRef = moRef;
       }
       final String _moRef;
    }
-   
+
    class VMInfo {
-      public VMInfo(String moRef) {
+      public VMInfo(final String moRef) {
          this._moRef = moRef;
       }
       final String _moRef;
@@ -55,14 +60,14 @@ public class ClusterMapImpl implements ClusterMap {
       String _ipAddr;
       String _dnsName;
       Integer _jobTrackerPort;
-      
+
       // temporary/cache holding fields until cluster object is created
       Integer _cachedMinInstances;
       String _cachedScaleStrategyKey;
    }
 
    class ClusterInfo {
-      public ClusterInfo(String masterUUID) {
+      public ClusterInfo(final String masterUUID) {
          this._masterUUID = masterUUID;
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
@@ -73,8 +78,8 @@ public class ClusterMapImpl implements ClusterMap {
       String _scaleStrategyKey;
       LinkedList<ClusterScaleCompletionEvent> _completionEvents;
    }
-   
-   private HostInfo getHost(String hostMoRef) {
+
+   private HostInfo getHost(final String hostMoRef) {
       HostInfo host = _hosts.get(hostMoRef);
       if ((host == null) && (hostMoRef != null)) {
          host = new HostInfo(hostMoRef);
@@ -83,7 +88,7 @@ public class ClusterMapImpl implements ClusterMap {
       return host;
    }
 
-   private ClusterInfo getCluster(String masterUUID) {
+   private ClusterInfo getCluster(final String masterUUID) {
       ClusterInfo cluster = _clusters.get(masterUUID);
       if ((cluster == null) && (masterUUID != null)) {
          cluster = new ClusterInfo(masterUUID);
@@ -92,7 +97,7 @@ public class ClusterMapImpl implements ClusterMap {
       return cluster;
    }
 
-   private void updateVMState(VMEventData vmd) {
+   private void updateVMState(final VMEventData vmd) {
       VMInfo vmInfo = _vms.get(vmd._vmMoRef);
       if (vmInfo == null) {
          vmInfo = new VMInfo(vmd._vmMoRef);
@@ -133,7 +138,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmd._isElastic != null) {
          vmInfo._isElastic = vmd._isElastic;
       }
-      
+
       ClusterInfo ci = vmInfo._cluster;
       if (vmd._enableAutomation != null) {
          vmInfo._isMaster = true;
@@ -156,19 +161,19 @@ public class ClusterMapImpl implements ClusterMap {
          vmInfo._isMaster = true;
       }
       if (vmInfo._isMaster && (ci != null)) {
-         ci._masterVM = vmInfo; 
+         ci._masterVM = vmInfo;
       }
       dumpState();
    }
-   
-   private void removeCluster(ClusterInfo cluster) {
+
+   private void removeCluster(final ClusterInfo cluster) {
       if (cluster != null) {
          _log.log(Level.INFO, "Remove cluster " + cluster._masterUUID + " uuid=" + cluster._masterUUID);
          _clusters.remove(cluster._masterUUID);
       }
    }
 
-   private void removeVM(String vmMoRef) {
+   private void removeVM(final String vmMoRef) {
       VMInfo vmInfo = _vms.get(vmMoRef);
       if (vmInfo != null) {
          if (vmInfo._isMaster) {
@@ -179,13 +184,13 @@ public class ClusterMapImpl implements ClusterMap {
       }
       dumpState();
    }
-   
-   private void changeScaleStrategy(String clusterId, String newStrategyKey) {
+
+   private void changeScaleStrategy(final String clusterId, final String newStrategyKey) {
       ClusterInfo cluster = _clusters.get(clusterId);
       cluster._scaleStrategyKey = newStrategyKey;
    }
 
-   public void handleClusterEvent(ClusterStateChangeEvent event) {
+   public void handleClusterEvent(final ClusterStateChangeEvent event) {
       if (event instanceof VMUpdatedEvent) {
          VMUpdatedEvent ace = (VMUpdatedEvent)event;
          updateVMState(ace.getVm());
@@ -198,23 +203,23 @@ public class ClusterMapImpl implements ClusterMap {
       }
    }
 
-   public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
+   public void handleCompletionEvent(final ClusterScaleCompletionEvent event) {
       ClusterInfo cluster = getCluster(event.getClusterId());
       cluster._completionEvents.addFirst(event);
    }
-   
-   public ScaleStrategy getScaleStrategyForCluster(String clusterId) {
+
+   public ScaleStrategy getScaleStrategyForCluster(final String clusterId) {
       ClusterInfo cluster = _clusters.get(clusterId);
       return _scaleStrategies.get(cluster._scaleStrategyKey);
    }
 
-   public void registerScaleStrategy(ScaleStrategy strategy) {
+   public void registerScaleStrategy(final ScaleStrategy strategy) {
       _scaleStrategies.put(strategy.getName(), strategy);
    }
 
    @Override
    public Set<String> listComputeVMsForClusterHostAndPowerState(
-         String clusterId, String hostId, boolean powerState) {
+         final String clusterId, final String hostId, final boolean powerState) {
       Set<String> result = new HashSet<String>();
       for (VMInfo vminfo : _vms.values()) {
          try {
@@ -230,17 +235,17 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
+   public Set<String> listComputeVMsForClusterAndPowerState(final String clusterId, final boolean powerState) {
       return listComputeVMsForClusterHostAndPowerState(clusterId, null, powerState);
    }
 
    @Override
-   public Set<String> listComputeVMsForPowerState(boolean powerState) {
+   public Set<String> listComputeVMsForPowerState(final boolean powerState) {
       return listComputeVMsForClusterHostAndPowerState(null, null, powerState);
    }
-   
+
    @Override
-   public Set<String> listHostsWithComputeVMsForCluster(String clusterId) {
+   public Set<String> listHostsWithComputeVMsForCluster(final String clusterId) {
       Set<String> result = new HashSet<String>();
       for (VMInfo vminfo : _vms.values()) {
          if ((vminfo._isElastic) && vminfo._cluster._masterUUID.equals(clusterId)) {
@@ -253,10 +258,10 @@ public class ClusterMapImpl implements ClusterMap {
    private void dumpState() {
       for (ClusterInfo ci : _clusters.values()) {
          String clusterName = (ci._masterVM == null) ? "N/A" : ci._masterVM._name;
-         _log.log(Level.INFO, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
+         _log.log(Level.FINE, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
                " min=" + ci._minInstances + " uuid= " + ci._masterUUID);
       }
-      
+
       for (VMInfo vmInfo : _vms.values()) {
          String powerState = vmInfo._powerState ? " ON" : " OFF";
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
@@ -272,12 +277,12 @@ public class ClusterMapImpl implements ClusterMap {
                jtPort = " JTport=" + vmInfo._jobTrackerPort;
             }
          }
-         _log.log(Level.INFO, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + 
+         _log.log(Level.FINE, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState +
                " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }
 
-   String getClusterIdFromVMsInFolder(String folderName, List<String> vms) {
+   String getClusterIdFromVMsInFolder(final String folderName, final List<String> vms) {
       String clusterId = null;
       for (String moRef : vms) {
          try {
@@ -290,7 +295,7 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public String getClusterIdForFolder(String clusterFolderName) {
+   public String getClusterIdForFolder(final String clusterFolderName) {
       for (ClusterInfo ci : _clusters.values()) {
          //JG: Note that since foldername is only set by Serengeti Limit commands, foldername
          //    for other clusters will be null, which needs to be ignored...
@@ -301,16 +306,18 @@ public class ClusterMapImpl implements ClusterMap {
       return null;
    }
 
-   public String getHostIdForVm(String vmId) {
+   @Override
+   public String getHostIdForVm(final String vmId) {
       return _vms.get(vmId)._host._moRef;
    }
 
-   public String getClusterIdForVm(String vmId) {
+   @Override
+   public String getClusterIdForVm(final String vmId) {
       return _vms.get(vmId)._cluster._masterUUID;
    }
 
    @Override
-   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
+   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(final String clusterId) {
       ClusterInfo info =  getCluster(clusterId);
       if (info._completionEvents.size() > 0) {
          return info._completionEvents.getFirst();
@@ -319,7 +326,7 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState) {
+   public boolean checkPowerStateOfVms(final Set<String> vmIds, final boolean expectedPowerState) {
       for (String vmId : vmIds) {
          VMInfo vm = _vms.get(vmId);
          if (vmId != null) {
@@ -334,7 +341,7 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public Map<String, String> getHostIdsForVMs(Set<String> vms) {
+   public Map<String, String> getHostIdsForVMs(final Set<String> vms) {
       Map<String, String> result = new HashMap<String, String>();
       for (String vmId : vms) {
          VMInfo vm = _vms.get(vmId);
@@ -354,12 +361,12 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public String getScaleStrategyKey(String clusterId) {
+   public String getScaleStrategyKey(final String clusterId) {
       return _clusters.get(clusterId)._scaleStrategyKey;
    }
 
    @Override
-   public HadoopClusterInfo getHadoopInfoForCluster(String clusterId) {
+   public HadoopClusterInfo getHadoopInfoForCluster(final String clusterId) {
       ClusterInfo ci = _clusters.get(clusterId);
       HadoopClusterInfo result = null;
       if (ci != null) {
@@ -369,7 +376,7 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public Set<String> getDnsNameForVMs(Set<String> vms) {
+   public Set<String> getDnsNameForVMs(final Set<String> vms) {
       Set<String> results = new HashSet<String>();
       for (String vm : vms) {
          VMInfo vminfo = _vms.get(vm);
