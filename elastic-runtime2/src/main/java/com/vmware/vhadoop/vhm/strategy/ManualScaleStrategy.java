@@ -17,8 +17,10 @@ import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 public class ManualScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
+   private static final Logger _log = Logger.getLogger(ManualScaleStrategy.class.getName());
    final VMChooser _vmChooser;
    final EDPolicy _enableDisablePolicy;
    
@@ -69,7 +71,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             if (delta > 0) {
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                limitEvent.reportProgress(10, null);
-               if (vmsToED != null) {
+               if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), clusterId);
                   limitEvent.reportProgress(30, null);
                   returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
@@ -81,7 +83,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                limitEvent.reportProgress(10, null);
-               if (vmsToED != null) {
+               if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId);
                   limitEvent.reportProgress(30, null);
                   returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);

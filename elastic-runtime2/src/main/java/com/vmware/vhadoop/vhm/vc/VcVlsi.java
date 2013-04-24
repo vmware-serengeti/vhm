@@ -359,8 +359,6 @@ public class VcVlsi {
       }
 
       public RetrieveResult continueRetrieve(String token) throws InvalidProperty {
-         RetrieveOptions retrieveOptions = new RetrieveOptions();
-
          return _propertyCollector.continueRetrievePropertiesEx(token);
       }
       

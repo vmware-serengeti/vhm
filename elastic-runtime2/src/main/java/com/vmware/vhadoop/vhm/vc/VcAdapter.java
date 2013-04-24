@@ -41,19 +41,21 @@ public class VcAdapter implements VCActions {
       }
       return _threadLocalStatus.get();
    }
-   
+
+   // returns true if it successfully connected to VC
    private boolean initClients(boolean useCert) {
       try {
          _defaultClient = _vcVlsi.connect(_vcCreds, useCert, false);
          _cloneClient = _vcVlsi.connect(_vcCreds, useCert, true);
+         if ((_defaultClient == null) || (_cloneClient == null)) {
+            return false;
+         }
+         return true;
       } catch (Exception e) {
-         // TODO Auto-generated catch block
+         _log.log(Level.WARNING, "VC connection failed.");
          e.printStackTrace();
-      }
-      if ((_defaultClient == null) || (_cloneClient == null)) {
          return false;
       }
-      return true;
    }
    
    private void connect() {
@@ -66,7 +68,10 @@ public class VcAdapter implements VCActions {
       boolean success = initClients(useCert);
       if (useCert && !success && (_vcCreds.user != null) && (_vcCreds.password != null)) { 
          _log.log(Level.WARNING, "Cert based login failed, trying user/password");
-         initClients(false);
+         success = initClients(false);
+      }
+      if (!success) {
+         throw new RuntimeException("VC connection failed");
       }
    }
    
