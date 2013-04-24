@@ -23,6 +23,18 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       int on;
    }
 
+   /**
+    * Selects the VMs to operate on from the candidates passed in. Candidates are passed in grouped via host and held in a priority queue.
+    * The queues comparator uses the details held per host to determine which host should be the next to have a VM operated on.
+    *
+    * Currently we operate on candidates on the host in the order they're found, however we could pair this with a call to chooseVmOnHost
+    * to provide a more discriminating mechanism.
+    *
+    * @param targets - candidate VMs, grouped by host
+    * @param delta - the number of VMs to operate on (>= 0)
+    * @param targetPowerState - true to enable VMs, false to disable
+    * @return the chosen set of VMs
+    */
    protected Set<String> selectVMs(final Queue<Host> targets, final int delta, final boolean targetPowerState) {
       Set<String> result = new HashSet<String>();
       int remaining = delta;
@@ -101,7 +113,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
 
    @Override
    public String chooseVMToEnableOnHost(final Set<String> candidates) {
-      /* TODO: decide whether we ever want a more sophisticate solution */
+      /* TODO: decide whether we ever want a more sophisticated solution */
       if (candidates.isEmpty()) {
          return null;
       }
@@ -111,7 +123,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
 
    @Override
    public String chooseVMToDisableOnHost(final Set<String> candidates) {
-      /* TODO: decide whether we ever want a more sophisticate solution */
+      /* TODO: decide whether we ever want a more sophisticated solution */
       if (candidates.isEmpty()) {
          return null;
       }

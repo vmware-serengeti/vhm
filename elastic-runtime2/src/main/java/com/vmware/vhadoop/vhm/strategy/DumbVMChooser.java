@@ -42,7 +42,7 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
 
    @Override
    public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, 0-delta, false);
+      return chooseVMs(clusterId, Math.abs(delta), false);
    }
 
    @Override
@@ -64,7 +64,6 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
 
    @Override
    public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, delta, false);
+      return chooseVMs(candidates, Math.abs(delta), false);
    }
-
 }
