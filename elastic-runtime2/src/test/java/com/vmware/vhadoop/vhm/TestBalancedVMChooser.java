@@ -27,7 +27,7 @@ public class TestBalancedVMChooser {
       for (String cluster : clusters) {
          int delta = _map.listComputeVMsForClusterAndPowerState(cluster, true).size();
          Set<String> vms = _chooser.chooseVMsToDisable(cluster, delta);
-         Assert.assertEquals(delta, vms.size());
+         Assert.assertEquals(-delta, vms.size());
       }
    }
 
