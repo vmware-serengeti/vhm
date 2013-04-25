@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 import java.util.logging.FileHandler;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
@@ -31,7 +30,7 @@ import com.vmware.vhadoop.vhm.vc.VcCredentials;
 public class BootstrapMain {
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
    public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";
-   public static final String DEFAULT_VHM_HOME_DIR = System.getProperty("java.io.tmpdir");
+   public static final String DEFAULT_VHM_HOME_DIR = "/tmp";
    public static final String DEFAULT_LOGS_SUBDIR = "/logs";
    public static final String DEFAULT_CONF_SUBDIR = "/conf";
    public static final String SERENGETI_HOME_DIR_PROP_KEY = "serengeti.home.dir";
@@ -41,12 +40,12 @@ public class BootstrapMain {
    private Properties _properties;
 
    public BootstrapMain() {
-      this(DEFAULT_VHM_CONFIG_FILENAME, DEFAULT_VHM_LOG_FILENAME);
+      this(buildVHMFilePath(DEFAULT_CONF_SUBDIR, DEFAULT_VHM_CONFIG_FILENAME), buildVHMFilePath(DEFAULT_LOGS_SUBDIR, DEFAULT_VHM_LOG_FILENAME));
    }
 
    public BootstrapMain(final String configFileName, final String logFileName) {
-      _properties = readPropertiesFile(buildVHMFilePath(DEFAULT_CONF_SUBDIR, configFileName));
-      setupLogger(buildVHMFilePath(DEFAULT_LOGS_SUBDIR, logFileName));
+      _properties = readPropertiesFile(configFileName);
+      setupLogger(logFileName);
    }
 
    private void setupLogger(final String fileName) {
@@ -54,7 +53,6 @@ public class BootstrapMain {
      try {
           FileHandler handler = new FileHandler(fileName);
           Logger.getLogger("").addHandler(handler);
-          Logger.getLogger("").setLevel(Level.INFO);
      } catch (SecurityException e) {
         e.printStackTrace();
      } catch (IOException e) {
@@ -62,7 +60,7 @@ public class BootstrapMain {
      }
    }
 
-   private String buildVHMFilePath(final String subdir, final String fileName) {
+   private static String buildVHMFilePath(final String subdir, final String fileName) {
       String homeDir = System.getProperties().getProperty(SERENGETI_HOME_DIR_PROP_KEY);
       StringBuilder builder = new StringBuilder();
       if (homeDir != null && homeDir.length() > 0) {
