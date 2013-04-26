@@ -284,12 +284,14 @@ public class ClusterMapImpl implements ClusterMap {
 
    String getClusterIdFromVMsInFolder(final String folderName, final List<String> vms) {
       String clusterId = null;
-      for (String moRef : vms) {
-         try {
-            clusterId = _vms.get(moRef)._cluster._masterUUID;
-            getCluster(clusterId)._folderName = folderName;
-            break;
-         } catch (NullPointerException e) {}
+      if (vms != null) {
+         for (String moRef : vms) {
+            try {
+               clusterId = _vms.get(moRef)._cluster._masterUUID;
+               getCluster(clusterId)._folderName = folderName;
+               break;
+            } catch (NullPointerException e) {}
+         }
       }
       return clusterId;
    }
