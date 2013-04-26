@@ -418,9 +418,11 @@ public class VcVlsi {
       return resultRefs;
    }
 
-   private Folder getFolderForName(String restrictToName) throws InvalidProperty {
-      Folder rootFolder = getRootFolder();
-      List<ManagedObjectReference> refs = findObjectsInFolder(rootFolder, typeFolder, restrictToName);
+   private Folder getFolderForName(Folder baseFolder, String restrictToName) throws InvalidProperty {
+      if (baseFolder == null) {
+         baseFolder = getRootFolder();
+      }
+      List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeFolder, restrictToName);
       if (refs.size() > 0) {
          return defaultClient.createStub(Folder.class, refs.get(0));
       }
@@ -674,7 +676,7 @@ public class VcVlsi {
       CompoundStatus status = new CompoundStatus("waitForUpdates");
       String result = version;
       try {
-         Folder f = getFolderForName(baseFolderName);
+         Folder f = getFolderForName(null, baseFolderName);
          if (f == null) {
             // This is normal state when user hasn't created any hadoop clusters yet
             _log.log(Level.INFO, "Couldn't find folder " + baseFolderName);
@@ -689,12 +691,15 @@ public class VcVlsi {
       return result;
    }
 
-   public List<String> getVMsInFolder(String baseFolderName) {
+   public List<String> getVMsInFolder(String baseFolderName, String folderName) {
       CompoundStatus status = new CompoundStatus("getVMsInFolder");
       List<String> result = null;
       try {
-         Folder baseFolder = getFolderForName(baseFolderName);
-         List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, null);
+         Folder baseFolder = getFolderForName(null, baseFolderName);
+         
+         Folder folder = getFolderForName(baseFolder, folderName);
+         
+         List<ManagedObjectReference> refs = findObjectsInFolder(folder, typeVM, null);
          if ((refs != null) && (refs.size() > 0)) {
             result = new ArrayList<String>();
             for (ManagedObjectReference ref : refs) {
