@@ -429,23 +429,6 @@ public class VcVlsi {
       return null;
    }
 
-   private VirtualMachine getVMForName(Folder baseFolder, String restrictToName) throws InvalidProperty {
-      List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, restrictToName);
-      if (refs.size() > 0) {
-         return defaultClient.createStub(VirtualMachine.class, refs.get(0));
-      }
-      return null;
-   }
-
-   private List<VirtualMachine> listVMsinFolder(Folder baseFolder) throws InvalidProperty {
-      List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeVM, null);
-      List<VirtualMachine> vms = new ArrayList<VirtualMachine>();
-      for (ManagedObjectReference ref : refs) {
-         vms.add(defaultClient.createStub(VirtualMachine.class, ref));
-      }
-      return vms;
-   }
-
    private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet)
          throws InvalidProperty {
       PropertyFilter propFilter = null;
