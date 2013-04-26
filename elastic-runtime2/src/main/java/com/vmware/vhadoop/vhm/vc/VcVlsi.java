@@ -388,7 +388,7 @@ public class VcVlsi {
       RetrieveResult rr = propFilter.retrieveProperties();
       boolean done = false;
 
-      while (!done) {
+      while ((rr != null) && !done) {
          ObjectContent[] oca = rr.getObjects();
 
          for (ObjectContent oc : oca) {
