@@ -11,21 +11,21 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
 
    private ClusterMapAccess _clusterMapAccess;
    private ThreadLocalCompoundStatus _threadLocalStatus;
-   
+
    protected CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
          return new CompoundStatus("DUMMY_STATUS");
       }
       return _threadLocalStatus.get();
    }
-   
+
    /* Any subclass wishing to add status to this thread's execution should call this method */
    public ThreadLocalCompoundStatus getThreadLocalCompoundStatus() {
       return _threadLocalStatus;
    }
-   
+
    @Override
-   public void registerClusterMapAccess(ClusterMapAccess access, ThreadLocalCompoundStatus threadLocalStatus) {
+   public void registerClusterMapAccess(final ClusterMapAccess access, final ThreadLocalCompoundStatus threadLocalStatus) {
       _clusterMapAccess = access;
       _threadLocalStatus = threadLocalStatus;
    }
@@ -35,22 +35,27 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
    public ClusterMap getAndReadLockClusterMap() {
       return _clusterMapAccess.lockClusterMap();
    }
-   
+
    @Override
-   public void unlockClusterMap(ClusterMap clusterMap) {
+   public void unlockClusterMap(final ClusterMap clusterMap) {
       _clusterMapAccess.unlockClusterMap(clusterMap);
    }
 
    @Override
    public ClusterMapAccess cloneClusterMapAccess() {
-      if (_clusterMapAccess != null) {
-         return _clusterMapAccess.clone();
+      return cloneClusterMapAccess(_clusterMapAccess);
+   }
+
+   public static ClusterMapAccess cloneClusterMapAccess(final ClusterMapAccess access) {
+      if (access != null) {
+         return access.clone();
       }
+
       return null;
    }
-   
+
    @Override
-   public void blockOnPowerStateChange(Set<String> vmIds, boolean expectedPowerState, long timeout) {
+   public void blockOnPowerStateChange(final Set<String> vmIds, final boolean expectedPowerState, final long timeout) {
       CompoundStatus status = new CompoundStatus(POWER_STATE_CHANGE_STATUS_KEY);
       long timeoutTime = System.currentTimeMillis() + timeout;
       long pollSleepTime = 500;
@@ -65,7 +70,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
                break;
             }
             Thread.sleep(Math.min(pollSleepTime, timeout));
-         } catch (InterruptedException e) { 
+         } catch (InterruptedException e) {
             status.registerTaskIncomplete(false, "blockOnPowerStateChange was interrupted unexpectedly");
          }
          timedOut = System.currentTimeMillis() > timeoutTime;

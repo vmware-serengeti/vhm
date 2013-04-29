@@ -45,6 +45,9 @@ public class BootstrapMain {
 
    public BootstrapMain(final String configFileName, final String logFileName) {
       _properties = readPropertiesFile(configFileName);
+      if (_properties == null) {
+         _properties = new Properties();
+      }
       setupLogger(logFileName);
    }
 
