@@ -110,7 +110,7 @@ public class BootstrapMain {
          vcCreds.keyStorePwd = _properties.getProperty("keyStorePwd");
          vcCreds.vcExtKey = _properties.getProperty("extensionKey");
 
-         _vcActions = new VcAdapter(vcCreds);
+         _vcActions = new VcAdapter(vcCreds, _properties.getProperty("uuid"));
          ((VcAdapter)_vcActions).setThreadLocalCompoundStatus(tlcs);
       }
       return _vcActions;

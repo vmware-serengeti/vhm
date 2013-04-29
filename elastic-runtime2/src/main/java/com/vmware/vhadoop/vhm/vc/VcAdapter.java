@@ -27,6 +27,7 @@ public class VcAdapter implements VCActions {
    private Client _defaultClient; // used for rest of VC operations
    private VcVlsi _vcVlsi;
    private VcCredentials _vcCreds;
+   private String _rootFolderName; // root folder for this VHM instance
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    
@@ -83,7 +84,8 @@ public class VcAdapter implements VCActions {
       }
    }
    
-   public VcAdapter(VcCredentials vcCreds) {
+   public VcAdapter(VcCredentials vcCreds, String rootFolderName) {
+      _rootFolderName = rootFolderName;
       _vcCreds = vcCreds;
       connect();
    }
@@ -150,7 +152,7 @@ public class VcAdapter implements VCActions {
    @Override
    public List<String> listVMsInFolder(String folderName) {
       validateConnection();
-      return _vcVlsi.getVMsInFolder(folderName);
+      return _vcVlsi.getVMsInFolder(_rootFolderName, folderName);
    }
 
 }
