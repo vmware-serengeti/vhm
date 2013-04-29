@@ -208,9 +208,13 @@ public class ClusterMapImpl implements ClusterMap {
       cluster._completionEvents.addFirst(event);
    }
 
+   @Override
+   public String getScaleStrategyKey(final String clusterId) {
+      return _clusters.get(clusterId)._scaleStrategyKey;
+   }
+
    public ScaleStrategy getScaleStrategyForCluster(final String clusterId) {
-      ClusterInfo cluster = _clusters.get(clusterId);
-      return _scaleStrategies.get(cluster._scaleStrategyKey);
+      return _scaleStrategies.get(getScaleStrategyKey(clusterId));
    }
 
    public void registerScaleStrategy(final ScaleStrategy strategy) {
@@ -360,11 +364,6 @@ public class ClusterMapImpl implements ClusterMap {
          return _clusters.keySet().toArray(new String[0]);
       }
       return null;
-   }
-
-   @Override
-   public String getScaleStrategyKey(final String clusterId) {
-      return _clusters.get(clusterId)._scaleStrategyKey;
    }
 
    @Override
