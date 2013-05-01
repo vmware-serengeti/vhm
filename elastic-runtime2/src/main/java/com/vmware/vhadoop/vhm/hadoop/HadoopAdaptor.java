@@ -56,7 +56,7 @@ public class HadoopAdaptor implements HadoopActions {
    private HadoopCredentials _credentials;
    private JTConfigInfo _jtConfig;
    private HadoopConnectionProperties _connectionProperties;        /* TODO: Provide setter? If not, make local */
-   private Map<ParamTypes, String> _errorParamValues;               /* TODO: Will need one per connection/cluster */
+   private Map<String, Map<ParamTypes, String>> _errorParamValues;               /* TODO: Will need one per connection/cluster */
  
    /* TODO: I think it's ok that these are all constants for now. Easy to externalize in future though */
    
@@ -81,14 +81,23 @@ public class HadoopAdaptor implements HadoopActions {
       _credentials = credentials;
       _jtConfig = jtConfig;
       _errorCodes = new HadoopErrorCodes();
-      _errorParamValues = new HashMap<ParamTypes, String>();
+      _errorParamValues = new HashMap<String, Map<ParamTypes, String>>();
       _connections = new HashMap<String, HadoopConnection>();
    }
    
-   private void setErrorParamValue(ParamTypes paramType, String paramValue) {
-      _errorParamValues.put(paramType, paramValue);
+   private void setErrorParamValue(HadoopClusterInfo cluster, ParamTypes paramType, String paramValue) {
+      Map<ParamTypes, String> paramValues = _errorParamValues.get(cluster.getClusterId());
+      if (paramValues == null) {
+         paramValues = new HashMap<ParamTypes, String>();
+         _errorParamValues.put(cluster.getClusterId(), paramValues);
+      }
+      paramValues.put(paramType, paramValue);
    }
 
+   private Map<ParamTypes, String> getErrorParamValues(HadoopClusterInfo cluster) {
+      return _errorParamValues.get(cluster.getClusterId());
+   }
+   
    private HadoopConnectionProperties getDefaultConnectionProperties() {
       return new HadoopConnectionProperties() {
          @Override
@@ -116,9 +125,9 @@ public class HadoopAdaptor implements HadoopActions {
          result.setHadoopHomePath(_jtConfig.getHadoopHomePath());
          _connections.put(cluster.getClusterId(), result);
       }
-      setErrorParamValue(ParamTypes.HADOOP_HOME, result.getHadoopHome());
-      setErrorParamValue(ParamTypes.JOBTRACKER, result.getJobTrackerName());
-      setErrorParamValue(ParamTypes.EXCLUDE_FILE, result.getExcludeFilePath());
+      setErrorParamValue(cluster, ParamTypes.HADOOP_HOME, result.getHadoopHome());
+      setErrorParamValue(cluster, ParamTypes.JOBTRACKER, result.getJobTrackerName());
+      setErrorParamValue(cluster, ParamTypes.EXCLUDE_FILE, result.getExcludeFilePath());
       return result;
    }
    
@@ -157,10 +166,10 @@ public class HadoopAdaptor implements HadoopActions {
       return sb.toString();
    }
 
-   private void setErrorParamsForCommand(String command, String drScript, String drList) {
-      setErrorParamValue(ParamTypes.COMMAND, command);
-      setErrorParamValue(ParamTypes.DRSCRIPT, drScript);
-      setErrorParamValue(ParamTypes.DRLIST, drList);
+   private void setErrorParamsForCommand(HadoopClusterInfo cluster, String command, String drScript, String drList) {
+      setErrorParamValue(cluster, ParamTypes.COMMAND, command);
+      setErrorParamValue(cluster, ParamTypes.DRSCRIPT, drScript);
+      setErrorParamValue(cluster, ParamTypes.DRLIST, drList);
    }
 
    private byte[] loadLocalScript(String fileName) {
@@ -237,7 +246,7 @@ public class HadoopAdaptor implements HadoopActions {
       String listRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + listFileName;
       
       HadoopConnection connection = getConnectionForCluster(cluster);
-      setErrorParamsForCommand(opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
+      setErrorParamsForCommand(cluster, opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
       
       OutputStream out = new ByteArrayOutputStream();
       String operationList = createVMList(tts);
@@ -247,7 +256,7 @@ public class HadoopAdaptor implements HadoopActions {
                new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()},
                out);
       }
-      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, _errorParamValues));
+      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return status;
    }
    
@@ -275,7 +284,7 @@ public class HadoopAdaptor implements HadoopActions {
 		   _log.log(Level.INFO, tt);
 	   }
       HadoopConnection connection = getConnectionForCluster(cluster);
-      setErrorParamsForCommand(opDesc, scriptRemoteFilePath, listRemoteFilePath);
+      setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
       
       int rc = -1;
       int iterations = 0;
@@ -311,7 +320,7 @@ public class HadoopAdaptor implements HadoopActions {
          
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 
-      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, _errorParamValues));
+      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return status;
    }
 
