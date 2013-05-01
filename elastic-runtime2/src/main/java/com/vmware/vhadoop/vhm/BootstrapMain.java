@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 import java.util.logging.FileHandler;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
@@ -29,6 +30,7 @@ import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
 public class BootstrapMain {
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
+   public static final String DEFAULT_LOG_CONFIG_FILENAME = "logging.properties";
    public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";
    public static final String DEFAULT_VHM_HOME_DIR = "/tmp";
    public static final String DEFAULT_LOGS_SUBDIR = "/logs";
@@ -52,6 +54,19 @@ public class BootstrapMain {
    }
 
    private void setupLogger(final String fileName) {
+      String loggingProperties = System.getProperty("java.util.logging.config.file");
+      String loggingFlavour = "specified";
+      if (loggingProperties == null) {
+         loggingFlavour = "default";
+         loggingProperties = buildVHMFilePath(DEFAULT_CONF_SUBDIR, DEFAULT_LOG_CONFIG_FILENAME);
+      }
+
+      try {
+         LogManager.getLogManager().readConfiguration(new FileInputStream(loggingProperties));
+      } catch (Exception e) {
+         System.err.println("The "+loggingFlavour+" logging properties file could not be read: "+loggingProperties);
+      }
+
       Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
      try {
           FileHandler handler = new FileHandler(fileName);
