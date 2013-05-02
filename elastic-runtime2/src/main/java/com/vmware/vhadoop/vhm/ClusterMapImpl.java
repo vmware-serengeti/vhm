@@ -370,8 +370,8 @@ public class ClusterMapImpl implements ClusterMap {
    public HadoopClusterInfo getHadoopInfoForCluster(final String clusterId) {
       ClusterInfo ci = _clusters.get(clusterId);
       HadoopClusterInfo result = null;
-      if (ci != null) {
-         result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr);
+      if ((ci != null) && (ci._masterVM != null)) {
+         result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr, ci._masterVM._jobTrackerPort);
       }
       return result;
    }
