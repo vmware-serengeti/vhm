@@ -2,10 +2,11 @@ package com.vmware.vhadoop.vhm;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 import java.util.logging.FileHandler;
+import java.util.logging.Handler;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
@@ -67,7 +68,12 @@ public class BootstrapMain {
          System.err.println("The "+loggingFlavour+" logging properties file could not be read: "+loggingProperties);
       }
 
-      Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
+      Handler handlers[] = Logger.getLogger("").getHandlers();
+      if (handlers.length == 0) {
+         System.err.println("No log handlers defined, using default formatting");
+      } else {
+         handlers[0].setFormatter(new LogFormatter());
+      }
      try {
           FileHandler handler = new FileHandler(fileName);
           Logger.getLogger("").addHandler(handler);
@@ -89,20 +95,54 @@ public class BootstrapMain {
       return builder.toString();
    }
 
-   private Properties readPropertiesFile(final String fileName) {
+   /**
+    * Try to locate this file in the expected location for configuration files if it's just the base name. If it's
+    * a path, then use it directly. If the file can't be found, then see if there's a resource that corresponds to
+    * the base name that supplies default values.
+    *
+    * @param name
+    * @return
+    */
+   public static Properties readPropertiesFile(final String name) {
+      Properties properties = null;
       try {
-          File file = new File(fileName);
-          FileInputStream fileInput = new FileInputStream(file);
-          Properties properties = new Properties();
-          properties.load(fileInput);
-          fileInput.close();
-          return properties;
-      } catch (FileNotFoundException e) {
-          e.printStackTrace();
+         InputStream is = null;
+         String baseName;
+
+         /* check for it in the conf directory if we've only got a base name, otherwise use the entire path */
+         if (!name.contains(System.getProperty("file.separator"))) {
+            File file = new File(buildVHMFilePath(DEFAULT_CONF_SUBDIR, name));
+            baseName = name;
+            if (file.canRead()) {
+               is = new FileInputStream(file);
+            }
+         } else {
+            File file = new File(name);
+            baseName = file.getName();
+
+            if (file.canRead()) {
+               is = new FileInputStream(file);
+            }
+         }
+
+         /* check for it as a resource */
+         InputStream resource = ClassLoader.getSystemResourceAsStream(baseName);
+         if (resource != null) {
+            properties = new Properties();
+            properties.load(resource);
+            resource.close();
+         }
+
+         if (is != null) {
+            properties = new Properties(properties);
+            properties.load(is);
+            is.close();
+         }
       } catch (IOException e) {
           e.printStackTrace();
       }
-      return null;
+
+      return properties;
    }
 
    public static void main(final String[] args) {
