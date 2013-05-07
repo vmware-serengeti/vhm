@@ -8,16 +8,13 @@ import java.util.Map;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 
-public class StandaloneSimpleClusterMap extends AbstractClusterMapReader implements ClusterMap, ClusterMapAccess
+public class StandaloneSimpleClusterMap implements ClusterMap
 {
 	protected final static boolean ON = true;
 	protected final static boolean OFF = false;
-
-	private Object _clusterMapWriteLock;
 
 	class VM
 	{
@@ -182,23 +179,6 @@ public class StandaloneSimpleClusterMap extends AbstractClusterMapReader impleme
 	public HadoopClusterInfo getHadoopInfoForCluster(final String clusterId) {
 		// TODO Auto-generated method stub
 		return null;
-	}
-
-	@Override
-	public ClusterMapAccess clone() {
-		return this;
-	}
-
-	@Override
-	public ClusterMap lockClusterMap() {
-		return this;
-	}
-
-	@Override
-	public void unlockClusterMap(final ClusterMap clusterMap) {
-		if (clusterMap != this) {
-			throw new RuntimeException("Trying to unlock wrong cluster map!");
-		}
 	}
 
    @Override

@@ -1,12 +1,11 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.*;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
-import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
@@ -25,23 +24,21 @@ public class VHM implements EventConsumer {
    private ClusterMapImpl _clusterMap;
    private ExecutionStrategy _executionStrategy;
    private VCActions _vcActions;
-   private static AtomicInteger _clusterMapReaderCntr;
-   private Object _clusterMapWriteLock;
-   private ThreadLocalCompoundStatus _threadLocalStatus;
+   private MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
+   private ClusterMapReader _parentClusterMapReader;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
-
+   
    public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies, 
          ExtraInfoToScaleStrategyMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
-      _threadLocalStatus = threadLocalStatus;
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
       _clusterMap = new ClusterMapImpl(strategyMapper);
       _vcActions = vcActions;
+      _clusterMapAccess = MultipleReaderSingleWriterClusterMapAccess.getClusterMapAccess(_clusterMap);
+      _parentClusterMapReader = new AbstractClusterMapReader(_clusterMapAccess, threadLocalStatus) {};
       initScaleStrategies(scaleStrategies);
-      _clusterMapReaderCntr = new AtomicInteger();
-      _clusterMapWriteLock = new Object();
       _executionStrategy = new ThreadPoolExecutionStrategy();
       registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy);
    }
@@ -49,48 +46,7 @@ public class VHM implements EventConsumer {
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
       for (ScaleStrategy strategy : scaleStrategies) {
          _clusterMap.registerScaleStrategy(strategy);
-         strategy.registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess(), _threadLocalStatus);
-      }
-   }
-
-   /* Represents multi-threaded read-only access to the ClusterMap. There should be one of these objects per thread */
-   public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAccess {
-      private ClusterMap _locked;
-      private Thread _lockedBy;
-      
-      @Override
-      /* If a ClusterMapReader needs to have multiple threads accessing ClusterMap, it should hand out clones */
-      public ClusterMapAccess clone() {
-         return new MultipleReaderSingleWriterClusterMapAccess();
-      }
-      
-      @Override
-      public ClusterMap lockClusterMap() {
-         if (_locked == null) {
-            /* All readers will be blocked during a ClusterMap write and while ClusterMap waits for the reader count to go to zero */
-            synchronized(_clusterMapWriteLock) {
-               _locked = _clusterMap;
-               _lockedBy = Thread.currentThread();
-               _clusterMapReaderCntr.incrementAndGet();
-            }
-            return _locked;
-         } else {
-            throw new RuntimeException("Attempt to double-lock ClusterMap!");
-         }
-      }
-
-      @Override
-      public void unlockClusterMap(ClusterMap clusterMap) {
-         if (_locked != null) {
-            if (_lockedBy == Thread.currentThread()) {
-               _locked = null;
-               _clusterMapReaderCntr.decrementAndGet();
-            } else {
-               throw new RuntimeException("Wrong thread trying to unlock ClusterMap!");
-            }
-         } else {
-            throw new RuntimeException("Attempt to double-unlock ClusterMap!");
-         }
+         strategy.initialize(_parentClusterMapReader);
       }
    }
    
@@ -98,7 +54,7 @@ public class VHM implements EventConsumer {
       _eventProducers.add(eventProducer);
       eventProducer.registerEventConsumer(this);
       if (eventProducer instanceof ClusterMapReader) {
-         ((ClusterMapReader)eventProducer).registerClusterMapAccess(new MultipleReaderSingleWriterClusterMapAccess(), _threadLocalStatus);
+         ((ClusterMapReader)eventProducer).initialize(_parentClusterMapReader);
       }
       eventProducer.start();
    }
@@ -253,35 +209,25 @@ public class VHM implements EventConsumer {
    }
 
    private void handleEvents(Set<NotificationEvent> events) {
-      Set<ClusterStateChangeEvent> clusterStateChangeEvents = getClusterStateChangeEvents(events);
-      Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
+      final Set<ClusterStateChangeEvent> clusterStateChangeEvents = getClusterStateChangeEvents(events);
+      final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
       /* Update ClusterMap first */
       if ((clusterStateChangeEvents.size() + completionEvents.size()) > 0) {
-         synchronized (_clusterMapWriteLock) {
-            /* Wait for the readers to stop reading. New readers will block on the write lock */
-            long readerTimeout = 1000;
-            long pollSleep = 10;
-            long killCntr = readerTimeout / pollSleep;
-            while (_clusterMapReaderCntr.get() > 0) {
-               try {
-                  Thread.sleep(pollSleep);
-                  if (--killCntr < 0) {
-                     _log.severe("Reader lock left open. Whacking to 0!");
-                     _clusterMapReaderCntr.set(0);
-                     break;
-                  }
-               } catch (InterruptedException e) {}
+         _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+               for (ClusterStateChangeEvent event : clusterStateChangeEvents) {
+                  _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
+                  _clusterMap.handleClusterEvent(event);
+               }
+               for (ClusterScaleCompletionEvent event : completionEvents) {
+                  _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
+                  _clusterMap.handleCompletionEvent(event);
+               }
+               return null;
             }
-            for (ClusterStateChangeEvent event : clusterStateChangeEvents) {
-               _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
-               _clusterMap.handleClusterEvent(event);
-            }
-            for (ClusterScaleCompletionEvent event : completionEvents) {
-               _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
-               _clusterMap.handleCompletionEvent(event);
-            }
-         }
+         });
       }
       
       Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = getScaleEventsForCluster(events);

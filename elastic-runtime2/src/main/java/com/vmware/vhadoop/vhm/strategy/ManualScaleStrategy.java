@@ -11,7 +11,6 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
-import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
@@ -32,10 +31,10 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    }
    
    @Override
-   public void registerClusterMapAccess(ClusterMapAccess access, ThreadLocalCompoundStatus tlcs) {
-      super.registerClusterMapAccess(access, tlcs);
-      _vmChooser.registerClusterMapAccess(access, tlcs);
-      _enableDisablePolicy.registerClusterMapAccess(access, tlcs);
+   public void initialize(ClusterMapReader parent) {
+      super.initialize(parent);
+      _vmChooser.initialize(parent);
+      _enableDisablePolicy.initialize(parent);
    }
 
    @Override
@@ -47,8 +46,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       final Set<ClusterScaleEvent> _events;
       
       public CallableStrategy(Set<ClusterScaleEvent> events) {
-         super(cloneClusterMapAccess(), getThreadLocalCompoundStatus());
          _events = events;
+         initialize(ManualScaleStrategy.this);
       }
 
       @Override
