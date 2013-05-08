@@ -74,7 +74,7 @@ public class HadoopAdaptor implements HadoopActions {
    public static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
    public static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
    
-   public static final int MAX_CHECK_RETRY_ITERATIONS = 15;
+   public static final int MAX_CHECK_RETRY_ITERATIONS = 10;
       
    public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig) {
       _connectionProperties = getDefaultConnectionProperties();
