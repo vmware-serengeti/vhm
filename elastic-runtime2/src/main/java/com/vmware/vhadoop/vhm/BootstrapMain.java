@@ -105,8 +105,10 @@ public class BootstrapMain {
     */
    public static Properties readPropertiesFile(final String name) {
       Properties properties = null;
+      InputStream is = null;
+      InputStream resource = null;
+
       try {
-         InputStream is = null;
          String baseName;
 
          /* check for it in the conf directory if we've only got a base name, otherwise use the entire path */
@@ -126,20 +128,30 @@ public class BootstrapMain {
          }
 
          /* check for it as a resource */
-         InputStream resource = ClassLoader.getSystemResourceAsStream(baseName);
+         resource = ClassLoader.getSystemResourceAsStream(baseName);
          if (resource != null) {
             properties = new Properties();
             properties.load(resource);
-            resource.close();
          }
 
          if (is != null) {
             properties = new Properties(properties);
             properties.load(is);
-            is.close();
          }
       } catch (IOException e) {
-          e.printStackTrace();
+          System.err.println("Unable to read properties file from filesystem or as a resource from the jar files:"+name);
+      } finally {
+         try {
+            if (resource != null) {
+               resource.close();
+            }
+
+            if (is != null) {
+               is.close();
+            }
+         } catch (IOException e) {
+            /* squash */
+         }
       }
 
       return properties;
