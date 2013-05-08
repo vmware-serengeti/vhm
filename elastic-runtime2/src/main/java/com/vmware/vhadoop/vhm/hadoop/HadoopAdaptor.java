@@ -332,6 +332,7 @@ public class HadoopAdaptor implements HadoopActions {
 	  _log.log(Level.INFO, "ActiveTTs:");
 	  for (String tt : allActiveTTs) {
 		  if (tt != null) {
+		     tt = tt.replaceAll("\r", "");
 			  setTTs.add(tt); //add if unique...
 			  _log.log(Level.INFO, tt);
 		  }
