@@ -42,17 +42,23 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 
 	List<VM> vms = new LinkedList<VM>();
 
-	public StandaloneSimpleClusterMap() {
-		vms.add(new VM("vm1", "clusterA", "hostX", ON));
-		vms.add(new VM("vm2", "clusterA", "hostY", ON));
-		vms.add(new VM("vm3", "clusterA", "hostX", ON));
-		vms.add(new VM("vm4", "clusterA", "hostY", OFF));
-		vms.add(new VM("vm5", "clusterB", "hostX", ON));
-		vms.add(new VM("vm6", "clusterB", "hostY", ON));
-		vms.add(new VM("vm7", "clusterB", "hostX", ON));
-		vms.add(new VM("vm8", "clusterB", "hostY", OFF));
+	public void populateTestData() {
+      vms.add(new VM("vm1", "clusterA", "hostX", ON));
+      vms.add(new VM("vm2", "clusterA", "hostY", ON));
+      vms.add(new VM("vm3", "clusterA", "hostX", ON));
+      vms.add(new VM("vm4", "clusterA", "hostY", OFF));
+      vms.add(new VM("vm5", "clusterB", "hostX", ON));
+      vms.add(new VM("vm6", "clusterB", "hostY", ON));
+      vms.add(new VM("vm7", "clusterB", "hostX", ON));
+      vms.add(new VM("vm8", "clusterB", "hostY", OFF));
 	}
-
+	
+	public StandaloneSimpleClusterMap(boolean prepopulate) {
+	   if (prepopulate) {
+	      populateTestData();
+	   }
+	}
+	
 	public List<VM> getMapContents() {
 	   return vms;
 	}

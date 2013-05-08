@@ -21,7 +21,7 @@ public class ClusterMapAccessTest {
    
    @Before
    public void initialize() {
-      _clusterMap = new StandaloneSimpleClusterMap();
+      _clusterMap = new StandaloneSimpleClusterMap(false);
       _clusterMapAccess = MultipleReaderSingleWriterClusterMapAccess.getClusterMapAccess(_clusterMap);
    }
    

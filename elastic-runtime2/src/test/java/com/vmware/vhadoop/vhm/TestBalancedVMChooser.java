@@ -10,19 +10,16 @@ import org.junit.Test;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.vhm.strategy.BalancedVMChooser;
 
-
-public class TestBalancedVMChooser {
+public class TestBalancedVMChooser extends AbstractJUnitTest {
    BalancedVMChooser _chooser;
    StandaloneSimpleClusterMap _map;
    ClusterMapReader _parentClusterMapReader;
-   MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
 
    @Before
    public void init() {
       _chooser = new BalancedVMChooser();
-      _map = new StandaloneSimpleClusterMap();
-      _clusterMapAccess = MultipleReaderSingleWriterClusterMapAccess.getClusterMapAccess(_map);
-      _chooser.initialize(new AbstractClusterMapReader(_clusterMapAccess, null) {});
+      _map = new StandaloneSimpleClusterMap(true);
+      _chooser.initialize(getTestClusterMapReader(_map));
    }
    
    @After

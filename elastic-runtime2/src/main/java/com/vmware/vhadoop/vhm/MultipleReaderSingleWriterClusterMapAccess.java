@@ -25,7 +25,7 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
    }
    
    /* for testing only - ugh */
-   static void destroy() {
+   protected static void destroy() {
       _singleton = null;
    }
    
