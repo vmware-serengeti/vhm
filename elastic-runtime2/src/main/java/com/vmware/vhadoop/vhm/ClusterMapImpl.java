@@ -61,6 +61,7 @@ public class ClusterMapImpl implements ClusterMap {
       String _ipAddr;
       String _dnsName;
       Integer _jobTrackerPort;
+      public long _powerOnTime; // most recent timestamp when VHM learned VM is on
 
       // temporary/cache holding fields until cluster object is created
       Integer _cachedMinInstances;
@@ -120,6 +121,9 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._powerState != null) {
          vmInfo._powerState = vmd._powerState;
+         if (vmInfo._powerState) {
+            vmInfo._powerOnTime = System.currentTimeMillis();
+         }
       }
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;
