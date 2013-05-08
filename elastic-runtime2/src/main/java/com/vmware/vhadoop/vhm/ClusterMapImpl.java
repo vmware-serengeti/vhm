@@ -50,6 +50,7 @@ public class ClusterMapImpl implements ClusterMap {
          this._moRef = moRef;
       }
       final String _moRef;
+      Integer _vCPUs;
       HostInfo _host;
       ClusterInfo _cluster;
       boolean _isMaster;
@@ -125,6 +126,9 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._myUUID != null) {
          vmInfo._myUUID = vmd._myUUID;
+      }
+      if (vmd._vCPUs != null) {
+         vmInfo._vCPUs = vmd._vCPUs;
       }
       if (vmd._ipAddr != null) {
          vmInfo._ipAddr = vmd._ipAddr;
@@ -268,6 +272,7 @@ public class ClusterMapImpl implements ClusterMap {
 
       for (VMInfo vmInfo : _vms.values()) {
          String powerState = vmInfo._powerState ? " ON" : " OFF";
+         String vCPUs = " vCPUs=" + ((vmInfo._vCPUs == null) ? "N/A" : vmInfo._vCPUs); 
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
          VMInfo masterVM = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterVM;
          String cluster = (masterVM == null) ? "N/A" : masterVM._name;
@@ -281,7 +286,7 @@ public class ClusterMapImpl implements ClusterMap {
                jtPort = " JTport=" + vmInfo._jobTrackerPort;
             }
          }
-         _log.log(Level.FINE, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState +
+         _log.log(Level.FINE, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + vCPUs + 
                " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }

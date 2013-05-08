@@ -22,5 +22,6 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
       public String _ipAddr;
       public String _dnsName;
       public Integer _jobTrackerPort;
+      public Integer _vCPUs;
    }
 }
