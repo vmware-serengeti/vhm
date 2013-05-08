@@ -29,6 +29,15 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 			this.host = host;
 			this.power = power;
 		}
+
+		@Override
+      public String toString() {
+		   StringBuffer sb = new StringBuffer();
+
+		   sb.append("VM[id: ").append(id).append(", cluster:").append(cluster).append(", host:").append(host).append(", power: ").append(power);
+
+		   return sb.toString();
+		}
 	}
 
 	List<VM> vms = new LinkedList<VM>();
@@ -196,5 +205,16 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       }
 
       return null;
+   }
+
+   @Override
+   public String toString() {
+      StringBuffer sb = new StringBuffer(super.toString()+":\n");
+
+      for (VM vm : vms) {
+         sb.append(vm).append("\n");
+      }
+
+      return sb.toString();
    }
 }
