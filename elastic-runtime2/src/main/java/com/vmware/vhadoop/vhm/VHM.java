@@ -1,11 +1,19 @@
 package com.vmware.vhadoop.vhm;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.*;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMapReader;
+import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
+import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
@@ -28,8 +36,8 @@ public class VHM implements EventConsumer {
    private ClusterMapReader _parentClusterMapReader;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
-   
-   public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies, 
+
+   public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
          ExtraInfoToScaleStrategyMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
@@ -42,14 +50,14 @@ public class VHM implements EventConsumer {
       _executionStrategy = new ThreadPoolExecutionStrategy();
       registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy);
    }
-   
+
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
       for (ScaleStrategy strategy : scaleStrategies) {
          _clusterMap.registerScaleStrategy(strategy);
          strategy.initialize(_parentClusterMapReader);
       }
    }
-   
+
    public void registerEventProducer(EventProducer eventProducer) {
       _eventProducers.add(eventProducer);
       eventProducer.registerEventConsumer(this);
@@ -58,7 +66,7 @@ public class VHM implements EventConsumer {
       }
       eventProducer.start();
    }
-   
+
    private void addEventToQueue(NotificationEvent event) {
       Queue<NotificationEvent> toKeepQueue = null;
       if (event.getCanClearQueue()) {
@@ -91,7 +99,7 @@ public class VHM implements EventConsumer {
          }
       }
    }
-   
+
    @Override
    public void placeEventCollectionOnQueue(List<? extends NotificationEvent> events) {
       if (!_initialized) {
@@ -108,11 +116,11 @@ public class VHM implements EventConsumer {
    public Set<NotificationEvent> pollForEvents() {
       HashSet<NotificationEvent> results = null;
       synchronized(_eventQueue) {
-         if (_eventQueue.peek() == null) {
+         while (_eventQueue.peek() == null) {
             try {
                _eventQueue.wait();
             } catch (InterruptedException e) {
-               e.printStackTrace();
+               /* squash */
             }
          }
          results = new HashSet<NotificationEvent>();
@@ -129,17 +137,17 @@ public class VHM implements EventConsumer {
          return _eventQueue.peek();
       }
    }
-   
+
    private String getClusterIdForVCFolder(String folderName) {
       List<String> vms = _vcActions.listVMsInFolder(folderName);
       return _clusterMap.getClusterIdFromVMsInFolder(folderName, vms);
    }
-   
+
    /* TODO: Note that currently, this method cannot deal with a clusterScaleEvent with just a hostId
     * We should be able to deal with this at some point - ie: general host contention impacts multiple clusters */
    private String completeClusterScaleEventDetails(AbstractClusterScaleEvent event) {
       String clusterId = event.getClusterId();
-      
+
       if (event instanceof SerengetiLimitInstruction) {
          clusterId = getClusterIdForVCFolder(((SerengetiLimitInstruction)event).getClusterFolderName());
       }
@@ -229,7 +237,7 @@ public class VHM implements EventConsumer {
             }
          });
       }
-      
+
       Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = getScaleEventsForCluster(events);
 
       if (clusterScaleEvents.size() > 0) {
@@ -255,7 +263,7 @@ public class VHM implements EventConsumer {
       t.start();
       return t;
    }
-   
+
    VCActions getVCActions() {
       return _vcActions;
    }
