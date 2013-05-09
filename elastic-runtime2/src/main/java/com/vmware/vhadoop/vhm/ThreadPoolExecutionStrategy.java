@@ -1,12 +1,16 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.logging.Logger;
-import java.util.*;
 
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
@@ -34,7 +38,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       });
       _runningTasks = new HashMap<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>>();
    }
-   
+
    @Override
    public void handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
       ScaleStrategyContext context = getContextForCluster(clusterId, scaleStrategy.getStrategyContextType());
@@ -88,9 +92,8 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                            }
                         } catch (InterruptedException e) {
                            _log.warning("Cluster thread interrupted");
-                           e.printStackTrace();
                         } catch (ExecutionException e) {
-                           _log.warning("ExecutionException in cluster thread");
+                           _log.warning("ExecutionException in cluster thread: "+e.getMessage());
                            e.printStackTrace();
                         }
                         toRemove.add(key);
