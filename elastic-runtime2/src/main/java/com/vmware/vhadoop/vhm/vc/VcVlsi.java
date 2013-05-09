@@ -88,6 +88,7 @@ public class VcVlsi {
    private static final String VC_PROP_VM_NAME = "name";
    private static final String VC_PROP_VM_EXTRA_CONFIG = "config.extraConfig";
    private static final String VC_PROP_VM_UUID = "config.uuid";
+   private static final String VC_PROP_VM_NUM_CPU = "config.hardware.numCPU";
    private static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
    private static final String VC_PROP_VM_HOST = "runtime.host";
    private static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
@@ -489,7 +490,7 @@ public class VcVlsi {
       vmData._vmMoRef = obj.getObj().getValue();
 
       Kind kind = obj.getKind();
-      //_log.log(Level.INFO, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
+      _log.log(Level.FINE, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
       if (kind == Kind.leave) {
          vmData._isLeaving = true;
       } else if (kind == Kind.modify || kind == Kind.enter) {
@@ -497,10 +498,12 @@ public class VcVlsi {
          for (Change pc : obj.getChangeSet()) {
             String pcName = pc.getName();
             Object pcValue = pc.getVal();
-            //_log.log(Level.INFO, "Pobj prop= " + pcName + " val= " + pcValue);
+            _log.log(Level.FINE, "Pobj prop= " + pcName + " val= " + pcValue);
             if (pcValue != null) {
                if (pcName.equals(VC_PROP_VM_UUID)) {
                   vmData._myUUID = (String)pcValue;
+               } else if (pcName.equals(VC_PROP_VM_NUM_CPU)) {
+                  vmData._vCPUs = (Integer)pcValue; 
                } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
                } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
@@ -554,7 +557,7 @@ public class VcVlsi {
          version = "";
       }
       if (version.equals("")) {
-         String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID,
+         String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID, VC_PROP_VM_NUM_CPU,
                VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST, VC_PROP_VM_GUEST_IP, VC_PROP_VM_GUEST_HOSTNAME};
          setupWaitForUpdates(vcClient, folder, typeVM, props);
       }

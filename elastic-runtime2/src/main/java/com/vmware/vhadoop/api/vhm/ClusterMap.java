@@ -44,4 +44,8 @@ public interface ClusterMap {
    String getHostIdForVm(String vmid);
 
    String getClusterIdForVm(String vm);
+   
+   Integer getNumVCPUsForVm(String vm);
+   
+   long getPowerOnTimeForVm(String vm);
 }
