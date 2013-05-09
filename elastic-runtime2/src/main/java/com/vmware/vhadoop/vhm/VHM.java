@@ -127,6 +127,7 @@ public class VHM implements EventConsumer {
          results = new HashSet<NotificationEvent>();
          while (_eventQueue.peek() != null) {
             /* Use of a Set ensured duplicates are eliminated */
+            /* TODO: add an event key to do event consolidation. At the moment events use the default equality so this has little effect */
             results.add(_eventQueue.poll());
          }
       }

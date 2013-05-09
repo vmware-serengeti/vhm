@@ -12,10 +12,12 @@ import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser {
    private static final Logger _log = Logger.getLogger(DumbVMChooser.class.getName());
 
-   protected Set<String> chooseVMs(final Set<String> vms, final int delta, final boolean targetPowerState) {
+   protected Set<String> chooseVMs(final Set<String> vms, int delta, final boolean targetPowerState) {
+      delta = Math.abs(delta);
+
       Set<String> result = new HashSet<String>();
       Iterator<String> iterator = vms.iterator();
-      for (int i=0; i<delta; i++) {
+      for (int i=0; i<delta && iterator.hasNext(); i++) {
          String vm = iterator.next();
          _log.info("DumbVMChooser adding VM "+vm+" to results");
          result.add(vm);
@@ -28,9 +30,6 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
       ClusterMap clusterMap = getAndReadLockClusterMap();
       Set<String> vms = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, !targetPowerState);
       unlockClusterMap(clusterMap);
-      if (vms.size() <= delta) {
-         return vms;
-      }
 
       return chooseVMs(vms, delta, targetPowerState);
    }
@@ -42,7 +41,7 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
 
    @Override
    public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, Math.abs(delta), false);
+      return chooseVMs(clusterId, delta, false);
    }
 
    @Override
@@ -64,6 +63,6 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
 
    @Override
    public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, Math.abs(delta), false);
+      return chooseVMs(candidates, delta, false);
    }
 }

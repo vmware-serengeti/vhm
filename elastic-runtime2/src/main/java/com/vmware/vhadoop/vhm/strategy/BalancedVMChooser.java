@@ -37,7 +37,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
     */
    protected Set<String> selectVMs(final Queue<Host> targets, final int delta, final boolean targetPowerState) {
       Set<String> result = new HashSet<String>();
-      int remaining = delta;
+      int remaining = Math.abs(delta);
 
       while (remaining-- > 0) {
          Host host = targets.poll();
@@ -108,7 +108,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
     */
    @Override
    public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, Math.abs(delta), false);
+      return chooseVMs(clusterId, delta, false);
    }
 
    @Override
@@ -138,7 +138,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
 
    @Override
    public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, Math.abs(delta), false);
+      return chooseVMs(candidates, delta, false);
    }
 
    public Set<String> chooseVMs(final Set<String> candidates, final int delta, final boolean targetPowerState) {
@@ -171,6 +171,6 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
 
       targets.addAll(hosts.values());
 
-      return selectVMs(targets, Math.abs(delta), targetPowerState);
+      return selectVMs(targets, delta, targetPowerState);
    }
 }
