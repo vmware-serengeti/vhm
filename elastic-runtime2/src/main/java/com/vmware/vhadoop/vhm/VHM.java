@@ -120,7 +120,7 @@ public class VHM implements EventConsumer {
             try {
                _eventQueue.wait();
             } catch (InterruptedException e) {
-               /* squash */
+               _log.warning("Interrupted unexpectedly while waiting for event");
             }
          }
          results = new HashSet<NotificationEvent>();
