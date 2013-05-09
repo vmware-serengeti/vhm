@@ -171,7 +171,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmInfo._isMaster && (ci != null)) {
          ci._masterVM = vmInfo;
       }
-      dumpState();
+      dumpState(Level.FINE);
    }
 
    private void removeCluster(final ClusterInfo cluster) {
@@ -190,7 +190,7 @@ public class ClusterMapImpl implements ClusterMap {
          _log.log(Level.INFO, "Remove VM " + vmInfo._moRef);
          _vms.remove(vmMoRef);
       }
-      dumpState();
+      dumpState(Level.FINE);
    }
 
    private void changeScaleStrategy(final String clusterId, final String newStrategyKey) {
@@ -267,10 +267,10 @@ public class ClusterMapImpl implements ClusterMap {
       return result;
    }
 
-   private void dumpState() {
+   public void dumpState(Level logLevel) {
       for (ClusterInfo ci : _clusters.values()) {
          String clusterName = (ci._masterVM == null) ? "N/A" : ci._masterVM._name;
-         _log.log(Level.FINE, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
+         _log.log(logLevel, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
                " min=" + ci._minInstances + " uuid= " + ci._masterUUID);
       }
 
@@ -290,7 +290,7 @@ public class ClusterMapImpl implements ClusterMap {
                jtPort = " JTport=" + vmInfo._jobTrackerPort;
             }
          }
-         _log.log(Level.FINE, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + vCPUs + 
+         _log.log(logLevel, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + vCPUs + 
                " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }

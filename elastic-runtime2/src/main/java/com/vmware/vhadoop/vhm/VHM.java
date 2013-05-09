@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
@@ -166,8 +167,13 @@ public class VHM implements EventConsumer {
          if (vmId != null) {
             clusterId = _clusterMap.getClusterIdForVm(vmId);
          } else {
-            /* TODO: Make this more friendly - log and handle error */
-            throw new RuntimeException("No usable data from ClusterScaleEvent");
+            _log.warning("No usable data from ClusterScaleEvent (" + 
+                  event.getVmId() + "," + event.getHostId() + "," + event.getClusterId() + ")");
+            if (event instanceof SerengetiLimitInstruction) {
+               SerengetiLimitInstruction sEvent = (SerengetiLimitInstruction)event;
+               _log.warning("SerengetiEvent for cluster=" + sEvent.getClusterFolderName());
+            }
+            _clusterMap.dumpState(Level.WARNING);
          }
       }
 
@@ -180,12 +186,14 @@ public class VHM implements EventConsumer {
       for (NotificationEvent event : events) {
          if (event instanceof AbstractClusterScaleEvent) {
             String clusterId = completeClusterScaleEventDetails((AbstractClusterScaleEvent)event);
-            Set<ClusterScaleEvent> clusterScaleEvents = results.get(clusterId);
-            if (clusterScaleEvents == null) {
-               clusterScaleEvents = new HashSet<ClusterScaleEvent>();
-               results.put(clusterId, clusterScaleEvents);
+            if (clusterId != null) {
+               Set<ClusterScaleEvent> clusterScaleEvents = results.get(clusterId);
+               if (clusterScaleEvents == null) {
+                  clusterScaleEvents = new HashSet<ClusterScaleEvent>();
+                  results.put(clusterId, clusterScaleEvents);
+               }
+               clusterScaleEvents.add((ClusterScaleEvent)event);
             }
-            clusterScaleEvents.add((ClusterScaleEvent)event);
          }
       }
       return results;
