@@ -397,4 +397,14 @@ public class ClusterMapImpl implements ClusterMap {
       return results;
    }
 
+   @Override
+   public Integer getNumVCPUsForVm(String vmId) {
+      return _vms.get(vmId)._vCPUs;
+   }
+
+   @Override
+   public long getPowerOnTimeForVm(String vmId) {
+      return _vms.get(vmId)._powerOnTime;
+   }
+
 }
