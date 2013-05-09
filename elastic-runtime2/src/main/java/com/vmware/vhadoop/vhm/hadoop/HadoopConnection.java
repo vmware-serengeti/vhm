@@ -87,7 +87,7 @@ public class HadoopConnection {
       _log.log(Level.INFO, "Copying data to remote file "+remotePath+remoteFileName + " on jobtracker");
       
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, 
-            _hadoopCluster.getJobTrackerName(), _connectionProperties.getSshPort());
+            _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
       if (channel == null) {
          return UNKNOWN_ERROR;          /* TODO: Improve */
       }
@@ -112,7 +112,7 @@ public class HadoopConnection {
       _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker");
 
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, 
-            _hadoopCluster.getJobTrackerName(), _connectionProperties.getSshPort());
+            _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
       if (channel == null) {
          return UNKNOWN_ERROR;          /* TODO: Improve */
       }
@@ -138,7 +138,7 @@ public class HadoopConnection {
 
    public boolean pingJobTracker() {
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, 
-            _hadoopCluster.getJobTrackerName(), _connectionProperties.getSshPort());
+            _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
       boolean result = _sshUtils.testChannel(_log, channel);
       _log.log(Level.INFO, "Ping JobTracker result = "+result);
       return result;
@@ -148,8 +148,8 @@ public class HadoopConnection {
       return _hadoopHomePath;
    }
 
-   public String getJobTrackerName() {
-      return _hadoopCluster.getJobTrackerName();
+   public String getJobTrackerAddr() {
+      return _hadoopCluster.getJobTrackerAddr();
    }
 
    public String getExcludeFilePath() {

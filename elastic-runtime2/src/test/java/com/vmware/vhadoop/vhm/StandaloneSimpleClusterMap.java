@@ -164,7 +164,7 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	}
 
 	@Override
-	public boolean checkPowerStateOfVms(final Set<String> vmIds, final boolean expectedPowerState) {
+	public Boolean checkPowerStateOfVms(final Set<String> vmIds, final boolean expectedPowerState) {
 		for (VM vm : vms) {
 			if (vmIds.contains(vm.id) && expectedPowerState != vm.power) {
 				return false;
@@ -182,12 +182,6 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 		}
 
 		return ids.toArray(new String[] {});
-	}
-
-	@Override
-	public String getScaleStrategyKey(final String clusterId) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
@@ -234,5 +228,11 @@ public class StandaloneSimpleClusterMap implements ClusterMap
    public long getPowerOnTimeForVm(String vm) {
       // TODO Auto-generated method stub
       return 0;
+   }
+
+   @Override
+   public String getScaleStrategyKey(String clusterId) {
+      // TODO Auto-generated method stub
+      return null;
    }
 }

@@ -12,7 +12,7 @@ import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
 public interface ScaleStrategy extends ClusterMapReader {
 
-   String getName();
+   String getKey();
    
    Class<? extends ScaleStrategyContext> getStrategyContextType();
    

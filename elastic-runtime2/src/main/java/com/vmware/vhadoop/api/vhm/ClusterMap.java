@@ -31,20 +31,20 @@ public interface ClusterMap {
 
    ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId);
 
-   boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
+   Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 
    String[] getAllKnownClusterIds();
 
-   String getScaleStrategyKey(String clusterId);
-
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
 
-   Set<String> getDnsNameForVMs(Set<String> vms);
+   Set<String> getDnsNameForVMs(Set<String> vmIds);
 
-   String getHostIdForVm(String vmid);
+   String getHostIdForVm(String vmId);
 
-   String getClusterIdForVm(String vm);
-   
+   String getClusterIdForVm(String vmIds);
+
+   String getScaleStrategyKey(String clusterId);
+
    Integer getNumVCPUsForVm(String vm);
    
    long getPowerOnTimeForVm(String vm);

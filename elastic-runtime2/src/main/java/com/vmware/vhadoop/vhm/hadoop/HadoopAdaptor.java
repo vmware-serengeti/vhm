@@ -125,7 +125,7 @@ public class HadoopAdaptor implements HadoopActions {
          _connections.put(cluster.getClusterId(), result);
       }
       setErrorParamValue(cluster, ParamTypes.HADOOP_HOME, result.getHadoopHome());
-      setErrorParamValue(cluster, ParamTypes.JOBTRACKER, result.getJobTrackerName());
+      setErrorParamValue(cluster, ParamTypes.JOBTRACKER, result.getJobTrackerAddr());
       setErrorParamValue(cluster, ParamTypes.EXCLUDE_FILE, result.getExcludeFilePath());
       return result;
    }

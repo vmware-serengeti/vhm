@@ -26,6 +26,7 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLException;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
@@ -463,6 +464,12 @@ public class VcVlsi {
       propFilter.cleanup();
    }
 
+   private MasterVmEventData getMasterVmData(VMEventData vmData) {
+      if (vmData._masterVmData == null) {
+         vmData._masterVmData = new MasterVmEventData();
+      }
+      return vmData._masterVmData;
+   }
 
    private void parseExtraConfig(VMEventData vmData, String key, String value) {
       if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
@@ -476,11 +483,11 @@ public class VcVlsi {
          } else if (key.equals(VHM_EXTRA_CONFIG_ELASTIC)) {
             vmData._isElastic = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_ENABLE)) {
-            vmData._enableAutomation = value.equalsIgnoreCase("true");
+            getMasterVmData(vmData)._enableAutomation = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
-            vmData._minInstances = Integer.valueOf(value);
+            getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
          } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
-            vmData._jobTrackerPort = Integer.valueOf(value);
+            getMasterVmData(vmData)._jobTrackerPort = Integer.valueOf(value);
          }
       }
    }

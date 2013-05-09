@@ -142,7 +142,9 @@ public class VHM implements EventConsumer {
 
    private String getClusterIdForVCFolder(String folderName) {
       List<String> vms = _vcActions.listVMsInFolder(folderName);
-      return _clusterMap.getClusterIdFromVMsInFolder(folderName, vms);
+      String clusterId = _clusterMap.getClusterIdFromVMs(vms);
+      _clusterMap.associateFolderWithCluster(clusterId, folderName);
+      return clusterId;
    }
 
    /* TODO: Note that currently, this method cannot deal with a clusterScaleEvent with just a hostId

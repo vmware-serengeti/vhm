@@ -38,7 +38,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    }
 
    @Override
-   public String getName() {
+   public String getKey() {
       return MANUAL_SCALE_STRATEGY_KEY;
    }
 

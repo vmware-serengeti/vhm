@@ -34,19 +34,19 @@ public class ClusterMapImpl implements ClusterMap {
 
    final ExtraInfoToScaleStrategyMapper _strategyMapper;
 
-   public ClusterMapImpl(final ExtraInfoToScaleStrategyMapper mapper) {
+   public ClusterMapImpl(ExtraInfoToScaleStrategyMapper mapper) {
       _strategyMapper = mapper;
    }
 
    class HostInfo {
-      public HostInfo(final String moRef) {
+      public HostInfo(String moRef) {
          this._moRef = moRef;
       }
       final String _moRef;
    }
 
    class VMInfo {
-      public VMInfo(final String moRef) {
+      public VMInfo(String moRef) {
          this._moRef = moRef;
       }
       final String _moRef;
@@ -69,7 +69,7 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    class ClusterInfo {
-      public ClusterInfo(final String masterUUID) {
+      public ClusterInfo(String masterUUID) {
          this._masterUUID = masterUUID;
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
@@ -81,7 +81,7 @@ public class ClusterMapImpl implements ClusterMap {
       LinkedList<ClusterScaleCompletionEvent> _completionEvents;
    }
 
-   private HostInfo getHost(final String hostMoRef) {
+   private HostInfo getHost(String hostMoRef) {
       HostInfo host = _hosts.get(hostMoRef);
       if ((host == null) && (hostMoRef != null)) {
          host = new HostInfo(hostMoRef);
@@ -90,7 +90,15 @@ public class ClusterMapImpl implements ClusterMap {
       return host;
    }
 
-   private ClusterInfo getCluster(final String masterUUID) {
+   private boolean assertHasData(Set<? extends Object> toTest) {
+      return (toTest != null && (toTest.size() > 0));
+   }
+
+   private boolean assertHasData(Map<? extends Object, ? extends Object> toTest) {
+      return (toTest != null && (toTest.keySet().size() > 0));
+   }
+
+   private ClusterInfo getCluster(String masterUUID) {
       ClusterInfo cluster = _clusters.get(masterUUID);
       if ((cluster == null) && (masterUUID != null)) {
          cluster = new ClusterInfo(masterUUID);
@@ -99,8 +107,9 @@ public class ClusterMapImpl implements ClusterMap {
       return cluster;
    }
 
-   private void updateVMState(final VMEventData vmd) {
+   private void updateVMState(VMEventData vmd) {
       VMInfo vmInfo = _vms.get(vmd._vmMoRef);
+      ClusterInfo ci = null;
       if (vmInfo == null) {
          vmInfo = new VMInfo(vmd._vmMoRef);
          _vms.put(vmd._vmMoRef, vmInfo);
@@ -110,15 +119,17 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmd._hostMoRef != null) {
          vmInfo._host = getHost(vmd._hostMoRef);
       }
+      
       if (vmd._masterUUID != null) {
-         vmInfo._cluster = getCluster(vmd._masterUUID);
+         ci = vmInfo._cluster = getCluster(vmd._masterUUID);
          if (vmInfo._cachedMinInstances != null) {
-            vmInfo._cluster._minInstances = vmInfo._cachedMinInstances;
+            ci._minInstances = vmInfo._cachedMinInstances;
          }
          if (vmInfo._cachedScaleStrategyKey != null) {
-            vmInfo._cluster._scaleStrategyKey = vmInfo._cachedScaleStrategyKey;
+            ci._scaleStrategyKey = vmInfo._cachedScaleStrategyKey;
          }
       }
+      
       if (vmd._powerState != null) {
          vmInfo._powerState = vmd._powerState;
          if (vmInfo._powerState) {
@@ -127,9 +138,6 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;
-      }
-      if (vmd._myUUID != null) {
-         vmInfo._myUUID = vmd._myUUID;
       }
       if (vmd._vCPUs != null) {
          vmInfo._vCPUs = vmd._vCPUs;
@@ -140,48 +148,50 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmd._dnsName != null) {
          vmInfo._dnsName = vmd._dnsName;
       }
-      if (vmd._jobTrackerPort != null) {
-         vmInfo._jobTrackerPort = vmd._jobTrackerPort;
+      if (vmd._myUUID != null) {
+         vmInfo._myUUID = vmd._myUUID;
       }
       if (vmd._isElastic != null) {
          vmInfo._isElastic = vmd._isElastic;
       }
-
-      ClusterInfo ci = vmInfo._cluster;
-      if (vmd._enableAutomation != null) {
-         vmInfo._isMaster = true;
-         String scaleStrategyKey = _strategyMapper.getStrategyKey(vmd);
+      if (vmd._masterVmData != null) {
          if (ci != null) {
-            ci._scaleStrategyKey = scaleStrategyKey;
-         } else {
-            vmInfo._cachedScaleStrategyKey = scaleStrategyKey;
+            ci._masterVM = vmInfo;
+         }
+         if (vmd._masterVmData._jobTrackerPort != null) {
+            vmInfo._jobTrackerPort = vmd._masterVmData._jobTrackerPort;
+         }
+         if (vmd._masterVmData._enableAutomation != null) {
+            vmInfo._isMaster = true;
+            String scaleStrategyKey = _strategyMapper.getStrategyKey(vmd);
+            if (ci != null) {
+               ci._scaleStrategyKey = scaleStrategyKey;
+            } else {
+               vmInfo._cachedScaleStrategyKey = scaleStrategyKey;
+            }
+         }
+         if (vmd._masterVmData._minInstances != null) {
+            if (ci != null) {
+               ci._minInstances = vmd._masterVmData._minInstances;
+            } else {
+               vmInfo._cachedMinInstances = vmd._masterVmData._minInstances;
+            }
          }
       }
-      if (vmd._minInstances != null) {
-         vmInfo._isMaster = true;
-         if (ci != null) {
-            ci._minInstances = vmd._minInstances;
-         } else {
-            vmInfo._cachedMinInstances = vmd._minInstances;
-         }
-      }
-      if ((vmInfo._myUUID != null) && (ci != null) && (ci._masterUUID == vmInfo._myUUID)) {
-         vmInfo._isMaster = true;
-      }
-      if (vmInfo._isMaster && (ci != null)) {
-         ci._masterVM = vmInfo;
+      if (vmd._serengetiFolder != null) {
+         ci._folderName = vmd._serengetiFolder;
       }
       dumpState(Level.FINE);
    }
 
-   private void removeCluster(final ClusterInfo cluster) {
+   private void removeCluster(ClusterInfo cluster) {
       if (cluster != null) {
          _log.log(Level.INFO, "Remove cluster " + cluster._masterUUID + " uuid=" + cluster._masterUUID);
          _clusters.remove(cluster._masterUUID);
       }
    }
 
-   private void removeVM(final String vmMoRef) {
+   private void removeVM(String vmMoRef) {
       VMInfo vmInfo = _vms.get(vmMoRef);
       if (vmInfo != null) {
          if (vmInfo._isMaster) {
@@ -193,12 +203,12 @@ public class ClusterMapImpl implements ClusterMap {
       dumpState(Level.FINE);
    }
 
-   private void changeScaleStrategy(final String clusterId, final String newStrategyKey) {
+   private void changeScaleStrategy(String clusterId, String newStrategyKey) {
       ClusterInfo cluster = _clusters.get(clusterId);
       cluster._scaleStrategyKey = newStrategyKey;
    }
 
-   public void handleClusterEvent(final ClusterStateChangeEvent event) {
+   public void handleClusterEvent(ClusterStateChangeEvent event) {
       if (event instanceof VMUpdatedEvent) {
          VMUpdatedEvent ace = (VMUpdatedEvent)event;
          updateVMState(ace.getVm());
@@ -211,27 +221,38 @@ public class ClusterMapImpl implements ClusterMap {
       }
    }
 
-   public void handleCompletionEvent(final ClusterScaleCompletionEvent event) {
+   public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
       ClusterInfo cluster = getCluster(event.getClusterId());
       cluster._completionEvents.addFirst(event);
    }
 
    @Override
-   public String getScaleStrategyKey(final String clusterId) {
-      return _clusters.get(clusterId)._scaleStrategyKey;
+   public String getScaleStrategyKey(String clusterId) {
+      ClusterInfo ci = _clusters.get(clusterId);
+      if (ci != null) {
+         return ci._scaleStrategyKey;
+      }
+      return null;
    }
 
-   public ScaleStrategy getScaleStrategyForCluster(final String clusterId) {
+   public ScaleStrategy getScaleStrategyForCluster(String clusterId) {
       return _scaleStrategies.get(getScaleStrategyKey(clusterId));
    }
 
-   public void registerScaleStrategy(final ScaleStrategy strategy) {
-      _scaleStrategies.put(strategy.getName(), strategy);
+   public void registerScaleStrategy(ScaleStrategy strategy) {
+      _scaleStrategies.put(strategy.getKey(), strategy);
    }
 
    @Override
-   public Set<String> listComputeVMsForClusterHostAndPowerState(
-         final String clusterId, final String hostId, final boolean powerState) {
+   public Set<String> listComputeVMsForClusterHostAndPowerState(String clusterId, String hostId, boolean powerState) {
+      if ((clusterId != null) && (hostId != null)) {
+         return generateComputeVMList(clusterId, hostId, powerState);
+      }
+      return null;
+   }
+   
+   private Set<String> generateComputeVMList(
+         final String clusterId, String hostId, boolean powerState) {
       Set<String> result = new HashSet<String>();
       for (VMInfo vminfo : _vms.values()) {
          try {
@@ -243,28 +264,34 @@ public class ClusterMapImpl implements ClusterMap {
             }
          } catch (NullPointerException e) {} //vminfo.xxx could be null for VMs where we only have partial data from VC
       }
-      return result;
+      return (result.size() == 0) ? null : result;
    }
 
    @Override
-   public Set<String> listComputeVMsForClusterAndPowerState(final String clusterId, final boolean powerState) {
-      return listComputeVMsForClusterHostAndPowerState(clusterId, null, powerState);
-   }
-
-   @Override
-   public Set<String> listComputeVMsForPowerState(final boolean powerState) {
-      return listComputeVMsForClusterHostAndPowerState(null, null, powerState);
-   }
-
-   @Override
-   public Set<String> listHostsWithComputeVMsForCluster(final String clusterId) {
-      Set<String> result = new HashSet<String>();
-      for (VMInfo vminfo : _vms.values()) {
-         if ((vminfo._isElastic) && vminfo._cluster._masterUUID.equals(clusterId)) {
-            result.add(vminfo._host._moRef);
-         }
+   public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
+      if (clusterId != null) {
+         return generateComputeVMList(clusterId, null, powerState);
       }
-      return result;
+      return null;
+   }
+
+   @Override
+   public Set<String> listComputeVMsForPowerState(boolean powerState) {
+      return generateComputeVMList(null, null, powerState);
+   }
+
+   @Override
+   public Set<String> listHostsWithComputeVMsForCluster(String clusterId) {
+      if (assertHasData(_vms)) {
+         Set<String> result = new HashSet<String>();
+         for (VMInfo vminfo : _vms.values()) {
+            if ((vminfo._isElastic) && vminfo._cluster._masterUUID.equals(clusterId)) {
+               result.add(vminfo._host._moRef);
+            }
+         }
+         return (result.size() == 0) ? null : result;
+      }
+      return null;
    }
 
    public void dumpState(Level logLevel) {
@@ -294,14 +321,18 @@ public class ClusterMapImpl implements ClusterMap {
                " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }
+   
+   void associateFolderWithCluster(String clusterId, String folderName) {
+      ClusterInfo ci = _clusters.get(clusterId);
+      ci._folderName = folderName;
+   }
 
-   String getClusterIdFromVMsInFolder(final String folderName, final List<String> vms) {
+   String getClusterIdFromVMs(List<String> vms) {
       String clusterId = null;
       if (vms != null) {
          for (String moRef : vms) {
             try {
                clusterId = _vms.get(moRef)._cluster._masterUUID;
-               getCluster(clusterId)._folderName = folderName;
                break;
             } catch (NullPointerException e) {}
          }
@@ -310,7 +341,7 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public String getClusterIdForFolder(final String clusterFolderName) {
+   public String getClusterIdForFolder(String clusterFolderName) {
       for (ClusterInfo ci : _clusters.values()) {
          //JG: Note that since foldername is only set by Serengeti Limit commands, foldername
          //    for other clusters will be null, which needs to be ignored...
@@ -322,17 +353,25 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public String getHostIdForVm(final String vmId) {
-      return _vms.get(vmId)._host._moRef;
+   public String getHostIdForVm(String vmId) {
+      VMInfo vmInfo = _vms.get(vmId);
+      if (vmInfo != null) {
+         return vmInfo._host._moRef;
+      }
+      return null;
    }
 
    @Override
-   public String getClusterIdForVm(final String vmId) {
-      return _vms.get(vmId)._cluster._masterUUID;
+   public String getClusterIdForVm(String vmId) {
+      VMInfo vmInfo = _vms.get(vmId);
+      if (vmInfo != null) {
+         return vmInfo._cluster._masterUUID;
+      }
+      return null;
    }
 
    @Override
-   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(final String clusterId) {
+   public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
       ClusterInfo info =  getCluster(clusterId);
       if (info._completionEvents.size() > 0) {
          return info._completionEvents.getFirst();
@@ -341,60 +380,77 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public boolean checkPowerStateOfVms(final Set<String> vmIds, final boolean expectedPowerState) {
-      for (String vmId : vmIds) {
-         VMInfo vm = _vms.get(vmId);
-         if (vmId != null) {
-            if (vm._powerState != expectedPowerState) {
-               return false;
+   public Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState) {
+      if (assertHasData(vmIds) && assertHasData(_vms)) {
+         for (String vmId : vmIds) {
+            VMInfo vm = _vms.get(vmId);
+            if (vm != null) {
+               if (vm._powerState != expectedPowerState) {
+                  return false;
+               }
+            } else {
+               _log.warning("VM "+vmId+" does not exist in ClusterMap!");
+               return null;
             }
-         } else {
-            _log.warning("VM "+vmId+" does not exist in ClusterMap!");
          }
+         return true;
       }
-      return true;
+      return null;
    }
 
    @Override
-   public Map<String, String> getHostIdsForVMs(final Set<String> vms) {
-      Map<String, String> result = new HashMap<String, String>();
-      for (String vmId : vms) {
-         VMInfo vm = _vms.get(vmId);
-         if (vm != null) {
-            result.put(vmId, vm._host._moRef);
+   public Map<String, String> getHostIdsForVMs(Set<String> vmIds) {
+      if (assertHasData(vmIds) && assertHasData(_vms)) {
+         Map<String, String> results = new HashMap<String, String>();
+         for (String vmId : vmIds) {
+            VMInfo vm = _vms.get(vmId);
+            if (vm != null) {
+               results.put(vmId, vm._host._moRef);
+            }
+         }
+         if (results.size() > 0) {
+            return results;
          }
       }
-      return result;
+      return null;
    }
 
    @Override
    public String[] getAllKnownClusterIds() {
-      if (_clusters != null) {
+      if (assertHasData(_clusters)) {
          return _clusters.keySet().toArray(new String[0]);
       }
       return null;
    }
 
    @Override
-   public HadoopClusterInfo getHadoopInfoForCluster(final String clusterId) {
-      ClusterInfo ci = _clusters.get(clusterId);
-      HadoopClusterInfo result = null;
-      if ((ci != null) && (ci._masterVM != null)) {
-         result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr, ci._masterVM._jobTrackerPort);
+   public HadoopClusterInfo getHadoopInfoForCluster(String clusterId) {
+      if (assertHasData(_clusters)) {
+         ClusterInfo ci = _clusters.get(clusterId);
+         HadoopClusterInfo result = null;
+         if ((ci != null) && (ci._masterVM != null)) {
+            result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr, ci._masterVM._jobTrackerPort);
+         }
+         return result;
       }
-      return result;
+      return null;
    }
-
+   
    @Override
-   public Set<String> getDnsNameForVMs(final Set<String> vms) {
-      Set<String> results = new HashSet<String>();
-      for (String vm : vms) {
-         VMInfo vminfo = _vms.get(vm);
-         if (vminfo != null) {
-            results.add(vminfo._dnsName);
+   public Set<String> getDnsNameForVMs(Set<String> vmIds) {
+      if (assertHasData(vmIds) && assertHasData(_vms)) {
+         Set<String> results = new HashSet<String>();
+         for (String vm : vmIds) {
+            VMInfo vminfo = _vms.get(vm);
+            if (vminfo != null) {
+               results.add(vminfo._dnsName);
+            }
+         }
+         if (results.size() > 0) {
+            return results;
          }
       }
-      return results;
+      return null;
    }
 
    @Override
