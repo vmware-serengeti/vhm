@@ -223,4 +223,16 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 
       return sb.toString();
    }
+
+   @Override
+   public Integer getNumVCPUsForVm(String vm) {
+      // TODO Auto-generated method stub
+      return null;
+   }
+
+   @Override
+   public long getPowerOnTimeForVm(String vm) {
+      // TODO Auto-generated method stub
+      return 0;
+   }
 }
