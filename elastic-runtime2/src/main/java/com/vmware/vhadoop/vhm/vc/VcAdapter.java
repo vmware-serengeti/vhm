@@ -36,7 +36,7 @@ public class VcAdapter implements VCActions {
 
    private CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
-         if (_log.getLevel().intValue() <= Level.FINER.intValue()) {
+         if (_log.isLoggable(Level.FINER)) {
             _log.finer("Returning dummy status compound status for thread "+Thread.currentThread());
          }
          return new CompoundStatus("DUMMY_STATUS");
