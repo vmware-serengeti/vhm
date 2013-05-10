@@ -323,8 +323,7 @@ public class HadoopAdaptor implements HadoopActions {
       return status;
    }
 
-   private boolean checkOpSuccess(String opType, String[] affectedTTs,
-		   String[] allActiveTTs) {
+   private boolean checkOpSuccess(String opType, String[] affectedTTs, String[] allActiveTTs) {
 
 	  Set<String> setTTs = new TreeSet<String>();
 
@@ -338,11 +337,13 @@ public class HadoopAdaptor implements HadoopActions {
 	   }
 
 	   for (String tt : affectedTTs) {
-		   if (setTTs.contains(tt) && opType.equals("Decommission")) {
-			   return false;
-		   } else if (!setTTs.contains(tt) && opType.equals("Recommission")) {
-			   return false;
-		   }
+	      if (tt != null) {
+   		   if (setTTs.contains(tt) && opType.equals("Decommission")) {
+   			   return false;
+   		   } else if (!setTTs.contains(tt) && opType.equals("Recommission")) {
+   			   return false;
+   		   }
+	      }
 	   }
 
 	   return true;

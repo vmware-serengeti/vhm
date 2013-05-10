@@ -50,7 +50,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          String[] hostNameArray = hostNames.toArray(new String[0]);
          status.addStatus(_hadoopActions.decommissionTTs(hostNameArray, hadoopCluster));
-         status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+         if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
+            status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+         }
          _vcActions.changeVMPowerState(toDisable, false);
       }
    }
