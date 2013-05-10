@@ -23,15 +23,18 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    public void enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
       ClusterMap clusterMap = getAndReadLockClusterMap();
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-      String[] hostNames = clusterMap.getDnsNameForVMs(toEnable).toArray(new String[0]);
+      Set<String> hostNames = clusterMap.getDnsNameForVMs(toEnable);
       unlockClusterMap(clusterMap);
 
-      CompoundStatus status = getCompoundStatus();
-      /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
-      status.addStatus(_hadoopActions.recommissionTTs(hostNames, hadoopCluster));
-      _vcActions.changeVMPowerState(toEnable, true);
-      if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-         status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster));
+      if (hostNames != null) {
+         CompoundStatus status = getCompoundStatus();
+         /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
+         String[] hostNameArray = hostNames.toArray(new String[0]);
+         status.addStatus(_hadoopActions.recommissionTTs(hostNameArray, hadoopCluster));
+         _vcActions.changeVMPowerState(toEnable, true);
+         if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
+            status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+         }
       }
    }
 
@@ -39,14 +42,17 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    public void disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
       ClusterMap clusterMap = getAndReadLockClusterMap();
       HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-      String[] hostNames = clusterMap.getDnsNameForVMs(toDisable).toArray(new String[0]);
+      Set<String> hostNames = clusterMap.getDnsNameForVMs(toDisable);
       unlockClusterMap(clusterMap);
 
-      CompoundStatus status = getCompoundStatus();
-      /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
-      status.addStatus(_hadoopActions.decommissionTTs(hostNames, hadoopCluster));
-      status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster));
-      _vcActions.changeVMPowerState(toDisable, false);
+      if (hostNames != null) {
+         CompoundStatus status = getCompoundStatus();
+         /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
+         String[] hostNameArray = hostNames.toArray(new String[0]);
+         status.addStatus(_hadoopActions.decommissionTTs(hostNameArray, hadoopCluster));
+         status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+         _vcActions.changeVMPowerState(toDisable, false);
+      }
    }
 
 }

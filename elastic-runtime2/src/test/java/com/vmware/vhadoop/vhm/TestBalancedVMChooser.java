@@ -31,10 +31,12 @@ public class TestBalancedVMChooser extends AbstractJUnitTest {
    public void testDisableAll() {
       String clusters[] = _map.getAllKnownClusterIds();
 
-      for (String cluster : clusters) {
-         int delta = _map.listComputeVMsForClusterAndPowerState(cluster, true).size();
-         Set<String> vms = _chooser.chooseVMsToDisable(cluster, delta);
-         Assert.assertEquals(delta, vms.size());
+      if (clusters != null) {
+         for (String cluster : clusters) {
+            int delta = _map.listComputeVMsForClusterAndPowerState(cluster, true).size();
+            Set<String> vms = _chooser.chooseVMsToDisable(cluster, delta);
+            Assert.assertEquals(delta, vms.size());
+         }
       }
    }
 
@@ -42,10 +44,12 @@ public class TestBalancedVMChooser extends AbstractJUnitTest {
    public void testEnableAll() {
       String clusters[] = _map.getAllKnownClusterIds();
 
-      for (String cluster : clusters) {
-         int delta = _map.listComputeVMsForClusterAndPowerState(cluster, false).size();
-         Set<String> vms = _chooser.chooseVMsToEnable(cluster, delta);
-         Assert.assertEquals(delta, vms.size());
+      if (clusters != null) {
+         for (String cluster : clusters) {
+            int delta = _map.listComputeVMsForClusterAndPowerState(cluster, false).size();
+            Set<String> vms = _chooser.chooseVMsToEnable(cluster, delta);
+            Assert.assertEquals(delta, vms.size());
+         }
       }
    }
 

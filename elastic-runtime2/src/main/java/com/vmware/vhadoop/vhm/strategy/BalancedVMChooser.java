@@ -71,7 +71,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState) {
       ClusterMap clusterMap = getAndReadLockClusterMap();
       Set<String> hosts = clusterMap.listHostsWithComputeVMsForCluster(clusterId);
-      if (hosts.size() == 0) {
+      if ((hosts == null) || (hosts.size() == 0)) {
          unlockClusterMap(clusterMap);
          return new TreeSet<String>();
       }
@@ -85,7 +85,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       for (String host : hosts) {
          Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
          Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
-         if (candidateVMs.size() > 0) {
+         if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
             Host h = new Host();
             h.candidates = candidateVMs;
             h.on = on.size();
@@ -155,7 +155,8 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          if (h == null) {
             h = new Host();
             h.candidates = new HashSet<String>();
-            h.on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true).size();
+            Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
+            h.on = (vmIds == null) ? 0 : vmIds.size();
          }
 
          h.candidates.add(vm);

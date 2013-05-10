@@ -2,6 +2,7 @@ package com.vmware.vhadoop.vhm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -55,9 +56,9 @@ public class ClusterMapAccessTest {
          try {
             Thread.sleep(delayMillis);
          } catch (InterruptedException e) {}
-         int size = cm.listComputeVMsForClusterAndPowerState("myCluster", false).size();
+         Set<String> vmIds = cm.listComputeVMsForClusterAndPowerState("myCluster", false);
          unlockClusterMap(cm);
-         return size;
+         return (vmIds == null) ? 0 : vmIds.size();
       }
    }
    

@@ -62,7 +62,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             final SerengetiLimitInstruction limitEvent = (SerengetiLimitInstruction)event;
             ClusterMap clusterMap = getAndReadLockClusterMap();
             String clusterId = clusterMap.getClusterIdForFolder(limitEvent.getClusterFolderName());
-            int poweredOnVms = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true).size();
+            Set<String> poweredOnVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
+            int poweredOnVms = (poweredOnVmList == null) ? 0 : poweredOnVmList.size();
             unlockClusterMap(clusterMap);
             int delta = limitEvent.getToSize() - poweredOnVms;
             Set<String> vmsToED;
