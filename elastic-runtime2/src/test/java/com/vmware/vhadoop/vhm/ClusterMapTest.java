@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +41,7 @@ public class ClusterMapTest {
    final String DEFAULT_SCALE_STRATEGY_KEY = "defaultScaleStrategy";
    
    final int DEFAULT_PORT = 1234;
+   final int DEFAULT_VCPUS = 2;
    
    @Before
    public void initialize() {
@@ -67,6 +69,7 @@ public class ClusterMapTest {
       result._myName = vmName;
       result._serengetiFolder = getFolderNameForClusterName(clusterName);
       result._vmMoRef = MOREF_PREFIX+vmName;
+      result._vCPUs = DEFAULT_VCPUS;
       if (isMaster) {
          result._masterVmData = new MasterVmEventData();
          result._masterVmData._enableAutomation = autoCluster;
@@ -123,6 +126,10 @@ public class ClusterMapTest {
    
    private String getDnsNameFromVmName(String vmName) {
       return DNS_PREFIX+vmName;
+   }
+   
+   private String getMasterVmIdForCluster(String clusterName) {
+      return getVmIdFromVmName(clusterName+"_"+VM_NAME_PREFIX+0);
    }
 
    private String deriveClusterIdFromClusterName(String clusterName) {
@@ -189,11 +196,18 @@ public class ClusterMapTest {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
       assertEquals(numClusterIds, _clusterNames.size());
+      int cntr = 0;
       for (String clusterName : _clusterNames) {
-         _clusterMap.getClusterIdForFolder(clusterName);
-         String clusterId = _clusterMap.getClusterIdForFolder(getFolderNameForClusterName(clusterName));
+         String folderName = getFolderNameForClusterName(clusterName);
+         String clusterId = _clusterMap.getClusterIdForFolder(folderName);
          assertEquals(deriveClusterIdFromClusterName(clusterName), clusterId);
+         
+         String newFolderName = "NEW_FOLDER"+cntr++;
+         _clusterMap.associateFolderWithCluster(clusterId, newFolderName);
+         assertEquals(clusterId, _clusterMap.getClusterIdForFolder(newFolderName));
       }
+
+      /* Negative tests */
       assertNull(_clusterMap.getClusterIdForFolder("bogus"));
       assertNull(_clusterMap.getClusterIdForFolder(null));
    }
@@ -208,6 +222,8 @@ public class ClusterMapTest {
          String vmId = getVmIdFromVmName(vmName);
          assertEquals(deriveClusterIdFromVmName(vmName), _clusterMap.getClusterIdForVm(vmId));
       }
+      
+      /* Negative tests */
       assertNull(_clusterMap.getClusterIdForVm("bogus"));
       assertNull(_clusterMap.getClusterIdForVm(null));
    }
@@ -222,6 +238,8 @@ public class ClusterMapTest {
       for (String vmName : _vmNames) {
          assertTrue(dnsNames.contains(getDnsNameFromVmName(vmName)));
       }
+
+      /* Negative tests */
       assertNull(_clusterMap.getDnsNameForVMs(getBogusSet()));
       assertNull(_clusterMap.getDnsNameForVMs(getEmptySet()));
       assertNull(_clusterMap.getDnsNameForVMs(null));
@@ -238,6 +256,8 @@ public class ClusterMapTest {
          assertEquals(deriveMasterIpAddrFromClusterId(clusterId), hci.getJobTrackerAddr());
          assertEquals((Integer)DEFAULT_PORT, hci.getJobTrackerPort());
       }
+
+      /* Negative tests */
       assertNull(_clusterMap.getHadoopInfoForCluster("bogus"));
       assertNull(_clusterMap.getHadoopInfoForCluster(null));
    }
@@ -251,6 +271,8 @@ public class ClusterMapTest {
          String expected = deriveHostIdFromVmName(vmName);
          assertEquals(expected, hostId);
       }
+
+      /* Negative tests */
       assertNull(_clusterMap.getHostIdForVm("bogus"));
       assertNull(_clusterMap.getHostIdForVm(null));
    }
@@ -267,6 +289,8 @@ public class ClusterMapTest {
          assertNotNull(hostId);
          assertEquals(deriveHostIdFromVmId(vmId), hostId);
       }
+
+      /* Negative tests */
       assertNull(_clusterMap.getHostIdsForVMs(getBogusSet()));
       assertNull(_clusterMap.getHostIdsForVMs(getEmptySet()));
       assertNull(_clusterMap.getHostIdsForVMs(null));
@@ -289,6 +313,9 @@ public class ClusterMapTest {
          _clusterMap.handleCompletionEvent(cse2);
          assertEquals(cse2, _clusterMap.getLastClusterScaleCompletionEvent(clusterId));
       }
+
+      /* Negative tests */
+      assertNull(_clusterMap.getLastClusterScaleCompletionEvent(null));
       assertNull(_clusterMap.getLastClusterScaleCompletionEvent("bogus"));
    }
    
@@ -320,6 +347,7 @@ public class ClusterMapTest {
       assertEquals(AUTO_SCALE_STRATEGY_KEY, ss1.getKey());
       assertEquals(AUTO_SCALE_STRATEGY_KEY, _clusterMap.getScaleStrategyKey(cid1));
       
+      /* Negative tests */
       assertNull(_clusterMap.getScaleStrategyForCluster(null));
       assertNull(_clusterMap.getScaleStrategyForCluster("bogus"));
       
@@ -346,14 +374,20 @@ public class ClusterMapTest {
 
          /* For each power state */
          for (int j=0; j<2; j++) {
-            Set<String> computeVMs = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, (j==1));
+            boolean expectedPowerState = (j==1);
+            Set<String> computeVMs = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, expectedPowerState);
             Integer result = (computeVMs == null) ? null : computeVMs.size();
             assertEquals(expectedSizes1[i][j], result);
             
-            
             if (computeVMs != null) {
-               assertTrue(_clusterMap.checkPowerStateOfVms(computeVMs, (j==1)));
-               assertFalse(_clusterMap.checkPowerStateOfVms(computeVMs, (j!=1)));
+               assertTrue(_clusterMap.checkPowerStateOfVms(computeVMs, expectedPowerState));
+               assertFalse(_clusterMap.checkPowerStateOfVms(computeVMs, !expectedPowerState));
+               
+               if (expectedPowerState) {
+                  assertNotNull(_clusterMap.getPowerOnTimeForVm(computeVMs.iterator().next()));
+               }
+               
+               assertEquals(clusterId, _clusterMap.getClusterIdFromVMs(new ArrayList<String>(computeVMs)));
 
                /* Check that the compute VM names returned contain the cluster name */
                for (String computeVM : computeVMs) {
@@ -384,6 +418,7 @@ public class ClusterMapTest {
       assertEquals(3, _clusterMap.listComputeVMsForPowerState(false).size());
       assertEquals(6, _clusterMap.listComputeVMsForPowerState(true).size());
 
+      /* Negative tests */
       assertNull(_clusterMap.listComputeVMsForClusterAndPowerState("bogus", false));
       assertNull(_clusterMap.listComputeVMsForClusterAndPowerState(null, false));
       
@@ -396,7 +431,28 @@ public class ClusterMapTest {
       
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster("bogus"));
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster(null));
+      
+      assertNull(_clusterMap.getClusterIdFromVMs(null));
+      assertNull(_clusterMap.getClusterIdFromVMs(new ArrayList<String>(getEmptySet())));
+      assertNull(_clusterMap.getClusterIdFromVMs(new ArrayList<String>(getBogusSet())));
+      
+      assertNull(_clusterMap.getPowerOnTimeForVm("bogus"));
+      assertNull(_clusterMap.getPowerOnTimeForVm(null));
    }
+   
+   @Test
+   public void getVCPU() {
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, 0);
+      for (String vmName : _vmNames) {
+         String vmId = getVmIdFromVmName(vmName);
+         assertEquals((Integer)DEFAULT_VCPUS, _clusterMap.getNumVCPUsForVm(vmId));
+      }
+      
+      /* Negative tests */
+      assertNull(_clusterMap.getNumVCPUsForVm("bogus"));
+      assertNull(_clusterMap.getNumVCPUsForVm(null));
+   }
+
    
    @Test
    public void testRemoveVM() {
@@ -406,6 +462,8 @@ public class ClusterMapTest {
       Set<String> vms = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
       int runningTotal = 3;
       assertEquals(runningTotal, vms.size());
+      
+      /* Remove the compute VMs */
       for (String vmId : vms) {
          --runningTotal;
          _clusterMap.handleClusterEvent(new VMRemovedFromClusterEvent(vmId));
@@ -417,6 +475,15 @@ public class ClusterMapTest {
             assertNull(remaining);
          }
       }
+      
+      /* Cluster should still be there */
+      String masterVmId = getMasterVmIdForCluster(clusterName);
+      assertEquals(clusterId, _clusterMap.getClusterIdForVm(masterVmId));
+      
+      /* Remove master VM and the cluster should be removed also */
+      _clusterMap.handleClusterEvent(new VMRemovedFromClusterEvent(masterVmId));
+      assertNull(_clusterMap.getClusterIdForVm(getVmIdFromVmName(masterVmId)));
+      assertNull(_clusterMap.getAllKnownClusterIds());
    }
    
    @Test
@@ -437,5 +504,7 @@ public class ClusterMapTest {
       assertNull(_clusterMap.listComputeVMsForPowerState(false));
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster("foo"));
       assertNull(_clusterMap.checkPowerStateOfVms(vms, false));
+      assertNull(_clusterMap.getNumVCPUsForVm("foo"));
+      assertNull(_clusterMap.getPowerOnTimeForVm("foo"));
    }
 }

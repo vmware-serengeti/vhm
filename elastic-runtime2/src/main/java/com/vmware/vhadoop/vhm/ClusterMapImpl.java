@@ -136,6 +136,7 @@ public class ClusterMapImpl implements ClusterMap {
             vmInfo._powerOnTime = System.currentTimeMillis();
          }
       }
+      
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;
       }
@@ -373,8 +374,10 @@ public class ClusterMapImpl implements ClusterMap {
    @Override
    public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
       ClusterInfo info =  getCluster(clusterId);
-      if (info._completionEvents.size() > 0) {
-         return info._completionEvents.getFirst();
+      if (info != null) {
+         if (info._completionEvents.size() > 0) {
+            return info._completionEvents.getFirst();
+         }
       }
       return null;
    }
@@ -455,12 +458,24 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Integer getNumVCPUsForVm(String vmId) {
-      return _vms.get(vmId)._vCPUs;
+      if (assertHasData(_vms)) {
+         VMInfo vm = _vms.get(vmId);
+         if (vm != null) {
+            return vm._vCPUs;
+         }
+      }
+      return null;
    }
 
    @Override
-   public long getPowerOnTimeForVm(String vmId) {
-      return _vms.get(vmId)._powerOnTime;
+   public Long getPowerOnTimeForVm(String vmId) {
+      if (assertHasData(_vms)) {
+         VMInfo vm = _vms.get(vmId);
+         if (vm != null) {
+            return vm._powerOnTime;
+         }
+      }
+      return null;
    }
 
 }

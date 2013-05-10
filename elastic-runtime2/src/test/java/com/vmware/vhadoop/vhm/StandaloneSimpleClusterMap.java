@@ -225,9 +225,9 @@ public class StandaloneSimpleClusterMap implements ClusterMap
    }
 
    @Override
-   public long getPowerOnTimeForVm(String vm) {
+   public Long getPowerOnTimeForVm(String vm) {
       // TODO Auto-generated method stub
-      return 0;
+      return null;
    }
 
    @Override

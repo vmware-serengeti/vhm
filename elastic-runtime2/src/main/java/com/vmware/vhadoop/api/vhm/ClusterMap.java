@@ -47,5 +47,5 @@ public interface ClusterMap {
 
    Integer getNumVCPUsForVm(String vm);
    
-   long getPowerOnTimeForVm(String vm);
+   Long getPowerOnTimeForVm(String vm);
 }
