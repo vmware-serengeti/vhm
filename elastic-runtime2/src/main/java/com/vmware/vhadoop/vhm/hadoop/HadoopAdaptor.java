@@ -184,6 +184,13 @@ public class HadoopAdaptor implements HadoopActions {
 	   } catch (IOException e) {
 		   _log.log(Level.SEVERE, "Unexpected error while converting file " + fileName + " to byte array", e);
 	   }
+
+	   try {
+         is.close();
+      } catch (IOException e) {
+         _log.fine("IOException while closing stream for loading script files");
+      }
+
 	   return result;
    }
 

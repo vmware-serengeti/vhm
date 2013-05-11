@@ -33,9 +33,9 @@ import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopCredentials;
 import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.SshUtils;
 
 /**
- * An implementation of SshUtils defined by HadoopConnection
- * This is marked clearly as being not thread-safe, 
- * so instances of this class should not be shared by multiple HadoopConnections
+ * An implementation of SshUtils defined by HadoopConnection This is marked
+ * clearly as being not thread-safe, so instances of this class should not be
+ * shared by multiple HadoopConnections
  *
  */
 public class NonThreadSafeSshUtils implements SshUtils {
@@ -44,69 +44,73 @@ public class NonThreadSafeSshUtils implements SshUtils {
 
    private static final String SCP_COMMAND = "scp  -t  ";
    private static final int INPUTSTREAM_TIMEOUT = 100;
-   
+
    @Override
    public ChannelExec createChannel(Logger logger, final HadoopCredentials credentials, String host, int port) {
       try {
-    	 
          Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
 
-         // If private key file is specified, use that as identity; else use password.
+         // If private key file is specified, use that as identity; else use
+         // password.
          String prvkeyFile = credentials.getSshPrvkeyFile();
          if (prvkeyFile != null) {
-            _jsch.addIdentity(prvkeyFile); //Setup SSH identity using private key file
+            _jsch.addIdentity(prvkeyFile); // Setup SSH identity using private key file
          } else {
             session.setPassword(credentials.getSshPassword());
             UserInfo ui = new SSHUserInfo(credentials.getSshPassword());
             session.setUserInfo(ui);
          }
-         
+
          java.util.Properties config = new java.util.Properties();
-         config.put("StrictHostKeyChecking", "no");        /* TODO: Necessary? Hack? Security hole?? */
+         config.put("StrictHostKeyChecking", "no"); /*
+                                                     * TODO: Necessary? Hack?
+                                                     * Security hole??
+                                                     */
          session.setConfig(config);
-        
+
          // JG: Adding session timeout...
          session.setTimeout(15000);
-        
+
          session.connect();
-        
-         return (ChannelExec)session.openChannel("exec");
+
+         return (ChannelExec) session.openChannel("exec");
       } catch (JSchException e) {
          logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password/prvkey) on host "+host, e);
          return null;
       }
    }
 
-
    @Override
    public int exec(Logger logger, ChannelExec channel, OutputStream out, String command) {
       int exitStatus = UNKNOWN_ERROR;
+      InputStream in = null;
       try {
-         logger.log(Level.FINE, "About to execute: " + command);   	  
+         logger.log(Level.FINE, "About to execute: " + command);
 
          // Executing all commands as root
-         channel.setPty(true); //to enable sudo
-         channel.setCommand("sudo " + command); 
-         
+         channel.setPty(true); // to enable sudo
+         channel.setCommand("sudo " + command);
+
          channel.setOutputStream(out);
-         channel.setInputStream(null);         /* TODO: Why? */
-         InputStream in = channel.getInputStream();
- 
+         channel.setInputStream(null); /* TODO: Why? */
+         in = channel.getInputStream();
+
          channel.connect();
 
-        logger.log(Level.FINE, "Finished channel connection in exec");
+         logger.log(Level.FINE, "Finished channel connection in exec");
 
          if (!testChannel(logger, channel)) {
-            return UNKNOWN_ERROR;          /* TODO: Improve */
+            return UNKNOWN_ERROR; /* TODO: Improve */
          }
-         
+
          int numSecs = 0;
          byte[] tmp = new byte[1024];
          while (true) {
             while (in.available() > 0) {
                int i = in.read(tmp, 0, 1024);
-               if (i < 0)
+               if (i < 0) {
                   break;
+               }
                out.write(tmp);
             }
             if (channel.isClosed()) {
@@ -114,18 +118,18 @@ public class NonThreadSafeSshUtils implements SshUtils {
                logger.log(Level.SEVERE, "Exit status from exec is: " + channel.getExitStatus());
                break;
             }
-            
+
             try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				logger.log(Level.SEVERE, "Excpetion while sleeping in exec");
-			}
-            
+               Thread.sleep(1000);
+            } catch (InterruptedException e) {
+               logger.log(Level.SEVERE, "Excpetion while sleeping in exec");
+            }
+
             numSecs++;
-            
+
             if (numSecs == INPUTSTREAM_TIMEOUT) {
-            	logger.log(Level.SEVERE, "No input was received for " + numSecs + "s while running remote exec!");
-            	break;
+               logger.log(Level.SEVERE, "No input was received for " + numSecs + "s while running remote exec!");
+               break;
             }
          }
       } catch (JSchException e) {
@@ -133,58 +137,72 @@ public class NonThreadSafeSshUtils implements SshUtils {
       } catch (IOException e) {
          logger.log(Level.SEVERE, "Unexpected IOException executing over SSH", e);
       }
-      
+
+      try {
+         if (in != null) {
+            in.close();
+         }
+      } catch (IOException e) {}
+
       logger.log(Level.FINE, "Exit status from exec is: " + exitStatus);
       return exitStatus;
    }
 
    @Override
-   public int scpBytes(Logger logger, ChannelExec channel, byte[] data, 
-         String remotePath, String remoteFileName, String perms) {
+   public int scpBytes(Logger logger, ChannelExec channel, byte[] data, String remotePath, String remoteFileName, String perms) {
+      InputStream in = null;
+      OutputStream out = null;
       try {
          channel.setCommand(SCP_COMMAND + remotePath + remoteFileName);
 
-         OutputStream out = channel.getOutputStream();
-         InputStream in = channel.getInputStream();
-     
+         out = channel.getOutputStream();
+         in = channel.getInputStream();
+
          channel.connect();
 
          if (!testChannel(logger, channel)) {
-            return UNKNOWN_ERROR;          /* TODO: Improve */
+            return UNKNOWN_ERROR; /* TODO: Improve */
          }
 
          if (!waitForInputStream(logger, in)) {
-            return UNKNOWN_ERROR;          /* TODO: Improve */
+            return UNKNOWN_ERROR; /* TODO: Improve */
          }
-         
+
          // send "C$perms filesize filename", where filename should not include
          StringBuilder params = new StringBuilder("C0").append(perms);
          params.append(" ").append(data.length).append(" ");
          params.append(remoteFileName).append("\n");
-    
+
          out.write(params.toString().getBytes());
          out.flush();
-         
+
          if (!waitForInputStream(logger, in)) {
             cleanup(logger, out, channel);
             logger.log(Level.SEVERE, "Error before writing SCP bytes");
-            return UNKNOWN_ERROR;           /* TODO: Improve */
+            return UNKNOWN_ERROR; /* TODO: Improve */
          }
-         
+
          out.write(data);
-         out.write(new byte[]{0}, 0, 1);
+         out.write(new byte[] { 0 }, 0, 1);
          out.flush();
-         
+
          if (!waitForInputStream(logger, in)) {
             logger.log(Level.SEVERE, "Error after writing SCP bytes");
             cleanup(logger, out, channel);
             return -1;
          }
-         
-         out.close();
+
       } catch (Exception e) {
          logger.log(Level.SEVERE, "Unexpected Exception copying data to Job Tracker", e);
+      } finally {
+         if (in != null) {
+            try {
+               out.close();
+               in.close();
+            } catch (IOException e) {}
+         }
       }
+
       return SUCCESS;
    }
 
@@ -203,11 +221,12 @@ public class NonThreadSafeSshUtils implements SshUtils {
             c = in.read();
             sb.append((char) c);
          } while (c != '\n');
-         log.log(Level.SEVERE, "SSH Channel failed test. Msg="+sb.toString());
+
+         log.log(Level.SEVERE, "SSH Channel failed test. Msg=" + sb.toString());
          return false;
       }
    }
-   
+
    @Override
    public boolean testChannel(Logger log, ChannelExec channel) {
       if (channel == null) {

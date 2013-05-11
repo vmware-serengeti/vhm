@@ -3,6 +3,7 @@ package com.vmware.vhadoop.vhm.vc;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -80,7 +81,7 @@ import com.vmware.vim.vmomi.core.types.VmodlContext;
 public class VcVlsi {
 
    private static final int SESSION_TIME_OUT = 120000;
-   
+
    private static final Logger _log = Logger.getLogger("VcVlsi");
    private static final VmodlContext vmodlContext = VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
    private Client defaultClient;
@@ -94,7 +95,7 @@ public class VcVlsi {
    private static final String VC_PROP_VM_HOST = "runtime.host";
    private static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
    private static final String VC_PROP_VM_GUEST_HOSTNAME = "guest.hostName";
-   
+
    private static final String VC_MOREF_TYPE_TASK = "Task";
    private static final String VC_MOREF_TYPE_VM = "VirtualMachine";
    private static final String VC_MOREF_TYPE_FOLDER = "Folder";
@@ -116,14 +117,14 @@ public class VcVlsi {
    private static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";
-      
+
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private PropertyCollector _waitingOnPc;
-   
+
    void setThreadLocalCompoundStatus(ThreadLocalCompoundStatus tlcs) {
       _threadLocalStatus = tlcs;
    }
-   
+
    private CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
          return new CompoundStatus("DUMMY_STATUS");
@@ -164,7 +165,7 @@ public class VcVlsi {
       ServiceInstance svc = getServiceInstance(vcClient);
       return svc.retrieveContent();
    }
-   
+
    /*
     * Create a temporary connection to VC to login using extension certificate via sdkTunnel,
     * and get the session ticket to use for the normal connection.
@@ -172,28 +173,30 @@ public class VcVlsi {
    private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey)
          throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
 
-      URI uri = new URI("https://sdkTunnel:8089/sdk/vimService"); 
+      URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
-      keyStore.load(new FileInputStream(keyStoreFile), keyStorePwd.toCharArray());
+      InputStream is = new FileInputStream(keyStoreFile);
+      keyStore.load(is, keyStorePwd.toCharArray());
+      is.close();
 
       HttpConfigurationImpl httpConfig = new HttpConfigurationImpl();
       httpConfig.setKeyStore(keyStore);
       httpConfig.setDefaultProxy(vcIP, 80, "http");
       httpConfig.getKeyStoreConfig().setKeyAlias(keyStore.aliases().nextElement());
       httpConfig.getKeyStoreConfig().setKeyPassword(keyStorePwd);
-      
+
       httpConfig.setTimeoutMs(SESSION_TIME_OUT);
       httpConfig.setThumbprintVerifier(getThumbprintVerifier());
 
       HttpClientConfiguration clientConfig = HttpClientConfiguration.Factory.newInstance();
       clientConfig.setHttpConfiguration(httpConfig);
       Client newClient = Client.Factory.createClient(uri, version8.class, clientConfig);
-      
+
       ServiceInstanceContent sic = getServiceInstanceContent(newClient);
       SessionManager sm = newClient.createStub(SessionManager.class, sic.getSessionManager());
       sm.loginExtensionByCertificate(vcExtKey, null);
       String ticket = sm.acquireSessionTicket(null);
-      
+
       return ticket;
    }
 
@@ -202,21 +205,21 @@ public class VcVlsi {
       SessionManager sm = defaultClient.createStub(SessionManager.class, sic.getSessionManager());
       return sm.acquireCloneTicket();
    }
-   
-   public Client connect(VcCredentials credentials, boolean useKey, boolean cloneSession) 
+
+   public Client connect(VcCredentials credentials, boolean useKey, boolean cloneSession)
          throws Exception {
       vcThumbprint = credentials.vcThumbprint;
       String sessionTicket = null;
-      
+
       if (cloneSession) {
          sessionTicket = getCloneTicket();
       } else if (useKey) {
          sessionTicket = getSessionTicket(credentials.vcIP, credentials.keyStoreFile, credentials.keyStorePwd, credentials.vcExtKey);
       }
-      
+
       URI uri = new URI("https://"+credentials.vcIP+":443/sdk");
 
-      // each VLSI call consumes an executor thread for the duration of the blocking call 
+      // each VLSI call consumes an executor thread for the duration of the blocking call
       ThreadPoolExecutor executor =
             new ThreadPoolExecutor(1,  // core pool size
                   4,  // max pool size
@@ -247,7 +250,7 @@ public class VcVlsi {
             sm.login(credentials.user, credentials.password, null);
          }
       }
-      
+
       return newClient;
    }
 
@@ -276,9 +279,9 @@ public class VcVlsi {
     * Property filters are used a lot when querying the JAX-WS API for information about VC entities
     * The code is pretty ugly, so it makes sense to encapsulate it in a utility class.
     * The class is dual-purpose - it can be created with either constructor depending on the need.
-    * Properties can then be added to the filter and once that's completed, 
+    * Properties can then be added to the filter and once that's completed,
     * retrieveProperties() or getPropertyCollector() can be called, depending on the requirement
-    * 
+    *
     */
    public class PropertyFilter {
       PropertyCollector _propertyCollector;
@@ -364,7 +367,7 @@ public class VcVlsi {
       public RetrieveResult continueRetrieve(String token) throws InvalidProperty {
          return _propertyCollector.continueRetrievePropertiesEx(token);
       }
-      
+
       public void cleanup() {
          if (_filter != null) {
             _filter.destroy();
@@ -376,11 +379,11 @@ public class VcVlsi {
 
    }
 
-   private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName) 
+   private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName)
          throws InvalidProperty {
       List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
-      
+
       ViewManager viewMgr = defaultClient.createStub(ViewManager.class, sic.getViewManager());
       ContainerView cView = defaultClient.createStub(ContainerView.class,
             viewMgr.createContainerView(baseFolder._getRef(), new TypeName[] {type}, true));
@@ -415,8 +418,8 @@ public class VcVlsi {
             // get the next batch of results from VC
             rr = propFilter.continueRetrieve(rr.getToken());
          }
-      }  
-      
+      }
+
       propFilter.cleanup();
       return resultRefs;
    }
@@ -446,7 +449,7 @@ public class VcVlsi {
       propFilter.setPropsToFilter(statePropsToGet);
       return propFilter;
    }
-   
+
    private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version)
          throws Exception {
       UpdateSet updateSet = null;
@@ -496,7 +499,7 @@ public class VcVlsi {
          }
       }
    }
-   
+
    private VMEventData parseObjUpdate(ObjectUpdate obj) {
       VMEventData vmData = new VMEventData();
       vmData._vmMoRef = obj.getObj().getValue();
@@ -515,7 +518,7 @@ public class VcVlsi {
                if (pcName.equals(VC_PROP_VM_UUID)) {
                   vmData._myUUID = (String)pcValue;
                } else if (pcName.equals(VC_PROP_VM_NUM_CPU)) {
-                  vmData._vCPUs = (Integer)pcValue; 
+                  vmData._vCPUs = (Integer)pcValue;
                } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
                } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
@@ -528,9 +531,9 @@ public class VcVlsi {
                } else if (pcName.equals(VC_PROP_VM_HOST)) {
                   vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
                } else if (pcName.equals(VC_PROP_VM_GUEST_IP)) {
-                  vmData._ipAddr = (String)pcValue; 
+                  vmData._ipAddr = (String)pcValue;
                } else if (pcName.equals(VC_PROP_VM_GUEST_HOSTNAME)) {
-                  vmData._dnsName = (String)pcValue; 
+                  vmData._dnsName = (String)pcValue;
                } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
                   // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
                   OptionValue[] ecl = (OptionValue[]) pcValue;
@@ -590,7 +593,7 @@ public class VcVlsi {
          }
          throw e;
       }
-      
+
       if (updateSet != null) {
          version = updateSet.getVersion();
          FilterUpdate[] updates = updateSet.getFilterSet();
@@ -669,7 +672,7 @@ public class VcVlsi {
       return result;
    }
 
-   
+
    public String waitForUpdates(Client vcClient, String baseFolderName, String version, List<VMEventData> vmDataList) {
       CompoundStatus status = new CompoundStatus("waitForUpdates");
       String result = version;
@@ -694,9 +697,9 @@ public class VcVlsi {
       List<String> result = null;
       try {
          Folder baseFolder = getFolderForName(null, baseFolderName);
-         
+
          Folder folder = getFolderForName(baseFolder, folderName);
-         
+
          List<ManagedObjectReference> refs = findObjectsInFolder(folder, typeVM, null);
          if ((refs != null) && (refs.size() > 0)) {
             result = new ArrayList<String>();
@@ -711,7 +714,7 @@ public class VcVlsi {
       getCompoundStatus().addStatus(status);
       return result;
    }
-   
+
    private void reportException(String msg, Exception e, CompoundStatus status) {
       _log.log(Level.INFO, msg, e);
       status.registerTaskFailed(false, msg+": "+e.getMessage());
@@ -764,7 +767,7 @@ public class VcVlsi {
    }
 
    /*
-   
+
    VirtualMachine vm = getVMForName(f, "xxxxx");
    _log.log(Level.INFO, "TPC vm.name = " + vm.getName());
    _log.log(Level.INFO, "TPC vm = " + vm);
@@ -779,9 +782,9 @@ public class VcVlsi {
    Task t = defaultClient.createStub(Task.class, taskRef);
    boolean success = waitForTask(t);
    _log.log(Level.INFO, "TPC task success=" + success);
-   
+
    ps = vm.getRuntime().getPowerState();
    _log.log(Level.INFO, "TPC vm new ps = " + ps);
-*/       
+*/
 
 }
