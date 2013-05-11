@@ -3,7 +3,6 @@ package com.vmware.vhadoop.vhm.vc;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -175,9 +174,7 @@ public class VcVlsi {
 
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
-      InputStream is = new FileInputStream(keyStoreFile);
-      keyStore.load(is, keyStorePwd.toCharArray());
-      is.close();
+      keyStore.load(new FileInputStream(keyStoreFile), keyStorePwd.toCharArray());
 
       HttpConfigurationImpl httpConfig = new HttpConfigurationImpl();
       httpConfig.setKeyStore(keyStore);
