@@ -63,7 +63,9 @@ public class BootstrapMain {
       }
 
       try {
-         LogManager.getLogManager().readConfiguration(new FileInputStream(loggingProperties));
+         InputStream is = new FileInputStream(loggingProperties);
+         LogManager.getLogManager().readConfiguration(is);
+         is.close();
       } catch (Exception e) {
          System.err.println("The "+loggingFlavour+" logging properties file could not be read: "+loggingProperties);
       }
@@ -142,8 +144,12 @@ public class BootstrapMain {
           System.err.println("Unable to read properties file from filesystem or as a resource from the jar files:"+name);
       } finally {
          try {
-            if (resource != null) {
-               resource.close();
+            try {
+               if (resource != null) {
+                  resource.close();
+               }
+            } catch (IOException e) {
+               /* squash */
             }
 
             if (is != null) {
