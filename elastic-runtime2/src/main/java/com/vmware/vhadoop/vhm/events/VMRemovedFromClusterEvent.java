@@ -6,7 +6,7 @@ public class VMRemovedFromClusterEvent extends AbstractNotificationEvent impleme
    String _vmMoRef;
    
    public VMRemovedFromClusterEvent(String vmMoRef) {
-      super(false, false);
+      super(false, true);
       _vmMoRef = vmMoRef;
    }
 

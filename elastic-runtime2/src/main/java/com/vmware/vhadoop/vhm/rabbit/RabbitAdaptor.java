@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.vhm.rabbit;
 
+import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.rabbitmq.client.QueueingConsumer;
@@ -31,6 +33,7 @@ import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
 public class RabbitAdaptor implements MQClient {
    private RabbitConnection _connection;
    private EventConsumer _eventConsumer;
+   private boolean _started;
 
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
@@ -66,10 +69,11 @@ public class RabbitAdaptor implements MQClient {
 
    @Override
    public void start() {
+      _started = true;
       new Thread(new Runnable() {
          @Override
          public void run() {
-            while (true) {
+            while (_started) {
                try {
                   _log.info("Rabbit queue waiting for message");
                   QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
@@ -79,9 +83,21 @@ public class RabbitAdaptor implements MQClient {
                   _eventConsumer.placeEventOnQueue(event);
                   _log.info("New Serengeti limit event placed on queue");
                } catch (InterruptedException e) {
-                  /* TODO: Worth logging? */
+                  /* Almost certainly stop() was invoked */
                }
             }
+            _log.info("RabbitAdaptor stopping...");
          }}, "MQClientImpl").start();
+   }
+
+   @Override
+   public void stop() {
+      _started = false;
+      try {
+         /* TODO: Is this the right approach? */
+         _connection.getConsumer().getChannel().close();
+      } catch (IOException e) {
+         _log.log(Level.INFO, "Unexpected exception stopping MQClient", e);
+      }
    }
 }

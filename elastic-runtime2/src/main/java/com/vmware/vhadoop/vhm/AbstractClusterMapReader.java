@@ -9,7 +9,7 @@ import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 
 public abstract class AbstractClusterMapReader implements ClusterMapReader {
 
-   private ClusterMapAccess _clusterMapAccess;
+   ClusterMapAccess _clusterMapAccess;
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private boolean _initialized;
 

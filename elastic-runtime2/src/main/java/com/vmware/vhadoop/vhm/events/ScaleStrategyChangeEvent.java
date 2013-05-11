@@ -7,7 +7,7 @@ public class ScaleStrategyChangeEvent extends AbstractNotificationEvent implemen
    private String _clusterId;
    
    public ScaleStrategyChangeEvent(String clusterId, String newStrategyKey) {
-      super(false, false);
+      super(false, true);
       _clusterId = clusterId;
       _newStrategyKey = newStrategyKey;
    }

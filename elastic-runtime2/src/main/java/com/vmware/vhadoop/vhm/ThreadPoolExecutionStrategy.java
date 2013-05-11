@@ -21,11 +21,13 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 
 public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
-   ExecutorService _threadPool;
-   Map<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>> _runningTasks;
-   Map<String, ScaleStrategyContext> _contextMap;
-   static int _threadCounter = 0;
-   EventConsumer _consumer;
+   private ExecutorService _threadPool;
+   private Map<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>> _runningTasks;
+   private Map<String, ScaleStrategyContext> _contextMap;
+   private static int _threadCounter = 0;
+   private EventConsumer _consumer;
+   private Thread _mainThread;
+   private boolean _started;
 
    private static final Logger _log = Logger.getLogger(ThreadPoolExecutionStrategy.class.getName());
 
@@ -74,13 +76,14 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
 
    @Override
    public void start() {
-      new Thread(new Runnable() {
+      _started = true;
+      _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
             List<Set<ClusterScaleEvent>> toRemove = new ArrayList<Set<ClusterScaleEvent>>();
             List<ClusterScaleCompletionEvent> completedTasks = new ArrayList<ClusterScaleCompletionEvent>();
             synchronized(_runningTasks) {
-               while (true) {
+               while (_started) {
                   for (Set<ClusterScaleEvent> key : _runningTasks.keySet()) {
                      Future<ClusterScaleCompletionEvent> task = _runningTasks.get(key);
                      if (task.isDone()) {
@@ -114,9 +117,17 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                      _runningTasks.wait(1000);
                   } catch (InterruptedException e) {}
                }
+               _log.info("ThreadPoolExecutionStrategy stopping...");
             }
          }
-      }, "ScaleStrategyCompletionListener").start();
+      }, "ScaleStrategyCompletionListener");
+      _mainThread.start();
+   }
+
+   @Override
+   public void stop() {
+      _started = false;
+      _mainThread.interrupt();
    }
 
 }

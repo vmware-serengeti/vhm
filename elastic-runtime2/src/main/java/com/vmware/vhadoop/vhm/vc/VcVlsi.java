@@ -119,6 +119,7 @@ public class VcVlsi {
    private static final String TASK_INFO_STATE = "info.state";
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
+   private PropertyCollector _waitingOnPc;
 
    void setThreadLocalCompoundStatus(ThreadLocalCompoundStatus tlcs) {
       _threadLocalStatus = tlcs;
@@ -459,7 +460,11 @@ public class VcVlsi {
       WaitOptions waitOptions = new WaitOptions();
       waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
 
+      _waitingOnPc = propCollector;
       updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
+      synchronized(propCollector) {
+         _waitingOnPc = null;
+      }
       return updateSet;
    }
 
@@ -753,6 +758,12 @@ public class VcVlsi {
       }
       getCompoundStatus().addStatus(status);
       return result;
+   }
+
+   public void cancelWaitForUpdates() {
+      synchronized(_waitingOnPc) {
+         _waitingOnPc.cancelWaitForUpdates();
+      }
    }
 
    /*
