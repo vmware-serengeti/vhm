@@ -258,7 +258,11 @@ public class VHM implements EventConsumer {
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(clusterScaleEvents.get(clusterId));
             if (consolidatedEvents.size() > 0) {
                ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
-               _executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents);
+               if (scaleStrategy != null) {
+                  _executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents);
+               } else {
+                  _log.severe("No scale strategy associated with cluster "+clusterId);
+               }
             }
          }
       }
