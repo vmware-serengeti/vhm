@@ -16,7 +16,9 @@ public interface VCActions {
 
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean b);
 
-   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList);
+   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) throws InterruptedException;
+   
+   public void interruptWait();
    
    public Client getStatsPollClient();
 

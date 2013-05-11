@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import junit.framework.Assert;
+import static org.junit.Assert.*;
 
 import org.junit.After;
 import org.junit.Before;
@@ -34,20 +34,20 @@ public class ClusterMapAccessTest {
    @Test
    public void DoubleLockTest() {
       ClusterMap cm = _clusterMapAccess.lockClusterMap();
-      Assert.assertNotNull(cm);
+      assertNotNull(cm);
       cm = _clusterMapAccess.lockClusterMap();
-      Assert.assertNull(cm);
+      assertNull(cm);
       _clusterMapAccess.unlockClusterMap(cm);
    }
 
    @Test
    public void DoubleUnLockTest() {
       ClusterMap cm = _clusterMapAccess.lockClusterMap();
-      Assert.assertNotNull(cm);
+      assertNotNull(cm);
       boolean result = _clusterMapAccess.unlockClusterMap(cm);
-      Assert.assertTrue(result);
+      assertTrue(result);
       result = _clusterMapAccess.unlockClusterMap(cm);
-      Assert.assertFalse(result);
+      assertFalse(result);
    }
    
    class TestClusterMapReader extends AbstractClusterMapReader {
@@ -71,7 +71,7 @@ public class ClusterMapAccessTest {
             public void run() {
                numStarted.incrementAndGet();
                System.out.println(System.currentTimeMillis()+": Reader trying to read");
-               Assert.assertEquals(assertResult, reader.getNumPoweredOffVMs(readDelayMillis));
+               assertEquals(assertResult, reader.getNumPoweredOffVMs(readDelayMillis));
                System.out.println(System.currentTimeMillis()+": Reader done reading");
             }});
          _liveThreads.add(t);

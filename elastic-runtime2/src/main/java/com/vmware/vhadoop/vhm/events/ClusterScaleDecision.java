@@ -11,7 +11,7 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
    Map<String, Decision> _decisions;
    
    public ClusterScaleDecision(String clusterId) {
-      super(false, false);
+      super(false, true);
       _clusterId = clusterId;
       _decisions = new HashMap<String, Decision>();
    }

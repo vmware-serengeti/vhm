@@ -6,7 +6,7 @@ public class VMUpdatedEvent extends AbstractNotificationEvent implements Cluster
    VMEventData _vm;
    
    public VMUpdatedEvent(VMEventData vm) {
-      super(false, false);
+      super(false, true);
       _vm = vm;
    }
 

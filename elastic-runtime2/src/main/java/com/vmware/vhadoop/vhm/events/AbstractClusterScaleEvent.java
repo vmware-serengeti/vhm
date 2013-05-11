@@ -10,7 +10,7 @@ public class AbstractClusterScaleEvent extends AbstractNotificationEvent
    private String _clusterId;
    
    public AbstractClusterScaleEvent() {
-      super(false, false);
+      super(false, true);
    }
    
    @Override

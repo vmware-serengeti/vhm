@@ -24,6 +24,7 @@ import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
+import com.vmware.vhadoop.vhm.events.AbstractNotificationEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 public class VHM implements EventConsumer {
@@ -35,6 +36,7 @@ public class VHM implements EventConsumer {
    private VCActions _vcActions;
    private MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
    private ClusterMapReader _parentClusterMapReader;
+   private boolean _started = false;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
@@ -263,16 +265,26 @@ public class VHM implements EventConsumer {
    }
 
    public Thread start() {
+      _started = true;
       Thread t = new Thread(new Runnable() {
          @Override
          public void run() {
-            while (true) {
+            while (_started) {
                Set<NotificationEvent> events = pollForEvents();
                handleEvents(events);
             }
+            _log.info("VHM stopping...");
          }}, "VHM_Main_Thread");
       t.start();
       return t;
+   }
+   
+   public void stop(boolean hardStop) {
+      _started = false;
+      for (EventProducer eventProducer : _eventProducers) {
+         eventProducer.stop();
+      }
+      placeEventOnQueue(new AbstractNotificationEvent(hardStop, false) {});
    }
 
    VCActions getVCActions() {

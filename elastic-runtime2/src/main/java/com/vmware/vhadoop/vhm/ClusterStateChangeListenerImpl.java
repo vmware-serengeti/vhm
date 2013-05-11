@@ -18,77 +18,33 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    EventConsumer _eventConsumer;
    VCActions _vcActions;
    String _serengetiFolderName;
+   boolean _started;
    
    public ClusterStateChangeListenerImpl(VCActions vcActions, String serengetiFolderName) {
       _vcActions = vcActions;
       _serengetiFolderName = serengetiFolderName;
    }
    
-//   public static class TestCluster {
-//      public TestCluster() {
-//         this._vms = new HashSet<VMEventData>();
-//      }
-//      public Set<VMEventData> _vms;
-//
-//      public TestCluster addComputeVM(String vmMoRef, String hostMoRef, String serengetiUUID, String masterUUID, String masterMoRef, boolean powerState) {
-//         VMEventData cved = new VMEventData();
-//         cved._vmMoRef = vmMoRef;
-//         cved._isLeaving = false;
-//         
-//         cved._myName = vmMoRef;
-//         cved._masterUUID = masterUUID;
-//         cved._masterMoRef = masterMoRef;
-//
-//         cved._powerState = powerState;
-//         cved._hostMoRef = hostMoRef;
-//         cved._serengetiFolder = serengetiUUID;
-//
-//         _vms.add(cved);
-//         return this;
-//      }
-//
-//      public TestCluster addMasterVM(String vmMoRef, String hostMoRef, String serengetiUUID, String UUID, boolean enableAutomation, int minInstances, boolean powerState) {
-//         VMEventData mved = new VMEventData();
-//         mved._vmMoRef = vmMoRef;
-//         mved._isLeaving = false;
-//         
-//         mved._myName = vmMoRef;
-//         mved._masterUUID = UUID;
-//
-//         mved._powerState = powerState;
-//         mved._hostMoRef = hostMoRef;
-//         mved._serengetiFolder = serengetiUUID;
-//         
-//         mved._masterVmData = new MasterVmEventData();
-//         mved._masterVmData._enableAutomation = enableAutomation;
-//         mved._masterVmData._minInstances = minInstances;
-//
-//         _vms.add(mved);
-//         return this;
-//      }
-//   }
-//   
-   
    @Override
    public void registerEventConsumer(EventConsumer consumer) {
       _eventConsumer = consumer;
    }
-//
-//   void discoverTestCluster(TestCluster cluster) {
-//      for (VMEventData vmEvent : cluster._vms) {
-//         _eventConsumer.placeEventOnQueue(new VMUpdatedEvent(vmEvent));
-//      }
-//   }
    
    @Override
    public void start() {
+      _started = true;
       new Thread(new Runnable() {
          @Override
          public void run() {
             String version = "";
-            while (true) {
-               ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 
-               version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
+            while (_started) {
+               ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
+               try {
+                  version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
+               } catch (InterruptedException e) {
+                  /* Almost certainly means that stop has been called */
+                  continue;
+               }
                if (vmDataList.isEmpty() && (version.equals(""))) {
                   /*
                    *  No data received from VC so far -- can happen if user hasn't created any VMs yet
@@ -113,6 +69,13 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
                   }
                }
             }
+            _log.info("ClusterStateChangeListener stopping...");
          }}, "ClusterSCL_Poll_Thread").start();
+   }
+   
+   @Override
+   public void stop() {
+      _started = false;
+      _vcActions.interruptWait();
    }
 }

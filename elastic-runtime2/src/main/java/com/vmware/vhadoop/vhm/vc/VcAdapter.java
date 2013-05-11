@@ -137,9 +137,13 @@ public class VcAdapter implements VCActions {
    }
 
    @Override
-   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) {
+   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) throws InterruptedException {
       validateConnection();
-      return _vcVlsi.waitForUpdates(_cloneClient, folderName, version, vmDataList);
+      String result = _vcVlsi.waitForUpdates(_cloneClient, folderName, version, vmDataList);
+      if (result.equals("Some special value")) {         /* TODO: Figure out */
+         throw new InterruptedException();
+      }
+      return result;
    }
 
    @Override
@@ -151,6 +155,11 @@ public class VcAdapter implements VCActions {
    public List<String> listVMsInFolder(String folderName) {
       validateConnection();
       return _vcVlsi.getVMsInFolder(_rootFolderName, folderName);
+   }
+
+   @Override
+   public void interruptWait() {
+      _vcVlsi.cancelWaitForUpdates();
    }
 
 }

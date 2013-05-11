@@ -18,7 +18,11 @@ public class VlsiTest {
       String version = "";
       while (true) {
          ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 
-         version = vcActions.waitForPropertyChange(properties.getProperty("uuid"), version, vmDataList);
+         try {
+            version = vcActions.waitForPropertyChange(properties.getProperty("uuid"), version, vmDataList);
+         } catch (InterruptedException e) {
+            e.printStackTrace();
+         }
          for (VMEventData vmData : vmDataList) {
             System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change moRef= "
                   +vmData._vmMoRef + " leaving=" + vmData._isLeaving);
