@@ -88,7 +88,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
             Host h = new Host();
             h.candidates = candidateVMs;
-            h.on = on.size();
+            h.on = (on == null) ? 0 : on.size();
             targets.add(h);
          }
       }

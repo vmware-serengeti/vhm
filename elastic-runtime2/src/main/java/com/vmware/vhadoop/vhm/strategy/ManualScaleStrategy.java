@@ -24,6 +24,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    final EDPolicy _enableDisablePolicy;
    
    public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
+   public static final int TARGET_SIZE_UNLIMITED = -1;
    
    public ManualScaleStrategy(VMChooser vmChooser, EDPolicy edPolicy) {
       _vmChooser = vmChooser;
@@ -59,20 +60,40 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
          }
          ClusterScaleEvent event = _events.iterator().next();
          if (event instanceof SerengetiLimitInstruction) {
-            final SerengetiLimitInstruction limitEvent = (SerengetiLimitInstruction)event;
-            ClusterMap clusterMap = getAndReadLockClusterMap();
-            String clusterId = clusterMap.getClusterIdForFolder(limitEvent.getClusterFolderName());
-            Set<String> poweredOnVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
-            int poweredOnVms = (poweredOnVmList == null) ? 0 : poweredOnVmList.size();
-            unlockClusterMap(clusterMap);
-            int delta = limitEvent.getToSize() - poweredOnVms;
+            SerengetiLimitInstruction limitEvent = (SerengetiLimitInstruction)event;
+            int targetSize = 0;
+            int delta = 0;
+            String clusterId = null;
             Set<String> vmsToED;
-            returnEvent = new ClusterScaleDecision(clusterId);
+            ClusterMap clusterMap = getAndReadLockClusterMap(); 
+            try {
+               String clusterFolder = limitEvent.getClusterFolderName();
+               clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
+               if (clusterId != null) {
+                  Set<String> poweredOffVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
+                  int poweredOffVms = (poweredOffVmList == null) ? 0 : poweredOffVmList.size();
+                  Set<String> poweredOnVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
+                  int poweredOnVms = (poweredOnVmList == null) ? 0 : poweredOnVmList.size();
+                  if (limitEvent.getToSize() == TARGET_SIZE_UNLIMITED) {
+                     targetSize = poweredOnVms + poweredOffVms;
+                     delta = poweredOffVms;
+                  } else {
+                     targetSize = limitEvent.getToSize();
+                     delta = targetSize - poweredOnVms;
+                  }
+                  returnEvent = new ClusterScaleDecision(clusterId);
+               } else {
+                  tlStatus.registerTaskFailed(false, "Unknown clusterId for Cluster Folder "+clusterFolder);
+                  /* delta == 0, so don't do anything */
+               }
+            } finally {
+               unlockClusterMap(clusterMap);
+            } 
             if (delta > 0) {
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
-                  _enableDisablePolicy.enableTTs(vmsToED, limitEvent.getToSize(), clusterId);
+                  _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
                   limitEvent.reportProgress(30, null);
                   returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
                   if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
@@ -84,7 +105,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
-                  _enableDisablePolicy.disableTTs(vmsToED, limitEvent.getToSize(), clusterId);
+                  _enableDisablePolicy.disableTTs(vmsToED, targetSize, clusterId);
                   limitEvent.reportProgress(30, null);
                   returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
                   if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
