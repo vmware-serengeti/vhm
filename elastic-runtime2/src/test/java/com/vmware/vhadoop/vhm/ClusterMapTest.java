@@ -2,6 +2,7 @@ package com.vmware.vhadoop.vhm;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +13,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
-import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
@@ -23,6 +24,7 @@ import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 
 public class ClusterMapTest extends AbstractJUnitTest {
    ClusterMapImpl _clusterMap;
+   static final String EXTRA_INFO_KEY = "extraInfo1";
 
    @Override
    void processNewEventData(VMEventData eventData) {
@@ -36,13 +38,26 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
    @Before
    public void initialize() {
-      _clusterMap = new ClusterMapImpl(new ExtraInfoToScaleStrategyMapper() {
+      _clusterMap = new ClusterMapImpl(new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(VMEventData vmd) {
             if ((vmd._masterVmData != null) && (vmd._masterVmData._enableAutomation)) {
                return AUTO_SCALE_STRATEGY_KEY;
             }
             return DEFAULT_SCALE_STRATEGY_KEY;
+         }
+
+         @Override
+         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+            Map<String, String> result = null;
+            if (vmd._masterVmData != null) {
+               Integer minInstances = vmd._masterVmData._minInstances;
+               if (minInstances != null) {
+                  result = new HashMap<String, String>();
+                  result.put(EXTRA_INFO_KEY, minInstances.toString());
+               }
+            }
+            return result;
          }
       });
    }
@@ -190,9 +205,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
    
    @Test
    public void testScaleStrategies() {
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST", 4, false, false, 0);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST", 4, false, false, 0);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST", 4, false, true, 0);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST", 4, false, false, null);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST", 4, false, false, 1);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST", 4, false, true, 2);
 
       String cid0 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+0);
       ScaleStrategy ss0 = _clusterMap.getScaleStrategyForCluster(cid0);
@@ -225,11 +240,11 @@ public class ClusterMapTest extends AbstractJUnitTest {
    }
    
    @Test
-   public void powerStateTests() {
+   public void powerStateAndListTests() {
       /* Create 3 clusters, each with 3 compute VMs and a master. Two have vms powered one and one cluster is powered off */
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, 0);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST1", 4, true, false, 0);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST2", 4, true, true, 0);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, null);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST1", 4, true, false, 1);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST2", 4, true, true, 2);
       
       /* Note expected result is 3, not 4, since 3 VMs are compute VMs and 1 is master */
       Integer[][] expectedSizes1 = new Integer[][]{new Integer[]{3, null}, new Integer[]{null, 3}, new Integer[]{null, 3}};
@@ -282,6 +297,13 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
          Set<String> hostIds = _clusterMap.listHostsWithComputeVMsForCluster(clusterId);
          assertEquals(1, hostIds.size());
+         
+         String extraInfo = _clusterMap.getExtraInfo(clusterId, EXTRA_INFO_KEY);
+         if (i==0) {
+            assertNull(extraInfo);
+         } else {
+            assertEquals(Integer.parseInt(extraInfo), i);
+         }
       }
       
       assertEquals(3, _clusterMap.listComputeVMsForPowerState(false).size());
@@ -307,6 +329,11 @@ public class ClusterMapTest extends AbstractJUnitTest {
       
       assertNull(_clusterMap.getPowerOnTimeForVm("bogus"));
       assertNull(_clusterMap.getPowerOnTimeForVm(null));
+      
+      assertNull(_clusterMap.getExtraInfo("bogus", null));
+      assertNull(_clusterMap.getExtraInfo(null, null));
+      assertNull(_clusterMap.getExtraInfo(null, "bogus"));
+      assertNull(_clusterMap.getExtraInfo("bogus", "bogus"));
    }
    
    @Test
@@ -375,5 +402,6 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.checkPowerStateOfVms(vms, false));
       assertNull(_clusterMap.getNumVCPUsForVm("foo"));
       assertNull(_clusterMap.getPowerOnTimeForVm("foo"));
+      assertNull(_clusterMap.getExtraInfo("foo", "bar"));
    }
 }

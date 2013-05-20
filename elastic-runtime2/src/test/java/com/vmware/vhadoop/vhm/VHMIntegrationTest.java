@@ -1,5 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Map;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -7,7 +9,7 @@ import static org.junit.Assert.*;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
-import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
@@ -19,7 +21,7 @@ import com.vmware.vhadoop.vhm.TrivialScaleStrategy.TrivialClusterScaleOperation;
 public class VHMIntegrationTest extends AbstractJUnitTest implements EventProducer, ClusterMapReader {
    VHM _vhm;
    StandaloneSimpleVCActions _vcActions;
-   ExtraInfoToScaleStrategyMapper _strategyMapper;
+   ExtraInfoToClusterMapper _strategyMapper;
    ClusterStateChangeListenerImpl _clusterStateChangeListener;
    TrivialScaleStrategy _trivialScaleStrategy;
    
@@ -49,10 +51,15 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    public void initialize() {
       _vcActions = new StandaloneSimpleVCActions();
       _clusterStateChangeListener = new ClusterStateChangeListenerImpl(_vcActions, "myFolder");
-      _strategyMapper = new ExtraInfoToScaleStrategyMapper() {
+      _strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(VMEventData vmd) {
             return STRATEGY_KEY;
+         }
+
+         @Override
+         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+            return null;
          }
       };
       _trivialScaleStrategy = new TrivialScaleStrategy(STRATEGY_KEY);

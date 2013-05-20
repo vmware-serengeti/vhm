@@ -235,4 +235,10 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public String getExtraInfo(String clusterId, String key) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }

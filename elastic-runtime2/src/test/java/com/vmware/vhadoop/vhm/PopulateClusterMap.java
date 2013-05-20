@@ -1,10 +1,11 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Map;
 import java.util.Properties;
 
 import org.junit.Test;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
@@ -39,10 +40,15 @@ public class PopulateClusterMap {
       ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
             new DumbVMChooser(), new DumbEDPolicy(vcActions));
 
-      ExtraInfoToScaleStrategyMapper strategyMapper = new ExtraInfoToScaleStrategyMapper() {
+      ExtraInfoToClusterMapper strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(VMEventData vmd) {
             return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
+         }
+
+         @Override
+         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+            return null;
          }
       };
 

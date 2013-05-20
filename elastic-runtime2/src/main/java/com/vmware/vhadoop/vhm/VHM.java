@@ -11,7 +11,7 @@ import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
 import com.vmware.vhadoop.api.vhm.VCActions;
@@ -41,7 +41,7 @@ public class VHM implements EventConsumer {
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
    public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
-         ExtraInfoToScaleStrategyMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
+         ExtraInfoToClusterMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;

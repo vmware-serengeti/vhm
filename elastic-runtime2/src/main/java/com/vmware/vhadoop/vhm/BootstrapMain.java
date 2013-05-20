@@ -4,13 +4,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToScaleStrategyMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.HadoopActions.JTConfigInfo;
 import com.vmware.vhadoop.api.vhm.MQClient;
@@ -209,11 +210,16 @@ public class BootstrapMain {
       return new ScaleStrategy[]{manualScaleStrategy};
    }
 
-   ExtraInfoToScaleStrategyMapper getStrategyMapper() {
-      return new ExtraInfoToScaleStrategyMapper() {
+   ExtraInfoToClusterMapper getStrategyMapper() {
+      return new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(final VMEventData vmd) {
             return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
+         }
+
+         @Override
+         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+            return null;
          }
       };
    }

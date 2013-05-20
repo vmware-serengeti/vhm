@@ -32,10 +32,10 @@ public class ClusterMapImpl implements ClusterMap {
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
    Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
 
-   final ExtraInfoToScaleStrategyMapper _strategyMapper;
+   final ExtraInfoToClusterMapper _extraInfoMapper;
 
-   public ClusterMapImpl(ExtraInfoToScaleStrategyMapper mapper) {
-      _strategyMapper = mapper;
+   public ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
+      _extraInfoMapper = mapper;
    }
 
    class HostInfo {
@@ -60,12 +60,7 @@ public class ClusterMapImpl implements ClusterMap {
       public String _name;
       String _ipAddr;
       String _dnsName;
-      Integer _jobTrackerPort;
       public long _powerOnTime; // most recent timestamp when VHM learned VM is on
-
-      // temporary/cache holding fields until cluster object is created
-      Integer _cachedMinInstances;
-      String _cachedScaleStrategyKey;
    }
 
    class ClusterInfo {
@@ -74,11 +69,12 @@ public class ClusterMapImpl implements ClusterMap {
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
       final String _masterUUID;
+      Integer _jobTrackerPort;
       String _folderName;        /* Note this field is only set by SerengetiLimitEvents */
       VMInfo _masterVM;
-      int _minInstances;
       String _scaleStrategyKey;
       LinkedList<ClusterScaleCompletionEvent> _completionEvents;
+      Map<String, String> _extraInfo;
    }
 
    private HostInfo getHost(String hostMoRef) {
@@ -110,24 +106,21 @@ public class ClusterMapImpl implements ClusterMap {
    private void updateVMState(VMEventData vmd) {
       VMInfo vmInfo = _vms.get(vmd._vmMoRef);
       ClusterInfo ci = null;
+      
       if (vmInfo == null) {
          vmInfo = new VMInfo(vmd._vmMoRef);
          _vms.put(vmd._vmMoRef, vmInfo);
          _log.log(Level.INFO, "New VM " + vmInfo._moRef);
       }
 
-      if (vmd._hostMoRef != null) {
-         vmInfo._host = getHost(vmd._hostMoRef);
-      }
-
+      /* When a new VM is added, we expect a complete vmd with masterUUID and everything */
+      /* If the state of a VM is updated, we only get partial info - almost certainly no masterUUID */
       if (vmd._masterUUID != null) {
          ci = vmInfo._cluster = getCluster(vmd._masterUUID);
-         if (vmInfo._cachedMinInstances != null) {
-            ci._minInstances = vmInfo._cachedMinInstances;
-         }
-         if (vmInfo._cachedScaleStrategyKey != null) {
-            ci._scaleStrategyKey = vmInfo._cachedScaleStrategyKey;
-         }
+      }
+
+      if (vmd._hostMoRef != null) {
+         vmInfo._host = getHost(vmd._hostMoRef);
       }
 
       if (vmd._powerState != null) {
@@ -136,7 +129,6 @@ public class ClusterMapImpl implements ClusterMap {
             vmInfo._powerOnTime = System.currentTimeMillis();
          }
       }
-
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;
       }
@@ -158,29 +150,21 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmd._masterVmData != null) {
          if (ci != null) {
             ci._masterVM = vmInfo;
-         }
-         if (vmd._masterVmData._jobTrackerPort != null) {
-            vmInfo._jobTrackerPort = vmd._masterVmData._jobTrackerPort;
-         }
-         if (vmd._masterVmData._enableAutomation != null) {
-            vmInfo._isMaster = true;
-            String scaleStrategyKey = _strategyMapper.getStrategyKey(vmd);
-            if (ci != null) {
+            if (vmd._masterVmData._enableAutomation != null) {
+               vmInfo._isMaster = true;
+               String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd);
                ci._scaleStrategyKey = scaleStrategyKey;
-            } else {
-               vmInfo._cachedScaleStrategyKey = scaleStrategyKey;
             }
-         }
-         if (vmd._masterVmData._minInstances != null) {
-            if (ci != null) {
-               ci._minInstances = vmd._masterVmData._minInstances;
-            } else {
-               vmInfo._cachedMinInstances = vmd._masterVmData._minInstances;
+            ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd);
+            if (vmd._serengetiFolder != null) {
+               ci._folderName = vmd._serengetiFolder;
             }
+            if (vmd._masterVmData._jobTrackerPort != null) {
+               ci._jobTrackerPort = vmd._masterVmData._jobTrackerPort;
+            }
+         } else {
+            _log.severe("VMEventData is providing cluster level updates without a masterUUID!");
          }
-      }
-      if (vmd._serengetiFolder != null) {
-         ci._folderName = vmd._serengetiFolder;
       }
       dumpState(Level.FINE);
    }
@@ -305,7 +289,7 @@ public class ClusterMapImpl implements ClusterMap {
       for (ClusterInfo ci : _clusters.values()) {
          String clusterName = (ci._masterVM == null) ? "N/A" : ci._masterVM._name;
          _log.log(logLevel, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
-               " min=" + ci._minInstances + " uuid= " + ci._masterUUID);
+               "extraInfoMap= "+ ci._extraInfo + " uuid= " + ci._masterUUID + " jobTrackerPort= "+ci._jobTrackerPort);
       }
 
       for (VMInfo vmInfo : _vms.values()) {
@@ -320,9 +304,6 @@ public class ClusterMapImpl implements ClusterMap {
          String jtPort = "";
          if (vmInfo._isMaster) {
             role = "master";
-            if (vmInfo._jobTrackerPort != null) {
-               jtPort = " JTport=" + vmInfo._jobTrackerPort;
-            }
          }
          _log.log(logLevel, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + vCPUs +
                " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
@@ -438,7 +419,7 @@ public class ClusterMapImpl implements ClusterMap {
          ClusterInfo ci = _clusters.get(clusterId);
          HadoopClusterInfo result = null;
          if ((ci != null) && (ci._masterVM != null)) {
-            result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr, ci._masterVM._jobTrackerPort);
+            result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr, ci._jobTrackerPort);
          }
          return result;
       }
@@ -479,6 +460,17 @@ public class ClusterMapImpl implements ClusterMap {
          VMInfo vm = _vms.get(vmId);
          if (vm != null) {
             return vm._powerOnTime;
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public String getExtraInfo(String clusterId, String key) {
+      ClusterInfo info =  getCluster(clusterId);
+      if (info != null) {
+         if (info._extraInfo != null) {
+            return info._extraInfo.get(key);
          }
       }
       return null;

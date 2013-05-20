@@ -43,7 +43,7 @@ public abstract class AbstractJUnitTest {
    
    VMEventData createEventData(String clusterName, String vmName, boolean isMaster, 
          boolean powerState, String hostName, String masterVmName,
-         boolean autoCluster, int minClusterInstances) {
+         boolean autoCluster, Integer minClusterInstances) {
       VMEventData result = new VMEventData();
       result._dnsName = getDnsNameFromVmName(vmName);
       result._hostMoRef = MOREF_PREFIX+hostName;
@@ -69,7 +69,7 @@ public abstract class AbstractJUnitTest {
    }
    
    void populateClusterSameHost(String clusterName, String hostName, int numVms, boolean defaultPowerState, 
-         boolean autoCluster, int minInstances) {
+         boolean autoCluster, Integer minInstances) {
       String masterVmName = null;
       for (int i=0; i<numVms; i++) {
          String vmName = clusterName+"_"+VM_NAME_PREFIX+i;
@@ -95,7 +95,8 @@ public abstract class AbstractJUnitTest {
       for (int i=0; i<numClusters; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
-         populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, false, 0);
+         Integer minInstances = (i==0) ? null : i;
+         populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, false, minInstances);
       }
    }
 
@@ -103,7 +104,8 @@ public abstract class AbstractJUnitTest {
       for (int i=0; i<numClusters; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
-         populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, false, 0);
+         Integer minInstances = (i==0) ? (null) : i;
+         populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, false, minInstances);
       }
    }
 

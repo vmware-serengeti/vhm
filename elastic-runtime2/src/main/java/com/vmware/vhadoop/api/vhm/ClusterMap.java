@@ -12,9 +12,13 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
  * TODO: Check that this is correct */
 public interface ClusterMap {
 
-   public interface ExtraInfoToScaleStrategyMapper {
+   public interface ExtraInfoToClusterMapper {
 
+      /* Returns the key which indicates the scale strategy singleton to use for this cluster */
       String getStrategyKey(VMEventData vmd);
+      
+      /* Allows for the addition of contextual data to be added to a cluster and retrieved through ClusterMap */
+      Map<String, String> parseExtraInfo(VMEventData vmd);
    }
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);
@@ -48,4 +52,6 @@ public interface ClusterMap {
    Integer getNumVCPUsForVm(String vm);
    
    Long getPowerOnTimeForVm(String vm);
+   
+   String getExtraInfo(String clusterId, String key);
 }
