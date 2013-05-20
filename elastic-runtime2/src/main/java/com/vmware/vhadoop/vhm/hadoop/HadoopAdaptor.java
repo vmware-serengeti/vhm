@@ -218,15 +218,15 @@ public class HadoopAdaptor implements HadoopActions {
 
    private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs, OutputStream out) {
       int rc = -1;
-      for (int i=0; i<2; i++) {
+      for (int i = 0; i < 2; i++) {
          rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs, out);
          if (i == 0 && (rc == ERROR_COMMAND_NOT_FOUND || rc == ERROR_CATCHALL)) {
-        	 _log.log(Level.INFO, scriptFileName + " not found...");
-        	 //Changed this to accommodate using jar file...
-        	//String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();
-        	//byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
-        	//byte[] scriptData = loadLocalScript(fullLocalPath);
-        	byte[] scriptData = loadLocalScript(scriptFileName);
+            _log.log(Level.INFO, scriptFileName + " not found...");
+            // Changed this to accommodate using jar file...
+            // String fullLocalPath = HadoopAdaptor.class.getClassLoader().getResource(scriptFileName).getPath();
+            // byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
+            // byte[] scriptData = loadLocalScript(fullLocalPath);
+            byte[] scriptData = loadLocalScript(scriptFileName);
             if ((scriptData != null) && (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
                continue;
             }

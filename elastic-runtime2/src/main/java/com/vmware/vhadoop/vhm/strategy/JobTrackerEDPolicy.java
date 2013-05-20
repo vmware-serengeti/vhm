@@ -21,10 +21,16 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
    @Override
    public void enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
+      Set<String> hostNames = null;
+      HadoopClusterInfo hadoopCluster = null;
+
       ClusterMap clusterMap = getAndReadLockClusterMap();
-      HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-      Set<String> hostNames = clusterMap.getDnsNameForVMs(toEnable);
-      unlockClusterMap(clusterMap);
+      try {
+         hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
+         hostNames = clusterMap.getDnsNameForVMs(toEnable);
+      } finally {
+         unlockClusterMap(clusterMap);
+      }
 
       if (hostNames != null) {
          CompoundStatus status = getCompoundStatus();
@@ -40,10 +46,16 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
    @Override
    public void disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
+      Set<String> hostNames = null;
+      HadoopClusterInfo hadoopCluster = null;
+
       ClusterMap clusterMap = getAndReadLockClusterMap();
-      HadoopClusterInfo hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-      Set<String> hostNames = clusterMap.getDnsNameForVMs(toDisable);
-      unlockClusterMap(clusterMap);
+      try {
+         hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
+         hostNames = clusterMap.getDnsNameForVMs(toDisable);
+      } finally {
+         unlockClusterMap(clusterMap);
+      }
 
       if (hostNames != null) {
          CompoundStatus status = getCompoundStatus();

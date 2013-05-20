@@ -6,7 +6,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
 public interface VMChooser extends ClusterMapReader {
    /**
-    * Selects VMs to enable from the specified cluster. The logic determining which VMs is provided by imlementors.
+    * Selects VMs to enable from the specified cluster. The logic determining which VMs is provided by implementors.
     * Synonymous with chooseVMsToEnable(listVMsForCluster(clusterId), delta)
     * @param clusterId - the target cluster
     * @param delta - the number of VMs to enable
@@ -15,7 +15,7 @@ public interface VMChooser extends ClusterMapReader {
    Set<String> chooseVMsToEnable(String clusterId, int delta);
 
    /**
-    * Selects VMs to disable from the specified cluster. The logic determining which VMs is provided by imlementors.
+    * Selects VMs to disable from the specified cluster. The logic determining which VMs is provided by implementors.
     * Synonymous with chooseVMsToDisable(listVMsForCluster(clusterId), delta)
     * @param clusterId - the target cluster
     * @param delta - the number of VMs to disable
@@ -24,7 +24,7 @@ public interface VMChooser extends ClusterMapReader {
    Set<String> chooseVMsToDisable(String clusterId, int delta);
 
    /**
-    * Selects VMs to enable from the specified set. The logic determining which VMs is provided by imlementors.
+    * Selects VMs to enable from the specified set. The logic determining which VMs is provided by implementors.
     * @param candidates - the candidate VMs
     * @param delta - the number of VMs to enable
     * @return - set of VM ids to enable (subset of candidates)
@@ -32,7 +32,7 @@ public interface VMChooser extends ClusterMapReader {
    Set<String> chooseVMsToEnable(Set<String> candidates, int delta);
 
    /**
-    * Selects VMs to disable from the specified set. The logic determining which VMs is provided by imlementors.
+    * Selects VMs to disable from the specified set. The logic determining which VMs is provided by implementors.
     * @param candidates - the candidate VMs
     * @param delta - the number of VMs to disable
     * @return - set of VM ids to disable (subset of candidates)

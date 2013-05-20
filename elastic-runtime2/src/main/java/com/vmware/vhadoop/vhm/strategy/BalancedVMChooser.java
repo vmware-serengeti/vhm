@@ -69,33 +69,40 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    }
 
    public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState) {
+      Set<String> result = null;
+      Set<String> hosts = null;
+      
       ClusterMap clusterMap = getAndReadLockClusterMap();
-      Set<String> hosts = clusterMap.listHostsWithComputeVMsForCluster(clusterId);
-      if ((hosts == null) || (hosts.size() == 0)) {
-         unlockClusterMap(clusterMap);
-         return new TreeSet<String>();
-      }
-
-      PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
-         @Override
-         public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
-      });
-
-      /* build the entries for the priority queue */
-      for (String host : hosts) {
-         Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
-         Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
-         if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
-            Host h = new Host();
-            h.candidates = candidateVMs;
-            h.on = on.size();
-            targets.add(h);
+      try {
+         hosts = clusterMap.listHostsWithComputeVMsForCluster(clusterId);
+         if ((hosts == null) || (hosts.size() == 0)) {
+            result = new TreeSet<String>();
          }
+      } finally {
+         unlockClusterMap(clusterMap);
       }
 
-      unlockClusterMap(clusterMap);
+      if (result == null) {
+         PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
+            @Override
+            public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
+         });
+   
+         /* build the entries for the priority queue */
+         for (String host : hosts) {
+            Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
+            Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
+            if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
+               Host h = new Host();
+               h.candidates = candidateVMs;
+               h.on = (on == null) ? 0 : on.size();
+               targets.add(h);
+            }
+         }
+         result = selectVMs(targets, delta, targetPowerState);
+      }
 
-      return selectVMs(targets, delta, targetPowerState);
+      return result;
    }
 
    @Override
@@ -146,24 +153,26 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          return new TreeSet<String>();
       }
 
-      ClusterMap clusterMap = getAndReadLockClusterMap();
       Map<String,Host> hosts = new HashMap<String,Host>();
 
-      for (String vm : candidates) {
-         String hostid = clusterMap.getHostIdForVm(vm);
-         Host h = hosts.get(hostid);
-         if (h == null) {
-            h = new Host();
-            h.candidates = new HashSet<String>();
-            Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
-            h.on = (vmIds == null) ? 0 : vmIds.size();
+      ClusterMap clusterMap = getAndReadLockClusterMap();
+      try {
+         for (String vm : candidates) {
+            String hostid = clusterMap.getHostIdForVm(vm);
+            Host h = hosts.get(hostid);
+            if (h == null) {
+               h = new Host();
+               h.candidates = new HashSet<String>();
+               Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
+               h.on = (vmIds == null) ? 0 : vmIds.size();
+            }
+   
+            h.candidates.add(vm);
+            hosts.put(hostid, h);
          }
-
-         h.candidates.add(vm);
-         hosts.put(hostid, h);
+      } finally {
+         unlockClusterMap(clusterMap);
       }
-
-      unlockClusterMap(clusterMap);
 
       PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
          @Override
