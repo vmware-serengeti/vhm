@@ -184,6 +184,13 @@ public class HadoopAdaptor implements HadoopActions {
 	   } catch (IOException e) {
 		   _log.log(Level.SEVERE, "Unexpected error while converting file " + fileName + " to byte array", e);
 	   }
+
+      try {
+         is.close();
+      } catch (IOException e) {
+         _log.fine("IOException while closing stream for loading script files");
+      }
+
 	   return result;
    }
 
@@ -220,8 +227,7 @@ public class HadoopAdaptor implements HadoopActions {
         	//byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
         	//byte[] scriptData = loadLocalScript(fullLocalPath);
         	byte[] scriptData = loadLocalScript(scriptFileName);
-            if ((scriptData != null) &&
-                  (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
+            if ((scriptData != null) && (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
                continue;
             }
          }
@@ -230,8 +236,7 @@ public class HadoopAdaptor implements HadoopActions {
       return rc;
    }
 
-   private CompoundStatus decomRecomTTs(String opDesc, String[] tts, HadoopClusterInfo cluster,
-         String scriptFileName, String listFileName) {
+   private CompoundStatus decomRecomTTs(String opDesc, String[] tts, HadoopClusterInfo cluster, String scriptFileName, String listFileName) {
       CompoundStatus status = new CompoundStatus("decomRecomTTs");
 
       if (!isValidTTList(tts)) {
@@ -251,9 +256,7 @@ public class HadoopAdaptor implements HadoopActions {
       String operationList = createVMList(tts);
       int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
       if (rc == 0) {
-         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName,
-               new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()},
-               out);
+         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
       }
       status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return status;
@@ -278,10 +281,15 @@ public class HadoopAdaptor implements HadoopActions {
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
 
-	   _log.log(Level.INFO, "AffectedTTs:");
-	   for (String tt : affectedTTs) {
-		   _log.log(Level.INFO, tt);
-	   }
+      if (_log.isLoggable(Level.INFO)) {
+         StringBuilder sb = new StringBuilder("AffectedTTs:").append("\n");
+   	   for (String tt : affectedTTs) {
+   		   sb.append(tt).append("\n");
+   	   }
+
+   	   _log.log(Level.INFO, sb.toString());
+      }
+
       HadoopConnection connection = getConnectionForCluster(cluster);
       setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
 
@@ -289,22 +297,11 @@ public class HadoopAdaptor implements HadoopActions {
       int iterations = 0;
       do {
     	   if (iterations > 0) {
-    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again (" + iterations + ")");
+    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again ({0})", iterations);
          }
 
          OutputStream out = new ByteArrayOutputStream();
-    	   rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName,
-               new String[]{""+totalTargetEnabled, connection.getHadoopHome()},
-               out);
-         try {
-            out.flush();
-         } catch (IOException e) {
-            String errorMsg = "Unexpected exception in SSH OutputStream ";
-            _log.log(Level.WARNING, errorMsg, e);
-            status.registerTaskFailed(false, errorMsg + e.getMessage());
-         }
-
-         //_log.log(Level.INFO, "Output from SSH script execution:\n"+out.toString());
+    	   rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{""+totalTargetEnabled, connection.getHadoopHome()}, out);
 
          /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
          String[] allActiveTTs = out.toString().split("\n");

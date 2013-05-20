@@ -3,6 +3,7 @@ package com.vmware.vhadoop.vhm.vc;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -169,12 +170,12 @@ public class VcVlsi {
     * Create a temporary connection to VC to login using extension certificate via sdkTunnel,
     * and get the session ticket to use for the normal connection.
     */
-   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey)
-         throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
-
+   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey) throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
-      keyStore.load(new FileInputStream(keyStoreFile), keyStorePwd.toCharArray());
+      InputStream is = new FileInputStream(keyStoreFile);
+      keyStore.load(is, keyStorePwd.toCharArray());
+      is.close();
 
       HttpConfigurationImpl httpConfig = new HttpConfigurationImpl();
       httpConfig.setKeyStore(keyStore);
@@ -203,8 +204,7 @@ public class VcVlsi {
       return sm.acquireCloneTicket();
    }
 
-   public Client connect(VcCredentials credentials, boolean useKey, boolean cloneSession)
-         throws Exception {
+   public Client connect(VcCredentials credentials, boolean useKey, boolean cloneSession) throws Exception {
       vcThumbprint = credentials.vcThumbprint;
       String sessionTicket = null;
 
@@ -376,8 +376,7 @@ public class VcVlsi {
 
    }
 
-   private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName)
-         throws InvalidProperty {
+   private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName) throws InvalidProperty {
       List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
 
@@ -432,8 +431,7 @@ public class VcVlsi {
       return null;
    }
 
-   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet)
-         throws InvalidProperty {
+   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet) throws InvalidProperty {
       PropertyFilter propFilter = null;
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
 
@@ -447,8 +445,7 @@ public class VcVlsi {
       return propFilter;
    }
 
-   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version)
-         throws Exception {
+   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version) throws Exception {
       UpdateSet updateSet = null;
       if (version == null) {
          version = "";
@@ -563,8 +560,7 @@ public class VcVlsi {
       return vmData;
    }
 
-   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList)
-         throws Exception {
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) throws Exception {
       if (version == null) {
          version = "";
       }
