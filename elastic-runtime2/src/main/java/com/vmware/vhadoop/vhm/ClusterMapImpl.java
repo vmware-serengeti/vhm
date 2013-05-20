@@ -155,7 +155,11 @@ public class ClusterMapImpl implements ClusterMap {
                String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd);
                ci._scaleStrategyKey = scaleStrategyKey;
             }
-            ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd);
+            if (ci._extraInfo == null) {
+               ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd);
+            } else {
+               ci._extraInfo.putAll(_extraInfoMapper.parseExtraInfo(vmd));
+            }
             if (vmd._serengetiFolder != null) {
                ci._folderName = vmd._serengetiFolder;
             }
