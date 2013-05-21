@@ -142,4 +142,15 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    public Class<? extends ScaleStrategyContext> getStrategyContextType() {
       return null;
    }
+
+   @SuppressWarnings("unchecked")
+   @Override
+   public Class<? extends ClusterScaleEvent>[] getScaleEventTypesHandled() {
+      return new Class[]{SerengetiLimitInstruction.class};
+   }
+   
+   @Override
+   public String toString() {
+      return getKey();
+   }
 }

@@ -9,6 +9,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 public class TrivialScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
    String _testKey;
@@ -99,6 +100,12 @@ public class TrivialScaleStrategy extends AbstractClusterMapReader implements Sc
          ((TrivialClusterScaleOperation)returnVal).setEvents(events);
       }
       return returnVal;
+   }
+
+   @SuppressWarnings("unchecked")
+   @Override
+   public Class<? extends ClusterScaleEvent>[] getScaleEventTypesHandled() {
+      return new Class[]{ClusterScaleEvent.class};       /* Handle all events */
    }
 
 }

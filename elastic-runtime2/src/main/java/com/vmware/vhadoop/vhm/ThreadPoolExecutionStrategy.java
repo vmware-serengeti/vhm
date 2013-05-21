@@ -90,7 +90,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                         try {
                            ClusterScaleCompletionEvent completionEvent = task.get();
                            if (completionEvent != null) {
-                              _log.info("Found completed task for cluster "+completionEvent.getClusterId());
+                              _log.info("Found completed task for cluster <%C"+completionEvent.getClusterId());
                               completedTasks.add(completionEvent);
                            }
                         } catch (InterruptedException e) {

@@ -36,5 +36,7 @@ public interface ScaleStrategy extends ClusterMapReader {
       public abstract ClusterScaleCompletionEvent localCall() throws Exception;
    }
    
+   Class<? extends ClusterScaleEvent>[] getScaleEventTypesHandled();
+   
    ClusterScaleOperation getClusterScaleOperation(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context);
 }

@@ -59,7 +59,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
                } else {
                   for (VMEventData vmData : vmDataList) {
-                     _log.log(Level.INFO, "Detected change moRef= " + vmData._vmMoRef + " leaving= " + vmData._isLeaving);
+                     _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
 
                      if (vmData._isLeaving) {
                         _eventConsumer.placeEventOnQueue(new VMRemovedFromClusterEvent(vmData._vmMoRef));
