@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -224,8 +225,30 @@ public class VHM implements EventConsumer {
       return results;
    }
 
-   private Set<ClusterScaleEvent> consolidateClusterEvents(Set<ClusterScaleEvent> scaleEventsForCluster) {
-      /* TODO: Some consolidation logic */
+   /* For now, remove any events that the scale strategy is not designed to be able to handle */
+   private Set<ClusterScaleEvent> consolidateClusterEvents(ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> scaleEventsForCluster) {
+      Set<ClusterScaleEvent> toRemove = null;
+      for (ClusterScaleEvent event : scaleEventsForCluster) {
+         boolean isAssignableFromAtLeastOne = false;
+         for (Class<? extends ClusterScaleEvent> typeHandled : scaleStrategy.getScaleEventTypesHandled()) {
+            if (typeHandled.isAssignableFrom(event.getClass())) {
+               isAssignableFromAtLeastOne = true;
+               break;
+            }
+         }
+         if (!isAssignableFromAtLeastOne) {
+            if (toRemove == null) {
+               toRemove = new HashSet<ClusterScaleEvent>();
+            }
+            toRemove.add(event);
+         }
+      }
+      if (toRemove != null) {
+         int beforeSize = scaleEventsForCluster.size();
+         scaleEventsForCluster.removeAll(toRemove);
+         int afterSize = scaleEventsForCluster.size();
+         _log.info("Consolidating scale events from "+beforeSize+" to "+afterSize+" for scaleStrategy "+scaleStrategy);
+      }
       return scaleEventsForCluster;
    }
 
@@ -255,9 +278,9 @@ public class VHM implements EventConsumer {
 
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
-            Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(clusterScaleEvents.get(clusterId));
+            ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
+            Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, clusterScaleEvents.get(clusterId));
             if (consolidatedEvents.size() > 0) {
-               ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
                if (scaleStrategy != null) {
                   _executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents);
                } else {

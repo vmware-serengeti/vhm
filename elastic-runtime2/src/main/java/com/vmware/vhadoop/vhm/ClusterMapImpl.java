@@ -178,7 +178,10 @@ public class ClusterMapImpl implements ClusterMap {
             if (ci._extraInfo == null) {
                ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd);
             } else {
-               ci._extraInfo.putAll(_extraInfoMapper.parseExtraInfo(vmd));
+               Map<String, String> toAdd = _extraInfoMapper.parseExtraInfo(vmd);
+               if (toAdd != null) {
+                  ci._extraInfo.putAll(toAdd);
+               }
             }
             if (vmd._serengetiFolder != null) {
                ci._folderName = vmd._serengetiFolder;
