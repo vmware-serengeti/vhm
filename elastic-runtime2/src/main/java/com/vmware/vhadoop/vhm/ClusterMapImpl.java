@@ -118,6 +118,11 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmd._masterUUID != null) {
          ci = vmInfo._cluster = getCluster(vmd._masterUUID);
       }
+      
+      /* If we didn't get a masterUUID, we may be able to find the cluster from the VMInfo */
+      if (ci == null) {
+         ci = vmInfo._cluster;
+      }
 
       if (vmd._hostMoRef != null) {
          vmInfo._host = getHost(vmd._hostMoRef);
@@ -149,7 +154,9 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._masterVmData != null) {
          if (ci != null) {
-            ci._masterVM = vmInfo;
+            if (ci._masterVM == null) {
+               ci._masterVM = vmInfo;
+            }
             if (vmd._masterVmData._enableAutomation != null) {
                vmInfo._isMaster = true;
                String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd);
