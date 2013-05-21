@@ -33,6 +33,8 @@ public class ClusterMapImpl implements ClusterMap {
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
    Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
+   
+   private static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master";
 
    final ExtraInfoToClusterMapper _extraInfoMapper;
 
@@ -163,7 +165,8 @@ public class ClusterMapImpl implements ClusterMap {
                ci._masterVM = vmInfo;
                if (vmInfo._moRef != null) {
                   String masterVmName = ci._masterVM._name;
-                  String clusterName = masterVmName.substring(0, masterVmName.indexOf("-master"));
+                  int masterIndex = masterVmName.indexOf(SERENGETI_MASTERVM_NAME_POSTFIX);
+                  String clusterName = (masterIndex >= 0) ? masterVmName.substring(0, masterIndex) : masterVmName;
                   LogFormatter._clusterIdToNameMapper.put(ci._masterUUID, clusterName);
                }
             }
