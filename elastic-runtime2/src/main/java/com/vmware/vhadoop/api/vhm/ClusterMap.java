@@ -48,10 +48,10 @@ public interface ClusterMap {
    String getClusterIdForVm(String vmIds);
 
    String getScaleStrategyKey(String clusterId);
-
-   Integer getNumVCPUsForVm(String vm);
    
-   Long getPowerOnTimeForVm(String vm);
+   Integer getNumVCPUsForVm(String vmId);
+   
+   Long getPowerOnTimeForVm(String vmId);
    
    String getExtraInfo(String clusterId, String key);
 }

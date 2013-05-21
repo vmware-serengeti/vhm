@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -15,6 +16,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
@@ -26,7 +28,7 @@ import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
  * There should be no need for synchronization in this class provided this model is adhered to */
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
-
+   
    Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
@@ -136,6 +138,9 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;
+         if (vmInfo._moRef != null) {
+            LogFormatter._vmIdToNameMapper.put(vmInfo._moRef, vmInfo._name);
+         }
       }
       if (vmd._vCPUs != null) {
          vmInfo._vCPUs = vmd._vCPUs;
@@ -156,6 +161,11 @@ public class ClusterMapImpl implements ClusterMap {
          if (ci != null) {
             if (ci._masterVM == null) {
                ci._masterVM = vmInfo;
+               if (vmInfo._moRef != null) {
+                  String masterVmName = ci._masterVM._name;
+                  String clusterName = masterVmName.substring(0, masterVmName.indexOf("-master"));
+                  LogFormatter._clusterIdToNameMapper.put(ci._masterUUID, clusterName);
+               }
             }
             if (vmd._masterVmData._enableAutomation != null) {
                vmInfo._isMaster = true;
@@ -193,7 +203,7 @@ public class ClusterMapImpl implements ClusterMap {
          if (vmInfo._isMaster) {
             removeCluster(vmInfo._cluster);
          }
-         _log.log(Level.INFO, "Remove VM " + vmInfo._moRef);
+         _log.log(Level.INFO, "Remove VM " + vmInfo._name);
          _vms.remove(vmMoRef);
       }
       dumpState(Level.FINE);
@@ -298,17 +308,15 @@ public class ClusterMapImpl implements ClusterMap {
 
    public void dumpState(Level logLevel) {
       for (ClusterInfo ci : _clusters.values()) {
-         String clusterName = (ci._masterVM == null) ? "N/A" : ci._masterVM._name;
-         _log.log(logLevel, "Cluster " + clusterName + " strategy=" + ci._scaleStrategyKey +
-               "extraInfoMap= "+ ci._extraInfo + " uuid= " + ci._masterUUID + " jobTrackerPort= "+ci._jobTrackerPort);
+         _log.log(logLevel, "Cluster <%C" + ci._masterUUID + "%C> strategy=" + ci._scaleStrategyKey +
+               " extraInfoMap= "+ ci._extraInfo + " uuid= " + ci._masterUUID + " jobTrackerPort= "+ci._jobTrackerPort);
       }
 
       for (VMInfo vmInfo : _vms.values()) {
          String powerState = vmInfo._powerState ? " ON" : " OFF";
          String vCPUs = " vCPUs=" + ((vmInfo._vCPUs == null) ? "N/A" : vmInfo._vCPUs);
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
-         VMInfo masterVM = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterVM;
-         String cluster = (masterVM == null) ? "N/A" : masterVM._name;
+         String masterUUID = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterUUID;
          String role = vmInfo._isElastic ? "compute" : "other";
          String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
          String dnsName = (vmInfo._dnsName == null) ? "N/A" : vmInfo._dnsName;
@@ -316,8 +324,8 @@ public class ClusterMapImpl implements ClusterMap {
          if (vmInfo._isMaster) {
             role = "master";
          }
-         _log.log(logLevel, "VM " + vmInfo._moRef + "(" + vmInfo._name + ") " + role + powerState + vCPUs +
-               " host=" + host + " cluster=" + cluster + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
+         _log.log(logLevel, "VM <%V" + vmInfo._moRef + "%V> " + role + powerState + vCPUs +
+               " host=" + host + " cluster=<%C" + masterUUID + "%C> IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }
 
@@ -486,5 +494,4 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return null;
    }
-
 }

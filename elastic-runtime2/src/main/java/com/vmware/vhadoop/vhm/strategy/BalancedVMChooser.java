@@ -56,7 +56,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
             String vmid = itr.next();
             result.add(vmid);
             itr.remove();
-            _log.info("BalancedVMChooser adding VM "+vmid+" to results");
+            _log.info("BalancedVMChooser adding VM <%V"+vmid+"%V> to results");
          }
 
          /* if this host still has candidates remaining, then insert it back into the queue */
