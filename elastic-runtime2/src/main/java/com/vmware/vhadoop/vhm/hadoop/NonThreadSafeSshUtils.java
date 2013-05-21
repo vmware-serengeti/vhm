@@ -95,13 +95,10 @@ public class NonThreadSafeSshUtils implements SshUtils
          channel.setInputStream(null);
          in = channel.getInputStream();
 
-         channel.connect();
-
-         logger.log(Level.FINE, "Finished channel connection in exec");
-
          if (!testChannel(logger, channel)) {
             return UNKNOWN_ERROR; /* TODO: Improve */
          }
+         logger.log(Level.FINE, "Finished channel connection in exec");
 
          byte[] tmp = new byte[1024];
          long startTime = System.currentTimeMillis();
@@ -131,8 +128,6 @@ public class NonThreadSafeSshUtils implements SshUtils
                break;
             }
          }
-      } catch (JSchException e) {
-         logger.log(Level.SEVERE, "Unexpected JSch exception executing over SSH", e);
       } catch (IOException e) {
          logger.log(Level.SEVERE, "Unexpected IOException executing over SSH", e);
       }
@@ -159,8 +154,6 @@ public class NonThreadSafeSshUtils implements SshUtils
 
          out = channel.getOutputStream();
          in = channel.getInputStream();
-
-         channel.connect();
 
          if (!testChannel(logger, channel)) {
             return UNKNOWN_ERROR; /* TODO: Improve */
@@ -238,10 +231,14 @@ public class NonThreadSafeSshUtils implements SshUtils
          return true;
       }
       try {
+         if (!channel.getSession().isConnected()) {
+            channel.getSession().connect();
+         }
          channel.connect();
       } catch (JSchException e) {
          log.log(Level.SEVERE, "SSH Channel failed test. Could not connect", e);
       }
+
       return channel.isConnected();
    }
 
