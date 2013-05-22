@@ -16,16 +16,16 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    private List<ResourceContainer> parents;
    List<ResourceContainer> children;
    List<ResourceUsage> usages;
-   Orchestrator orchestrator;
+   protected Orchestrator orchestrator;
 
-   ResourceContainer(String id) {
+   protected ResourceContainer(String id) {
       this.id = id;
       parents = new LinkedList<ResourceContainer>();
       children = new LinkedList<ResourceContainer>();
       usages = new LinkedList<ResourceUsage>();
    }
 
-   ResourceContainer(String id, Orchestrator orchestrator) {
+   protected ResourceContainer(String id, Orchestrator orchestrator) {
       this(id);
       this.orchestrator = orchestrator;
    }

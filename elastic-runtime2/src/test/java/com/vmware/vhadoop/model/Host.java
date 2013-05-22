@@ -9,4 +9,10 @@ public class Host extends ResourceContainer
       setCpuLimit(cpu);
       setMemoryLimit(memory);
    }
+
+   public void add(VM vm) {
+      super.add(vm);
+
+      vm.setHost(this);
+   }
 }

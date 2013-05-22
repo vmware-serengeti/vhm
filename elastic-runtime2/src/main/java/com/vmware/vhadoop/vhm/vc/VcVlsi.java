@@ -466,14 +466,14 @@ public class VcVlsi {
       propFilter.cleanup();
    }
 
-   private MasterVmEventData getMasterVmData(VMEventData vmData) {
+   static private MasterVmEventData getMasterVmData(VMEventData vmData) {
       if (vmData._masterVmData == null) {
          vmData._masterVmData = new MasterVmEventData();
       }
       return vmData._masterVmData;
    }
 
-   private void parseExtraConfig(VMEventData vmData, String key, String value) {
+   static void parseExtraConfig(VMEventData vmData, String key, String value) {
       if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
          //_log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
          if (key.equals(VHM_EXTRA_CONFIG_UUID)) {

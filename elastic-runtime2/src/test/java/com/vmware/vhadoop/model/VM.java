@@ -1,15 +1,22 @@
 package com.vmware.vhadoop.model;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 
 public class VM extends ResourceContainer
 {
+   Host host;
+   Map<String,String> extraInfo;
+
    boolean power = false;
 
    long balloon = 0;
    long balloonTarget = 0;
-   long swapped = 0;
    long hostSwapped = 0;
 
+   long swapped = 0;
    long committedMemory = 0;
 
    /**
@@ -23,11 +30,15 @@ public class VM extends ResourceContainer
 
       setCpuLimit(cpu);
       setMemoryLimit(vRAM);
+
+      extraInfo = new HashMap<String,String>();
+      orchestrator.configurationUpdated(this);
    }
 
    public void execute(Workload workload) {
       add(workload);
       workload.start();
+      orchestrator.usageUpdated(this);
    }
 
    /**
@@ -43,6 +54,7 @@ public class VM extends ResourceContainer
 
       /* TODO: create a 'bootup' workload that runs immediately after poweron */
 
+      orchestrator.configurationUpdated(this);
       return true;
    }
 
@@ -71,6 +83,7 @@ public class VM extends ResourceContainer
       /* TODO: if we ever model this as taking time, we need to update the Futures in Orchestrator */
       power = false;
 
+      orchestrator.configurationUpdated(this);
       return true;
    }
 
@@ -137,6 +150,11 @@ public class VM extends ResourceContainer
          /* TODO: this is where we'd be swapping out if the balloon pressure caused us to evict running processes. See whether we're favouring host or guest swapping */
       }
 
+      /* TODO: make sure that we don't recursively/repeatedly call this as a result of the Orchestrator setting the balloon target. It may be we want this method
+       * package visability and only called by it's host
+       */
+      orchestrator.usageUpdated(this);
+      orchestrator.configurationUpdated(this);
       return balloon;
    }
 
@@ -190,5 +208,34 @@ public class VM extends ResourceContainer
       metrics[8] = hostSwapped;
 
       return metrics;
+   }
+
+   public void setHost(Host host) {
+      orchestrator.configurationUpdated(this);
+      this.host = host;
+   }
+
+   public Host getHost() {
+      return this.host;
+   }
+
+   /**
+    * Sets an entry in the extraInfo. This will tell the orchestrator that it's configuration has been updated.
+    * @param key
+    * @param value
+    * @return the previous value if any
+    */
+   public String setExtraInfo(String key, String value) {
+      orchestrator.configurationUpdated(this);
+      return extraInfo.put(key, value);
+   }
+
+   /**
+    * Gets a readonly map that holds extra info associated with the VM
+    * @return
+    */
+   public Map<String,String> getExtraInfo() {
+      /* TODO: should this be in VM or ResourceContainer */
+      return Collections.unmodifiableMap(extraInfo);
    }
 }

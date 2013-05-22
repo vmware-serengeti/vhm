@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.model;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 
 /**
  * Top level container for various other entities, such as hosts, vms, resource pools, et al.
@@ -20,12 +22,20 @@ public class Orchestrator extends ResourceContainer
    /** Nominal CPU speed is 2GHz */
    long cpuSpeed = 2000;
 
-   /** List of VMs that have been updated since the last time the list was retrieved */
-   List<VM> updates;
+   /** List of containers with configuration updates since last cleared */
+   Set<ResourceContainer> configUpdated;
+
+   /** List of containers with usage updates since last cleared */
+   Set<Usage> usageUpdated;
+
+   /** List of VMs updated since this list was last accessed. Convenience */
+   Set<VM> updatedVMs;
 
    public Orchestrator(String id) {
       super(id);
-      updates = new LinkedList<VM>();
+      configUpdated = new HashSet<ResourceContainer>();
+      usageUpdated = new HashSet<Usage>();
+      updatedVMs = new HashSet<VM>();
    }
 
    AllocationPolicy allocationPolicy;
@@ -43,9 +53,18 @@ public class Orchestrator extends ResourceContainer
    /**
     * This causes a global re-evaluation of resource usage patterns against limits.
     */
-   @Override
-   public void update() {
+   public void configurationUpdated(ResourceContainer container) {
+      configUpdated.add(container);
+      if (container instanceof VM) {
+         updatedVMs.add((VM)container);
+      }
+   }
 
+   /**
+    * This causes a global re-evaluation of resource usage patterns against limits.
+    */
+   public void usageUpdated(Usage usage) {
+      usageUpdated.add(usage);
    }
 
    private Map<String, Future<Boolean>> setPower(Set<String> ids, boolean power) {
@@ -93,15 +112,15 @@ public class Orchestrator extends ResourceContainer
       return setPower(ids, false);
    }
 
-   @SuppressWarnings("unchecked")
+   /**
+    * This method returns updated VMs since the method was last called.
+    * This uses the concurrent modification behaviour of iterators to
+    * @return
+    */
    public List<VM> getUpdatedVMs() {
-//    List<VM> vms = this.updates;
-//    this.updates = new LinkedList<VM>();
-//
-//    return vms;
-
-      /* TODO: make this a little more fine grained */
-      return (List<VM>)get(VM.class);
+      List<VM> vms = new LinkedList<VM>(updatedVMs);
+      updatedVMs.clear();
+      return vms;
    }
 
    /**

@@ -56,19 +56,21 @@ public class VcModelAdapter implements VCActions {
          /* build the VMEventData list */
          VMEventData vmData = new VMEventData();
          vmData._vmMoRef = vm.getId();
-         vmData._dnsName = "";
-         vmData._hostMoRef = "";
-         vmData._ipAddr = "";
-         vmData._isElastic = true;
+         vmData._dnsName = vm.getId()+".model";
+         vmData._hostMoRef = vm.getHost() != null ? vm.getHost().getId() : null;
+         vmData._ipAddr = "127.0.0.1";
          vmData._isLeaving = false;
-         vmData._masterMoRef = "";
-         vmData._masterUUID = "";
-         vmData._masterVmData = null;
-         vmData._myName = "";
-         vmData._myUUID = "";
+         vmData._myName = vm.getId();
+         vmData._myUUID = vm.getId();
          vmData._powerState = vm.getPowerState();
-         vmData._serengetiFolder = "";
          vmData._vCPUs = (int) (vm.getCpuLimit() / _orchestrator.getCpuSpeed());
+
+         /* parse out the extraInfo fields into the event */
+         Map<String,String> extraInfo = vm.getExtraInfo();
+         for (String key : extraInfo.keySet()) {
+            String value = extraInfo.get(key);
+            VcVlsi.parseExtraConfig(vmData, key, value);
+         }
 
          vmDataList.add(vmData);
       }
