@@ -1,6 +1,5 @@
 package com.vmware.vhadoop.vhm;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -173,7 +172,7 @@ public class VHM implements EventConsumer {
          if (vmId != null) {
             clusterId = _clusterMap.getClusterIdForVm(vmId);
          } else {
-            _log.warning("No usable data from ClusterScaleEvent (" + 
+            _log.warning("No usable data from ClusterScaleEvent (" +
                   event.getVmId() + "," + event.getHostId() + "," + event.getClusterId() + ")");
             if (event instanceof SerengetiLimitInstruction) {
                SerengetiLimitInstruction sEvent = (SerengetiLimitInstruction)event;
@@ -296,16 +295,20 @@ public class VHM implements EventConsumer {
       Thread t = new Thread(new Runnable() {
          @Override
          public void run() {
-            while (_started) {
-               Set<NotificationEvent> events = pollForEvents();
-               handleEvents(events);
+            try {
+               while (_started) {
+                  Set<NotificationEvent> events = pollForEvents();
+                  handleEvents(events);
+               }
+            } catch (Throwable e) {
+               _log.warning("VHM stopping due to exception "+e);
             }
             _log.info("VHM stopping...");
          }}, "VHM_Main_Thread");
       t.start();
       return t;
    }
-   
+
    public void stop(boolean hardStop) {
       _started = false;
       for (EventProducer eventProducer : _eventProducers) {

@@ -10,10 +10,12 @@ import java.util.TreeMap;
 
 abstract public class ResourceUsage implements Usage
 {
+   String id;
    private Map<Resource,Object> usage;
    private List<ResourceContainer> parents;
 
-   ResourceUsage() {
+   ResourceUsage(String id) {
+      this.id = id;
       usage = new TreeMap<Resource,Object>();
       parents = new LinkedList<ResourceContainer>();
    }
@@ -84,5 +86,35 @@ abstract public class ResourceUsage implements Usage
    @Override
    public void removeParent(ResourceContainer parent) {
       parents.remove(parent);
+   }
+
+   /**
+    * General toString description method
+    * @return string description of usage
+    */
+   @Override
+   public String toString() {
+      return report(null);
+   }
+
+   /**
+    * Model toString method that can take an indentation prefix
+    * @param indent prefix
+    * @return string description
+    */
+   public String report(String indent) {
+      StringBuffer sb;
+      if (indent != null) {
+         sb = new StringBuffer(indent);
+      } else {
+         sb = new StringBuffer();
+         indent = "  ";
+      }
+
+      sb.append(id);
+      sb.append(indent).append(" cpu (Mhz): ").append(getCpuUsage());
+      sb.append(indent).append(" mem  (Mb): ").append(getMemoryUsage());
+
+      return sb.toString();
    }
 }

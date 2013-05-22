@@ -3,6 +3,8 @@ package com.vmware.vhadoop.model;
 public interface Limits
 {
    public static final long UNLIMITED = -1;
+   public static final long IO_RATE_MBS = 300;
+
    /**
     * Returns the allocated memory in megabytes
     * @return

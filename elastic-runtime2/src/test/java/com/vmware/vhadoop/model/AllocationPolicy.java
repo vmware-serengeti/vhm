@@ -15,4 +15,9 @@ public class AllocationPolicy
 
    }
 
+   public void allocateBalloonTarget(long target, List<ResourceContainer> children) {
+      // TODO Auto-generated method stub
+
+   }
+
 }

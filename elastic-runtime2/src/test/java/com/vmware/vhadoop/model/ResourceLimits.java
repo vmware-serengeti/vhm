@@ -15,8 +15,8 @@ abstract public class ResourceLimits implements Limits
     */
    ResourceLimits() {
       limits = new TreeMap<Resource,Object>();
-      limits.put(MEMORY, -1);
-      limits.put(CPU, -1);
+      limits.put(MEMORY, Limits.UNLIMITED);
+      limits.put(CPU, Limits.UNLIMITED);
    }
 
    /**

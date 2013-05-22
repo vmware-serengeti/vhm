@@ -10,8 +10,6 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
 
    String id;
    long shares = DEFAULT_SHARES;
-   long maxMemory = Limits.UNLIMITED;
-   long maxCpu = Limits.UNLIMITED;
    long minMemory = Limits.UNLIMITED;
    long minCpu = Limits.UNLIMITED;
 
@@ -20,9 +18,16 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    List<ResourceUsage> usages;
    Orchestrator orchestrator;
 
-   ResourceContainer(Orchestrator orchestrator) {
+   ResourceContainer(String id) {
+      this.id = id;
+      parents = new LinkedList<ResourceContainer>();
       children = new LinkedList<ResourceContainer>();
       usages = new LinkedList<ResourceUsage>();
+   }
+
+   ResourceContainer(String id, Orchestrator orchestrator) {
+      this(id);
+      this.orchestrator = orchestrator;
    }
 
    /**
@@ -38,6 +43,24 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
 
       for (ResourceUsage usage : usages) {
          total+= usage.getMemoryUsage();
+      }
+
+      return total;
+   }
+
+   /**
+    * Returns the active memory in megabytes for all component allocations
+    * @return the active memory in Mb
+    */
+   @Override
+   public long getActiveMemory() {
+      long total = 0;
+      for (ResourceContainer child : children) {
+         total+= child.getActiveMemory();
+      }
+
+      for (ResourceUsage usage : usages) {
+         total+= usage.getActiveMemory();
       }
 
       return total;
@@ -67,9 +90,9 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     */
    @Override
    public void setMemoryLimit(long allocation) {
-      maxMemory = allocation;
-      if (maxMemory != Limits.UNLIMITED && getMemoryUsage() > maxMemory) {
-         orchestrator.getAllocationPolicy().allocateMemory(maxMemory, children);
+      super.setMemoryLimit(allocation);
+      if (allocation != Limits.UNLIMITED && getMemoryUsage() > allocation) {
+         orchestrator.getAllocationPolicy().allocateMemory(allocation, children);
       }
    }
 
@@ -79,9 +102,9 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     */
    @Override
    public void setCpuLimit(long allocation) {
-      maxCpu = allocation;
-      if (maxCpu != Limits.UNLIMITED && getCpuUsage() > maxCpu) {
-         orchestrator.getAllocationPolicy().allocateCpu(maxCpu, children);
+      super.setCpuLimit(allocation);
+      if (allocation != Limits.UNLIMITED && getCpuUsage() > allocation) {
+         orchestrator.getAllocationPolicy().allocateCpu(allocation, children);
       }
    }
 
@@ -106,7 +129,7 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     * Adds a child container to this container
     * @param the child container
     */
-   void add(ResourceContainer container) {
+   public void add(ResourceContainer container) {
       children.add(container);
       container.addParent(this);
    }
@@ -115,7 +138,7 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     * Adds a child usage to this container
     * @param the usage to add
     */
-   void add(ResourceUsage usage) {
+   public void add(ResourceUsage usage) {
       usages.add(usage);
       usage.addParent(this);
    }
@@ -143,5 +166,115 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    @Override
    public void removeParent(ResourceContainer parent) {
       parents.remove(parent);
+   }
+
+   /**
+    * Returns the id of the container
+    * @return the string id of the container
+    */
+   public String getId() {
+      return id;
+   }
+
+   /**
+    * Finds the child entity with the given ID if it exists
+    * @param id to look for
+    * @return the child entity or null if not found
+    */
+   public ResourceContainer get(String id) {
+      if (this.id.equals(id)) {
+         return this;
+      }
+
+      for (ResourceContainer child : children) {
+         ResourceContainer result = child.get(id);
+         if (result != null) {
+            return result;
+         }
+      }
+
+      return null;
+   }
+
+   /**
+    * Gets all entities of a given type.
+    */
+   public List<? extends ResourceContainer> get(Class<? extends ResourceContainer> type) {
+      List<ResourceContainer> list = null;
+      if (type.isAssignableFrom(this.getClass())) {
+         if (list == null) {
+            list = new LinkedList<ResourceContainer>();
+         }
+         list.add(this);
+      }
+
+      for (ResourceContainer child : children) {
+         List<? extends ResourceContainer> result = child.get(type);
+         if (result != null) {
+            if (list == null) {
+               /* can't just swap to the result due to the type casting */
+               list = new LinkedList<ResourceContainer>();
+            }
+            list.addAll(result);
+         }
+      }
+
+      return list;
+   }
+
+   @Override
+   public String toString() {
+      StringBuffer sb = new StringBuffer(id);
+      sb.append(" cpu (Mhz): ").append(getCpuUsage());
+      sb.append(" mem  (Mb): ").append(getMemoryUsage());
+
+      return sb.toString();
+   }
+
+   /**
+    * Constructs a basic string report about this container and its children
+    * @param indent
+    * @return
+    */
+   public String report(String indent) {
+      final String newline = System.getProperty("line.separator");
+      String indent2;
+      StringBuffer sb;
+      if (indent != null) {
+         sb = new StringBuffer(indent);
+         indent2 = indent + indent;
+      } else {
+         sb = new StringBuffer();
+         indent = "";
+         indent2 = "  ";
+      }
+
+      sb.append(toString());
+
+      if (!usages.isEmpty()) {
+//         sb.append(indent2).append("Usages: ").append(newline);
+         for (ResourceUsage usage : usages) {
+            sb.append(newline);
+            sb.append(usage.report(indent2));
+         }
+      }
+
+      if (!children.isEmpty()) {
+//         sb.append(indent2).append("Children: ").append(newline);
+         for (ResourceContainer child : children) {
+            sb.append(newline);
+            sb.append(child.report(indent2));
+         }
+      }
+
+      if (usages.isEmpty() && children.isEmpty()) {
+         sb.append(newline);
+      }
+
+      return sb.toString();
+   }
+
+   public String report() {
+      return report(null);
    }
 }
