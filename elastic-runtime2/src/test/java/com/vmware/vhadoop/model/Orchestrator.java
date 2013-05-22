@@ -57,6 +57,9 @@ public class Orchestrator extends ResourceContainer
       configUpdated.add(container);
       if (container instanceof VM) {
          updatedVMs.add((VM)container);
+         synchronized (updatedVMs) {
+            updatedVMs.notifyAll();
+         }
       }
    }
 
@@ -118,6 +121,14 @@ public class Orchestrator extends ResourceContainer
     * @return
     */
    public List<VM> getUpdatedVMs() {
+      synchronized (updatedVMs) {
+         try {
+            while (updatedVMs.isEmpty()) {
+                  updatedVMs.wait();
+            }
+         } catch (InterruptedException e) {}
+      }
+
       List<VM> vms = new LinkedList<VM>(updatedVMs);
       updatedVMs.clear();
       return vms;
