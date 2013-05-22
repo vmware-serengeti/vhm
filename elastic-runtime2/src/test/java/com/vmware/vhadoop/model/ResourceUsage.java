@@ -18,6 +18,16 @@ abstract public class ResourceUsage implements Usage
       this.id = id;
       usage = new TreeMap<Resource,Object>();
       parents = new LinkedList<ResourceContainer>();
+      usage.put(MEMORY, initMemoryUsage());
+   }
+
+   /**
+    * Initializes the memory usage structure for this Usage. This is provided so that subclasses can
+    * provide their own tailored memory usage models.
+    * @return the memory usage implementation to use
+    */
+   protected MemoryUsage initMemoryUsage() {
+      return new MemoryUsage(this);
    }
 
    /**
@@ -26,7 +36,8 @@ abstract public class ResourceUsage implements Usage
     */
    @Override
    public long getMemoryUsage() {
-      return (Long)(usage.get(MEMORY));
+      MemoryUsage mem = (MemoryUsage)usage.get(MEMORY);
+      return mem.getTotal();
    }
 
    /**
@@ -43,7 +54,9 @@ abstract public class ResourceUsage implements Usage
     * @param allocation
     */
    public void setMemoryUsage(long allocation) {
-      usage.put(MEMORY, allocation);
+      MemoryUsage mem = (MemoryUsage)usage.get(MEMORY);
+      mem.setTotal(allocation);
+
       for (ResourceContainer parent : parents) {
          parent.update();
       }
@@ -116,5 +129,41 @@ abstract public class ResourceUsage implements Usage
       sb.append(indent).append(" mem  (Mb): ").append(getMemoryUsage());
 
       return sb.toString();
+   }
+
+
+   /**
+    * Used to model the breakdown of a given memory usage
+    * @author ghicken
+    *
+    */
+   class MemoryUsage {
+      ResourceUsage container;
+      long total;
+      long active;
+      long zero;
+      long common;
+      long swapped;
+      long pinned;
+
+      public MemoryUsage(ResourceUsage container) { this.container = container; }
+      /** The total memory usage */
+      public void setTotal(long total) { this.total = total; }
+      public long getTotal() { return total; }
+      /** The amount of active memory within this usage */
+      public void setActive(long active) { this.active = active; }
+      public long getActive() { return active; }
+      /** The amount of zero memory within this usage */
+      public void setZero(long zero) { this.zero = zero; }
+      public long getZero() { return zero; }
+      /** The amount of memory that could be shared between instances of the same usage */
+      public void setCommon(long common) { this.common = common; }
+      public long getCommon() { return common; }
+      /** The amount of memory that could be shared between instances of the same usage */
+      public void setSwapped(long swapped) { this.swapped = swapped; }
+      public long getSwapped() { return swapped; }
+      /** The amount of memory that could be shared between instances of the same usage */
+      public void setPinned(long pinned) { this.pinned = pinned; }
+      public long getPinned() { return pinned; }
    }
 }

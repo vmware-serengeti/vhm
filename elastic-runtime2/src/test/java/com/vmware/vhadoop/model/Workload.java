@@ -23,4 +23,5 @@ abstract public class Workload extends ResourceUsage
     * Starts the workload running. This commences resource utilization.
     */
    public abstract void start();
+
 }
