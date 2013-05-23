@@ -30,7 +30,8 @@ import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
-public class BootstrapMain {
+public class BootstrapMain
+{
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
    public static final String DEFAULT_LOG_CONFIG_FILENAME = "logging.properties";
    public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";
@@ -68,7 +69,7 @@ public class BootstrapMain {
          LogManager.getLogManager().readConfiguration(is);
          is.close();
       } catch (Exception e) {
-         System.err.println("The "+loggingFlavour+" logging properties file could not be read: "+loggingProperties);
+         System.err.println("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
       }
 
       Handler handlers[] = Logger.getLogger("").getHandlers();
@@ -77,14 +78,19 @@ public class BootstrapMain {
       } else {
          handlers[0].setFormatter(new LogFormatter());
       }
-     try {
-          FileHandler handler = new FileHandler(fileName);
-          Logger.getLogger("").addHandler(handler);
-     } catch (SecurityException e) {
-        e.printStackTrace();
-     } catch (IOException e) {
-        e.printStackTrace();
-     }
+
+      try {
+         String name = fileName;
+         if (name == null) {
+            name = DEFAULT_VHM_LOG_FILENAME;
+         }
+         FileHandler handler = new FileHandler(name);
+         Logger.getLogger("").addHandler(handler);
+      } catch (SecurityException e) {
+         e.printStackTrace();
+      } catch (IOException e) {
+         e.printStackTrace();
+      }
    }
 
    private static String buildVHMFilePath(final String subdir, final String fileName) {
@@ -110,6 +116,10 @@ public class BootstrapMain {
       Properties properties = null;
       InputStream is = null;
       InputStream resource = null;
+
+      if (name == null) {
+         return properties;
+      }
 
       try {
          String baseName;
@@ -142,7 +152,7 @@ public class BootstrapMain {
             properties.load(is);
          }
       } catch (IOException e) {
-          System.err.println("Unable to read properties file from filesystem or as a resource from the jar files:"+name);
+         System.err.println("Unable to read properties file from filesystem or as a resource from the jar files:" + name);
       } finally {
          try {
             if (resource != null) {
@@ -181,21 +191,15 @@ public class BootstrapMain {
          vcCreds.vcExtKey = _properties.getProperty("extensionKey");
 
          _vcActions = new VcAdapter(vcCreds, _properties.getProperty("uuid"));
-         ((VcAdapter)_vcActions).setThreadLocalCompoundStatus(tlcs);
+         ((VcAdapter) _vcActions).setThreadLocalCompoundStatus(tlcs);
       }
       return _vcActions;
    }
 
    HadoopActions getHadoopInterface() {
       if (_hadoopActions == null) {
-         _hadoopActions = new HadoopAdaptor(
-               new SimpleHadoopCredentials(
-                     _properties.getProperty("vHadoopUser"),
-                     _properties.getProperty("vHadoopPwd"),
-                     _properties.getProperty("vHadoopPrvkeyFile")),
-                     new JTConfigInfo(
-                           _properties.getProperty("vHadoopHome"),
-                           _properties.getProperty("vHadoopExcludeTTFile")));
+         _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"), _properties.getProperty("vHadoopPwd"),
+               _properties.getProperty("vHadoopPrvkeyFile")), new JTConfigInfo(_properties.getProperty("vHadoopHome"), _properties.getProperty("vHadoopExcludeTTFile")));
       }
       return _hadoopActions;
    }
@@ -205,9 +209,8 @@ public class BootstrapMain {
    }
 
    ScaleStrategy[] getScaleStrategies(final ThreadLocalCompoundStatus tlcs) {
-      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
-            new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
-      return new ScaleStrategy[]{manualScaleStrategy};
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
+      return new ScaleStrategy[] { manualScaleStrategy };
    }
 
    ExtraInfoToClusterMapper getStrategyMapper() {
@@ -227,10 +230,8 @@ public class BootstrapMain {
    VHM initVHM(final ThreadLocalCompoundStatus tlcs) {
       VHM vhm;
 
-      MQClient mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"),
-            _properties.getProperty("exchangeName"),
-            _properties.getProperty("routeKeyCommand"),
-            _properties.getProperty("routeKeyStatus")));
+      MQClient mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"), _properties.getProperty("exchangeName"),
+            _properties.getProperty("routeKeyCommand"), _properties.getProperty("routeKeyStatus")));
 
       vhm = new VHM(getVCInterface(tlcs), getScaleStrategies(tlcs), getStrategyMapper(), tlcs);
       ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
