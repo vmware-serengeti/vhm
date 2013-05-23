@@ -114,7 +114,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmInfo == null) {
          vmInfo = new VMInfo(vmd._vmMoRef);
          _vms.put(vmd._vmMoRef, vmInfo);
-         _log.log(Level.INFO, "New VM " + vmInfo._moRef);
+         _log.log(Level.INFO, "New VM <%V" + vmInfo._moRef);
       }
 
       /* When a new VM is added, we expect a complete vmd with masterUUID and everything */
@@ -140,9 +140,6 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if (vmd._myName != null) {
          vmInfo._name = vmd._myName;
-         if (vmInfo._moRef != null) {
-            LogFormatter._vmIdToNameMapper.put(vmInfo._moRef, vmInfo._name);
-         }
       }
       if (vmd._vCPUs != null) {
          vmInfo._vCPUs = vmd._vCPUs;
