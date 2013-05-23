@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm.vc;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -9,6 +10,7 @@ import java.util.logging.Logger;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.model.Orchestrator;
+import com.vmware.vhadoop.model.ResourceContainer;
 import com.vmware.vhadoop.model.VM;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.vmomi.client.Client;
@@ -85,7 +87,19 @@ public class VcModelAdapter implements VCActions {
 
    @Override
    public List<String> listVMsInFolder(String folderName) {
-      return null;
+      ResourceContainer container = _orchestrator.get(folderName);
+      List<String> ids = null;
+      if (container != null) {
+         ids = new LinkedList<String>();
+         List<? extends ResourceContainer> vms = container.get(VM.class);
+         if (vms != null) {
+            for (ResourceContainer c : vms) {
+               ids.add(c.getId());
+            }
+         }
+      }
+
+      return ids;
    }
 
    @Override

@@ -1,7 +1,9 @@
 package com.vmware.vhadoop.model;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 
 public abstract class ResourceContainer extends ResourceLimits implements Usage
@@ -13,16 +15,16 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    long minMemory = Limits.UNLIMITED;
    long minCpu = Limits.UNLIMITED;
 
-   private List<ResourceContainer> parents;
-   List<ResourceContainer> children;
-   List<ResourceUsage> usages;
+   private Set<ResourceContainer> parents;
+   Set<ResourceContainer> children;
+   Set<ResourceUsage> usages;
    protected Orchestrator orchestrator;
 
    protected ResourceContainer(String id) {
       this.id = id;
-      parents = new LinkedList<ResourceContainer>();
-      children = new LinkedList<ResourceContainer>();
-      usages = new LinkedList<ResourceUsage>();
+      parents = new HashSet<ResourceContainer>();
+      children = new HashSet<ResourceContainer>();
+      usages = new HashSet<ResourceUsage>();
    }
 
    protected ResourceContainer(String id, Orchestrator orchestrator) {
@@ -131,7 +133,21 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     */
    public void add(ResourceContainer container) {
       children.add(container);
-      container.addParent(this);
+      if (!container.parents.contains(this)) {
+         container.addParent(this);
+      }
+   }
+
+   /**
+    * Removes the specified child from this container
+    */
+   public boolean remove(ResourceContainer child) {
+      /* ensure symmetry, may already have been done */
+      if (child.children.contains(this)) {
+         child.removeParent(this);
+      }
+
+      return children.remove(child);
    }
 
    /**
@@ -140,7 +156,21 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     */
    public void add(ResourceUsage usage) {
       usages.add(usage);
-      usage.addParent(this);
+      if (!usage.parents.contains(this)) {
+         usage.addParent(this);
+      }
+   }
+
+   /**
+    * Removes the specified usage from this container
+    */
+   public boolean remove(ResourceUsage usage) {
+      /* ensure symmetry, may already have been done */
+      if (usage.parents.contains(this)) {
+         usage.removeParent(this);
+      }
+
+      return usages.remove(usage);
    }
 
    /**
@@ -157,6 +187,8 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    @Override
    public void addParent(ResourceContainer parent) {
       parents.add(parent);
+      /* ensure that we're added as a child so the relationship remains symmetrical */
+      parent.add(this);
    }
 
    /**
@@ -166,6 +198,8 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    @Override
    public void removeParent(ResourceContainer parent) {
       parents.remove(parent);
+      /* ensure that we're removed as a child so the relationship remains symmetrical */
+      parent.remove(this);
    }
 
    /**

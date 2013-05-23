@@ -53,21 +53,35 @@ public class Orchestrator extends ResourceContainer
    /**
     * This causes a global re-evaluation of resource usage patterns against limits.
     */
-   public void configurationUpdated(ResourceContainer container) {
+   public synchronized void configurationUpdated(ResourceContainer container) {
       configUpdated.add(container);
+
       if (container instanceof VM) {
          updatedVMs.add((VM)container);
          synchronized (updatedVMs) {
             updatedVMs.notifyAll();
          }
       }
+
+      /* notify both usage and config waiters */
+      /* TODO: move this to AFTER any config change has completed */
+      synchronized (configUpdated) {
+         configUpdated.notifyAll();
+      }
+      synchronized (usageUpdated) {
+         usageUpdated.notifyAll();
+      }
    }
 
    /**
     * This causes a global re-evaluation of resource usage patterns against limits.
     */
-   public void usageUpdated(Usage usage) {
+   public synchronized void usageUpdated(Usage usage) {
       usageUpdated.add(usage);
+      /* TODO: move this to AFTER any usage update has completed */
+      synchronized (usageUpdated) {
+         usageUpdated.notifyAll();
+      }
    }
 
    private Map<String, Future<Boolean>> setPower(Set<String> ids, boolean power) {
@@ -133,6 +147,44 @@ public class Orchestrator extends ResourceContainer
       updatedVMs.clear();
       return vms;
    }
+
+   /**
+    * This allows a caller to efficiently wait for the state of the world to change.
+    * This will wake waiters when there is configuration change, but not on usage
+    * updates.
+    */
+   public void waitForConfigurationUpdate(long timeout) {
+      /* TODO: add in an update counter so that callers can qualify the observed state they were
+       * basing their decision to wait upon. Return immediately if there have been subsequent
+       * updates
+       */
+      if (timeout > 0) {
+         synchronized (configUpdated) {
+            try {
+               configUpdated.wait(timeout);
+            } catch (InterruptedException e) {}
+         }
+      }
+   }
+
+   /**
+    * This allows a caller to efficiently wait for the state of the world to change.
+    * This will wake waiters when for both configuration and usage updated
+    */
+   public void waitForUsageUpdate(long timeout) {
+      /* TODO: add in an update counter so that callers can qualify the observed state they were
+       * basing their decision to wait upon. Return immediately if there have been subsequent
+       * updates
+       */
+      if (timeout > 0) {
+         synchronized (usageUpdated) {
+            try {
+               usageUpdated.wait(timeout);
+            } catch (InterruptedException e) {}
+         }
+      }
+   }
+
 
    /**
     * Sets the nominal speed of CPUs in this orchestration. Limits are specified in Mhz, so

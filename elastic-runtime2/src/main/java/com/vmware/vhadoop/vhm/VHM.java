@@ -155,7 +155,11 @@ public class VHM implements EventConsumer {
       String clusterId = event.getClusterId();
 
       if (event instanceof SerengetiLimitInstruction) {
-         clusterId = getClusterIdForVCFolder(((SerengetiLimitInstruction)event).getClusterFolderName());
+         try {
+            clusterId = getClusterIdForVCFolder(((SerengetiLimitInstruction)event).getClusterFolderName());
+         } catch (NullPointerException e) {
+            clusterId = null;
+         }
       }
 
       if (clusterId == null) {
@@ -302,6 +306,7 @@ public class VHM implements EventConsumer {
                }
             } catch (Throwable e) {
                _log.warning("VHM stopping due to exception "+e);
+               e.printStackTrace();
             }
             _log.info("VHM stopping...");
          }}, "VHM_Main_Thread");

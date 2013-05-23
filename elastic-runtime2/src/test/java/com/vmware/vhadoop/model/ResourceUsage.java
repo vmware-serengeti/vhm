@@ -11,8 +11,8 @@ import java.util.TreeMap;
 abstract public class ResourceUsage implements Usage
 {
    String id;
-   private Map<Resource,Object> usage;
-   private List<ResourceContainer> parents;
+   Map<Resource,Object> usage;
+   List<ResourceContainer> parents;
 
    ResourceUsage(String id) {
       this.id = id;
@@ -90,6 +90,9 @@ abstract public class ResourceUsage implements Usage
    @Override
    public void addParent(ResourceContainer parent) {
       parents.add(parent);
+      if (!parent.usages.contains(this)) {
+         parent.add(this);
+      }
    }
 
    /**
@@ -99,6 +102,9 @@ abstract public class ResourceUsage implements Usage
    @Override
    public void removeParent(ResourceContainer parent) {
       parents.remove(parent);
+      if (parent.usages.contains(this)) {
+         parent.remove(this);
+      }
    }
 
    /**

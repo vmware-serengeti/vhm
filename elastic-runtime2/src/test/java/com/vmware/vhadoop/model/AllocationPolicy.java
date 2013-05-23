@@ -1,21 +1,21 @@
 package com.vmware.vhadoop.model;
 
-import java.util.List;
+import java.util.Set;
 
 public class AllocationPolicy
 {
 
-   public void allocateMemory(long maxMemory, List<ResourceContainer> children) {
+   public void allocateMemory(long maxMemory, Set<ResourceContainer> children) {
       // TODO Auto-generated method stub
 
    }
 
-   public void allocateCpu(long maxCpu, List<ResourceContainer> children) {
+   public void allocateCpu(long maxCpu, Set<ResourceContainer> children) {
       // TODO Auto-generated method stub
 
    }
 
-   public void allocateBalloonTarget(long target, List<ResourceContainer> children) {
+   public void allocateBalloonTarget(long target, Set<ResourceContainer> children) {
       // TODO Auto-generated method stub
 
    }

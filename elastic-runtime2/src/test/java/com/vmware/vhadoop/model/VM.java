@@ -197,15 +197,16 @@ public class VM extends ResourceContainer
    public long[] getMetrics() {
       long metrics[] = new long[9];
 
+      /* most of the memory stats seem to be consumed in kB */
       metrics[0] = getCpuUsage();
       metrics[1] = 0;
-      metrics[2] = getMemoryUsage();
-      metrics[3] = getActiveMemory();
-      metrics[4] = getBalloonSize();
-      metrics[5] = balloonTarget;
+      metrics[2] = getMemoryUsage() * 1024;
+      metrics[3] = getActiveMemory() * 1024;
+      metrics[4] = getBalloonSize() * 1024;
+      metrics[5] = balloonTarget * 1024;
       metrics[6] = 0;
-      metrics[7] = hostSwapped;
-      metrics[8] = hostSwapped;
+      metrics[7] = hostSwapped * 1024;
+      metrics[8] = hostSwapped * 1024;
 
       return metrics;
    }
