@@ -30,6 +30,7 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.Folder;
@@ -515,6 +516,8 @@ public class VcVlsi {
                   vmData._vCPUs = (Integer)pcValue;
                } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
+                  /* Update this as early as possible. Doesn't matter if the key already exists */
+                  LogFormatter._vmIdToNameMapper.put(vmData._vmMoRef, vmData._myName);
                } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
                   PowerState ps = (PowerState)pcValue;
                   if (ps == PowerState.poweredOn) {
