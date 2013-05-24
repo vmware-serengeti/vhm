@@ -1,7 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -103,15 +102,36 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       return true;
     }
 
+   private Set<ClusterScaleCompletionEvent> waitForClusterScaleCompletionEvents(String clusterId, int numExpected, int timeoutMillis) {
+      Set<ClusterScaleCompletionEvent> result = new HashSet<ClusterScaleCompletionEvent>();
+      int timeoutLeft = timeoutMillis;
+      while ((result.size() < numExpected) && (timeoutLeft > 0)) {
+         long timeNow = System.currentTimeMillis();
+         ClusterScaleCompletionEvent newEvent = waitForClusterScaleCompletionEvent(clusterId, timeoutLeft, result);
+         if (newEvent != null) {
+            result.add(newEvent);
+         }
+         timeoutLeft -= (System.currentTimeMillis() - timeNow);
+      }
+      return result;
+   }
+
    private ClusterScaleCompletionEvent waitForClusterScaleCompletionEvent(String clusterId, int timeoutMillis) {
+      return waitForClusterScaleCompletionEvent(clusterId, timeoutMillis, null);
+   }
+
+   private ClusterScaleCompletionEvent waitForClusterScaleCompletionEvent(String clusterId, int timeoutMillis, 
+         Set<ClusterScaleCompletionEvent> thatsNotInSet) {
       ClusterScaleCompletionEvent toWaitFor = null;
       long pollTimeMillis = 10;
       long maxIterations = timeoutMillis / pollTimeMillis;
+      boolean nullOrInSet = true;
       /* VHM may still be in the process of dealing with the events coming from the CSCL, so need to wait for the expected value */
-      while (toWaitFor == null) {
+      while (nullOrInSet) {
          ClusterMap clusterMap = getAndReadLockClusterMap();
          assertNotNull(clusterMap);
          toWaitFor = clusterMap.getLastClusterScaleCompletionEvent(clusterId);
+         nullOrInSet = (toWaitFor == null) || ((thatsNotInSet != null) && (thatsNotInSet.contains(toWaitFor)));
          unlockClusterMap(clusterMap);
          try {
             Thread.sleep(pollTimeMillis);
@@ -154,7 +174,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* Simulate a cluster scale event being triggered from an EventProducer */
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId));
       /* Wait for VHM to respond, having invoked the ScaleStrategy */
-      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 1000));
+      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
       
       assertEquals(clusterId, tcso.getClusterId());
       assertNotNull(tcso.getContext());
@@ -269,7 +289,40 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertNotNull(waitResult3._testFinished);
       assertEquals(routeKey3, waitResult3._routeKeyReported);
    }
-   
+
+   @Test
+   /* Ensure that the same cluster cannot be concurrently scaled */
+   public void negativeTestConcurrentSameCluster() {
+      int numClusters = 3;
+      populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
+      assertTrue(waitForTargetClusterCount(3, 1000));
+
+      int delayMillis = 3000;
+      String clusterId = deriveClusterIdFromClusterName(_clusterNames.iterator().next());
+      TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation(delayMillis);
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
+
+      try {
+         _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId));
+         Thread.sleep(1000);
+         _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId));
+         Thread.sleep(1000);
+         _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId));
+      } catch (InterruptedException e) {
+         assertTrue("Unexpected interruptedException", false);
+      }
+
+      /* Expectation here is that 1st event will trigger a scale. The second one arrives and third one arrives and are both queued back up */
+      /* Then, the second and third ones are processed together in a single invocation */
+      
+      /* This call should time out - there should only be one that's been processed so far... */
+      Set<ClusterScaleCompletionEvent> results1 = waitForClusterScaleCompletionEvents(clusterId, 2, 4000);
+      assertEquals(1, results1.size());
+
+      /* The two extra events should have been picked up and should result in a second consolidated invocation. This should not time out. */
+      Set<ClusterScaleCompletionEvent> results2 = waitForClusterScaleCompletionEvents(clusterId, 2, 4000);
+      assertEquals(2, results2.size());
+   }
 
    @Override
    public void registerEventConsumer(EventConsumer eventConsumer) {

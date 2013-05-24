@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -282,10 +283,15 @@ public class VHM implements EventConsumer {
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
-            Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, clusterScaleEvents.get(clusterId));
+            Set<ClusterScaleEvent> unconsolidatedEvents = clusterScaleEvents.get(clusterId);
+            Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
                if (scaleStrategy != null) {
-                  _executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents);
+                  if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
+                     /* If we couldn't schedule handling of the events, put them back on the queue in their un-consolidated form */
+                     _log.info("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
+                     placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+                  }
                } else {
                   _log.severe("No scale strategy associated with cluster "+clusterId);
                }
@@ -303,6 +309,7 @@ public class VHM implements EventConsumer {
                while (_started) {
                   Set<NotificationEvent> events = pollForEvents();
                   handleEvents(events);
+                  Thread.sleep(500);
                }
             } catch (Throwable e) {
                _log.warning("VHM stopping due to exception "+e);

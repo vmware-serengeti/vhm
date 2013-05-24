@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
@@ -21,9 +22,14 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 
 public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
+   
+   private class ClusterTaskContext {
+      Future<ClusterScaleCompletionEvent> _completionEventPending;
+      ScaleStrategyContext _scaleStrategyContext;
+   }
+   
    private ExecutorService _threadPool;
-   private Map<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>> _runningTasks;
-   private Map<String, ScaleStrategyContext> _contextMap;
+   private Map<String, ClusterTaskContext> _clusterTaskContexts;
    private static int _threadCounter = 0;
    private EventConsumer _consumer;
    private Thread _mainThread;
@@ -38,35 +44,45 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
             return new Thread(r, "Cluster_Thread_"+(_threadCounter++));
          }
       });
-      _runningTasks = new HashMap<Set<ClusterScaleEvent>, Future<ClusterScaleCompletionEvent>>();
+      _clusterTaskContexts = new HashMap<String, ClusterTaskContext>();
+   }
+
+   /* ClusterTaskContext represents the state of a running task on a cluster */
+   private ClusterTaskContext getClusterTaskContext(String clusterId, Class<? extends ScaleStrategyContext> type) throws Exception {
+      synchronized(_clusterTaskContexts) {
+         ClusterTaskContext result = _clusterTaskContexts.get(clusterId);
+         if (result == null) {
+            result = new ClusterTaskContext();
+            if (type != null) {
+               result._scaleStrategyContext = type.newInstance();
+            }
+            _clusterTaskContexts.put(clusterId, result);
+         }
+         return result;
+      }
    }
 
    @Override
-   public void handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
-      ScaleStrategyContext context = getContextForCluster(clusterId, scaleStrategy.getStrategyContextType());
-      Future<ClusterScaleCompletionEvent> task = _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, context));
-      synchronized(_runningTasks) {
-         _runningTasks.put(events, task);
-      }
-   }
-
-   private ScaleStrategyContext getContextForCluster(String clusterId, Class<? extends ScaleStrategyContext> type) {
-      if (type == null) {
-         return null;
-      }
-      if (_contextMap == null) {
-         _contextMap = new HashMap<String, ScaleStrategyContext>();
-      }
-      ScaleStrategyContext context = _contextMap.get(clusterId);
-      if (context == null) {
+   /* This is only ever invoked by the VHM main thread */
+   /* Returns true if the events are being handled, false if this is not possible */
+   public boolean handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events) {
+      synchronized(_clusterTaskContexts) {
+         ClusterTaskContext ctc = null;
+         boolean result = false;
          try {
-            context = type.newInstance();
+            ctc = getClusterTaskContext(clusterId, scaleStrategy.getStrategyContextType());
          } catch (Exception e) {
-            _log.severe("Cannot instantiate ScaleStrategyContext: "+e.getMessage());
+            _log.log(Level.SEVERE, "Unexpected exception initializing ClusterTaskContext", e);
          }
+         if (ctc._completionEventPending != null) {
+            _log.info("Cluster scale event already being handled for cluster <%C"+clusterId);
+         } else {
+            ctc._completionEventPending = 
+                  _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, ctc._scaleStrategyContext));
+            result = true;
+         }
+         return result;
       }
-      _contextMap.put(clusterId, context);
-      return context;
    }
 
    @Override
@@ -80,26 +96,28 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
-            List<Set<ClusterScaleEvent>> toRemove = new ArrayList<Set<ClusterScaleEvent>>();
             List<ClusterScaleCompletionEvent> completedTasks = new ArrayList<ClusterScaleCompletionEvent>();
-            synchronized(_runningTasks) {
+            synchronized(_clusterTaskContexts) {
                while (_started) {
-                  for (Set<ClusterScaleEvent> key : _runningTasks.keySet()) {
-                     Future<ClusterScaleCompletionEvent> task = _runningTasks.get(key);
-                     if (task.isDone()) {
-                        try {
-                           ClusterScaleCompletionEvent completionEvent = task.get();
-                           if (completionEvent != null) {
-                              _log.info("Found completed task for cluster <%C"+completionEvent.getClusterId());
-                              completedTasks.add(completionEvent);
+                  for (String clusterId : _clusterTaskContexts.keySet()) {
+                     ClusterTaskContext ctc = _clusterTaskContexts.get(clusterId);
+                     if (ctc._completionEventPending != null) {
+                        Future<ClusterScaleCompletionEvent> task = ctc._completionEventPending;
+                        if (task.isDone()) {
+                           try {
+                              ClusterScaleCompletionEvent completionEvent = task.get();
+                              if (completionEvent != null) {
+                                 _log.info("Found completed task for cluster <%C"+completionEvent.getClusterId());
+                                 completedTasks.add(completionEvent);
+                              }
+                           } catch (InterruptedException e) {
+                              _log.warning("Cluster thread interrupted");
+                           } catch (ExecutionException e) {
+                              _log.warning("ExecutionException in cluster thread: "+e.getMessage());
+                              e.printStackTrace();
                            }
-                        } catch (InterruptedException e) {
-                           _log.warning("Cluster thread interrupted");
-                        } catch (ExecutionException e) {
-                           _log.warning("ExecutionException in cluster thread: "+e.getMessage());
-                           e.printStackTrace();
+                           ctc._completionEventPending = null;
                         }
-                        toRemove.add(key);
                      }
                   }
                   /* Add the completed tasks in one block, ensuring a single ClusterMap update */
@@ -107,14 +125,8 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                      _consumer.placeEventCollectionOnQueue(completedTasks);
                      completedTasks.clear();
                   }
-                  if (toRemove.size() > 0) {
-                     for (Set<ClusterScaleEvent> key : toRemove) {
-                        _runningTasks.remove(key);
-                     }
-                     toRemove.clear();
-                  }
                   try {
-                     _runningTasks.wait(1000);
+                     _clusterTaskContexts.wait(500);
                   } catch (InterruptedException e) {}
                }
                _log.info("ThreadPoolExecutionStrategy stopping...");

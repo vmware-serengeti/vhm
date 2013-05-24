@@ -8,6 +8,8 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
    String _clusterId = null;
    String _routeKey = null;
    ChannelReporter _reporter = null;
+   private static int cntr = 0;
+   private int _id = ++cntr;
 
    public TrivialClusterScaleEvent(String vmId, String hostId, String clusterId, String routeKey, ChannelReporter reporter) {
       _vmId = vmId;
@@ -45,5 +47,9 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
          _reporter.reportBack(_routeKey);
       }
    }
-
+   
+   @Override
+   public String toString() {
+      return "TrivialClusterScaleEvent"+_id;
+   }
 }
