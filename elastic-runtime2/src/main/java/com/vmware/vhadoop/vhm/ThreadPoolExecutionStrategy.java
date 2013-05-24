@@ -24,6 +24,7 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
    
    private class ClusterTaskContext {
+      ScaleStrategy _scaleStrategy;
       Future<ClusterScaleCompletionEvent> _completionEventPending;
       ScaleStrategyContext _scaleStrategyContext;
    }
@@ -46,17 +47,26 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       });
       _clusterTaskContexts = new HashMap<String, ClusterTaskContext>();
    }
+   
+   private void setScaleStrategyAndContext(ScaleStrategy scaleStrategy, ClusterTaskContext toSet) throws Exception {
+      Class<? extends ScaleStrategyContext> type = scaleStrategy.getStrategyContextType();
+      if (type != null) {
+         toSet._scaleStrategyContext = type.newInstance();
+      }
+      toSet._scaleStrategy = scaleStrategy;
+   }
 
    /* ClusterTaskContext represents the state of a running task on a cluster */
-   private ClusterTaskContext getClusterTaskContext(String clusterId, Class<? extends ScaleStrategyContext> type) throws Exception {
+   private ClusterTaskContext getClusterTaskContext(String clusterId, ScaleStrategy scaleStrategy) throws Exception {
       synchronized(_clusterTaskContexts) {
          ClusterTaskContext result = _clusterTaskContexts.get(clusterId);
          if (result == null) {
             result = new ClusterTaskContext();
-            if (type != null) {
-               result._scaleStrategyContext = type.newInstance();
-            }
+            setScaleStrategyAndContext(scaleStrategy, result);
             _clusterTaskContexts.put(clusterId, result);
+            /* If we're switching strategy, we need to reset the context */
+         } else if (scaleStrategy != result._scaleStrategy) {
+            setScaleStrategyAndContext(scaleStrategy, result);
          }
          return result;
       }
@@ -70,7 +80,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
          ClusterTaskContext ctc = null;
          boolean result = false;
          try {
-            ctc = getClusterTaskContext(clusterId, scaleStrategy.getStrategyContextType());
+            ctc = getClusterTaskContext(clusterId, scaleStrategy);
          } catch (Exception e) {
             _log.log(Level.SEVERE, "Unexpected exception initializing ClusterTaskContext", e);
          }
