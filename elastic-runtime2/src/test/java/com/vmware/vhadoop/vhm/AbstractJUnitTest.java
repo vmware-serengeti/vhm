@@ -42,7 +42,7 @@ public abstract class AbstractJUnitTest {
    }
    
    VMEventData createEventData(String clusterName, String vmName, boolean isMaster, 
-         Boolean powerState, String hostName, String masterVmName,
+         boolean powerState, String hostName, String masterVmName,
          boolean autoCluster, Integer minClusterInstances) {
       VMEventData result = new VMEventData();
       result._dnsName = getDnsNameFromVmName(vmName);
@@ -96,8 +96,7 @@ public abstract class AbstractJUnitTest {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
          Integer minInstances = (i==0) ? null : i;
-         /* Default automation value is true, so that if it's false, we can assert that VHM defaults to the real ManualScaleStrategy */
-         populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, true, minInstances);
+         populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, false, minInstances);
       }
    }
 
@@ -106,8 +105,7 @@ public abstract class AbstractJUnitTest {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
          Integer minInstances = (i==0) ? (null) : i;
-         /* Default automation value is true, so that if it's false, we can assert that VHM defaults to the real ManualScaleStrategy */
-         populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, true, minInstances);
+         populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, false, minInstances);
       }
    }
 
@@ -124,11 +122,7 @@ public abstract class AbstractJUnitTest {
    }
    
    String getMasterVmIdForCluster(String clusterName) {
-      return getVmIdFromVmName(getMasterVmNameForCluster(clusterName));
-   }
-
-   String getMasterVmNameForCluster(String clusterName) {
-      return clusterName+"_"+VM_NAME_PREFIX+0;
+      return getVmIdFromVmName(clusterName+"_"+VM_NAME_PREFIX+0);
    }
 
    String deriveClusterIdFromClusterName(String clusterName) {

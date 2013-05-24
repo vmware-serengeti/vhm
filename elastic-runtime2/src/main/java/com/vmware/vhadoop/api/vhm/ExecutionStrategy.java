@@ -10,6 +10,4 @@ public interface ExecutionStrategy {
 
    boolean handleClusterScaleEvents(String clusterId, ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> events);
 
-   boolean isClusterScaleInProgress(String clusterId);
-
 }

@@ -1,7 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -28,7 +27,6 @@ import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.AbstractNotificationEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
-import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHM implements EventConsumer {
    private Set<EventProducer> _eventProducers;
@@ -258,18 +256,6 @@ public class VHM implements EventConsumer {
       return scaleEventsForCluster;
    }
 
-   private SerengetiLimitInstruction pendingBlockingSwitchToManual(Set<ClusterScaleEvent> consolidatedEvents) {
-      for (ClusterScaleEvent clusterScaleEvent : consolidatedEvents) {
-         if (clusterScaleEvent instanceof SerengetiLimitInstruction) {
-            SerengetiLimitInstruction returnVal = (SerengetiLimitInstruction)clusterScaleEvent;
-            if (returnVal.getToSize() == ManualScaleStrategy.TARGET_SIZE_SWITCH_TO_MANUAL) {
-               return returnVal;
-            }
-         }
-      }
-      return null;
-   }
-
    private void handleEvents(Set<NotificationEvent> events) {
       final Set<ClusterStateChangeEvent> clusterStateChangeEvents = getClusterStateChangeEvents(events);
       final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
@@ -301,19 +287,7 @@ public class VHM implements EventConsumer {
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
                if (scaleStrategy != null) {
-                  /* If there is an instruction from Serengeti to switch to manual, strip out that one event and dump the others */
-                  SerengetiLimitInstruction switchToManualEvent = pendingBlockingSwitchToManual(consolidatedEvents);
-                  if (switchToManualEvent != null) {
-                     /* If Serengeti has made the necessary change to extraInfo AND any other scaling has completed, inform completion */
-                     boolean extraInfoChanged = _clusterMap.getScaleStrategyKey(clusterId).equals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY);
-                     boolean scalingCompleted = !_executionStrategy.isClusterScaleInProgress(clusterId);
-                     if (extraInfoChanged && scalingCompleted) {
-                        switchToManualEvent.reportCompletion();
-                     } else {
-                        /* Continue to block Serengeti CLI by putting the event back on the queue */
-                        placeEventCollectionOnQueue(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
-                     }
-                  } else if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
+                  if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
                      /* If we couldn't schedule handling of the events, put them back on the queue in their un-consolidated form */
                      _log.info("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
                      placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));

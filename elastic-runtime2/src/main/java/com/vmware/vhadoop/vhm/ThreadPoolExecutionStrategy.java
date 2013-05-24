@@ -152,16 +152,4 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       _mainThread.interrupt();
    }
 
-   @Override
-   public boolean isClusterScaleInProgress(String clusterId) {
-      synchronized(_clusterTaskContexts) {
-         ClusterTaskContext ctc = _clusterTaskContexts.get(clusterId);
-         /* It's ok for there to be no ClusterTaskContext yet as they are created lazily */
-         if (ctc != null) {
-            return ctc._completionEventPending != null;
-         }
-      }
-      return false;
-   }
-
 }
