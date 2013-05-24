@@ -3,25 +3,33 @@ package com.vmware.vhadoop.vhm;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
-import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 public class TrivialScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
    String _testKey;
    Map<String, ClusterScaleOperation> _clusterScaleOperations;
    TrivialClusterScaleOperation _trivialClusterScaleOperation;
-   
+ 
+   private static final Logger _log = Logger.getLogger(TrivialScaleStrategy.class.getName());
+
    public class TrivialClusterScaleOperation extends ClusterScaleOperation {
       String _clusterId;
       Set<ClusterScaleEvent> _events;
       ScaleStrategyContext _context;
+      long _scalePauseMillis = 0;
       
       public TrivialClusterScaleOperation() {
+         initialize(TrivialScaleStrategy.this);
+      }
+      
+      public TrivialClusterScaleOperation(long pauseDuringScaleMillis) {
+         _scalePauseMillis = pauseDuringScaleMillis;
          initialize(TrivialScaleStrategy.this);
       }
       
@@ -51,6 +59,11 @@ public class TrivialScaleStrategy extends AbstractClusterMapReader implements Sc
 
       @Override
       public ClusterScaleCompletionEvent localCall() throws Exception {
+         _log.info("About to scale cluster "+_clusterId);
+         Thread.sleep(_scalePauseMillis);
+         _log.info("Done scaling cluster "+_clusterId);
+         TrivialClusterScaleEvent tcse = (TrivialClusterScaleEvent)_events.iterator().next();
+         tcse.ReportBack();
          return new ClusterScaleDecision(_clusterId);
       }
    }

@@ -1,7 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Iterator;
 import java.util.Map;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,6 +16,7 @@ import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.vhm.TrivialClusterScaleEvent.ChannelReporter;
 import com.vmware.vhadoop.vhm.TrivialScaleStrategy.TrivialClusterScaleOperation;
 
 public class VHMIntegrationTest extends AbstractJUnitTest implements EventProducer, ClusterMapReader {
@@ -24,7 +25,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    ExtraInfoToClusterMapper _strategyMapper;
    ClusterStateChangeListenerImpl _clusterStateChangeListener;
    TrivialScaleStrategy _trivialScaleStrategy;
-   
+
    public static final String STRATEGY_KEY = "StrategyKey";
    
    /* EventProducer fields */
@@ -78,6 +79,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
          e.printStackTrace();
       }
       _vhm.stop(true);
+      MultipleReaderSingleWriterClusterMapAccess.destroy();
    }
    
    /* After updating VHM via the CSCL, wait for the updates to appear in ClusterMap */
@@ -101,7 +103,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       return true;
     }
 
-   private boolean waitForClusterScaleCompletionEvent(String clusterId, int timeoutMillis) {
+   private ClusterScaleCompletionEvent waitForClusterScaleCompletionEvent(String clusterId, int timeoutMillis) {
       ClusterScaleCompletionEvent toWaitFor = null;
       long pollTimeMillis = 10;
       long maxIterations = timeoutMillis / pollTimeMillis;
@@ -116,9 +118,9 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
          } catch (InterruptedException e) {
             e.printStackTrace();
          }
-         if (--maxIterations <= 0) return false;
+         if (--maxIterations <= 0) return null;
       }
-      return true;
+      return toWaitFor;
    }
 
    @Test
@@ -150,14 +152,124 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
 
       /* Simulate a cluster scale event being triggered from an EventProducer */
-      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId));
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId));
       /* Wait for VHM to respond, having invoked the ScaleStrategy */
-      assertTrue(waitForClusterScaleCompletionEvent(clusterId, 1000));
+      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 1000));
       
       assertEquals(clusterId, tcso.getClusterId());
       assertNotNull(tcso.getContext());
       assertNotNull(tcso.getThreadLocalCompoundStatus());
    }
+   
+   private class WaitResult {
+      ClusterScaleCompletionEvent _testNotFinished;
+      ClusterScaleCompletionEvent _testFinished;
+      String _routeKeyReported;
+   }
+   
+   @Test
+   /* Two different clusters are scaled concurrently */
+   public void testInvokeConcurrentScaleStrategy() {
+      int numClusters = 3;
+      populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
+      assertTrue(waitForTargetClusterCount(3, 1000));
+      
+      Iterator<String> i = _clusterNames.iterator();
+      final String clusterId1 = deriveClusterIdFromClusterName(i.next());
+      final String clusterId2 = deriveClusterIdFromClusterName(i.next());
+      final String clusterId3 = deriveClusterIdFromClusterName(i.next());
+      
+      final int cluster1delay = 3000;
+      final int cluster2delay = 2000;
+      final int cluster3delay = 1000;
+      
+      final String routeKey1 = "route1";
+      final String routeKey2 = "route2";
+      final String routeKey3 = "route3";
+      
+      /* Create ClusterScaleOperations, which control how a cluster is scaled - each operation gets a different delay to its "scaling" */
+      TrivialClusterScaleOperation tcso1 = _trivialScaleStrategy.new TrivialClusterScaleOperation(cluster1delay);
+      TrivialClusterScaleOperation tcso2 = _trivialScaleStrategy.new TrivialClusterScaleOperation(cluster2delay);
+      TrivialClusterScaleOperation tcso3 = _trivialScaleStrategy.new TrivialClusterScaleOperation(cluster3delay);
+
+      /* Add the test ClusterScaleOperation to the test scale strategy, which is a singleton */
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId1, tcso1);
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId2, tcso2);
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId3, tcso3);
+
+      final WaitResult waitResult1 = new WaitResult();
+      final WaitResult waitResult2 = new WaitResult();
+      final WaitResult waitResult3 = new WaitResult();
+
+      /* Each event has a channel it can report completion back on, along with a routeKey */
+      ChannelReporter reporter1 = new ChannelReporter() {
+         @Override
+         public void reportBack(String routeKey) {
+            waitResult1._routeKeyReported = routeKey;
+         }
+      };
+      ChannelReporter reporter2 = new ChannelReporter() {
+         @Override
+         public void reportBack(String routeKey) {
+            waitResult2._routeKeyReported = routeKey;
+         }
+      };
+      ChannelReporter reporter3 = new ChannelReporter() {
+         @Override
+         public void reportBack(String routeKey) {
+            waitResult3._routeKeyReported = routeKey;
+         }
+      };
+
+      /* Simulate cluster scale events being triggered from an EventProducer */
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId1, routeKey1, reporter1));
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId2, routeKey2, reporter2));
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId3, routeKey3, reporter3));
+
+      /* Three threads concurrently wait for the response from the 3 clusters and check that the response is neither early nor significantly late */
+      new Thread(new Runnable(){
+         @Override
+         public void run() {
+            waitResult1._testNotFinished = waitForClusterScaleCompletionEvent(clusterId1, cluster1delay-500);
+            waitResult1._testFinished = waitForClusterScaleCompletionEvent(clusterId1, 1500);
+      }}).start();
+
+      new Thread(new Runnable(){
+         @Override
+         public void run() {
+            waitResult2._testNotFinished = waitForClusterScaleCompletionEvent(clusterId2, cluster2delay-500);
+            waitResult2._testFinished = waitForClusterScaleCompletionEvent(clusterId2, 1500);
+      }}).start();
+
+      new Thread(new Runnable(){
+         @Override
+         public void run() {
+            waitResult3._testNotFinished = waitForClusterScaleCompletionEvent(clusterId3, cluster3delay-500);
+            waitResult3._testFinished = waitForClusterScaleCompletionEvent(clusterId3, 1500);
+      }}).start();
+      
+      /* Wait for the above threads to return the results */
+      try {
+         Thread.sleep(cluster1delay + 2000);
+      } catch (InterruptedException e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+
+      /* Check that the operations completed concurrently and blocked at the correct times */
+      assertNull(waitResult1._testNotFinished);
+      assertNotNull(waitResult1._testFinished);
+      assertEquals(routeKey1, waitResult1._routeKeyReported);
+      
+      assertNull(waitResult2._testNotFinished);
+      assertNotNull(waitResult2._testFinished);
+      assertEquals(routeKey2, waitResult2._routeKeyReported);
+
+      assertNull(waitResult3._testNotFinished);
+      assertNotNull(waitResult3._testFinished);
+      assertEquals(routeKey3, waitResult3._routeKeyReported);
+   }
+   
 
    @Override
    public void registerEventConsumer(EventConsumer eventConsumer) {

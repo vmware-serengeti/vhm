@@ -9,5 +9,4 @@ public interface EventProducer {
    public void start();
 
    public void stop();
-   
 }

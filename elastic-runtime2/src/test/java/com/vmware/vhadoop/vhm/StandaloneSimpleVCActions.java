@@ -13,6 +13,7 @@ import com.vmware.vim.vmomi.client.Client;
 public class StandaloneSimpleVCActions implements VCActions {
    Map<String, Object[]> _latestArgs = new HashMap<String, Object[]>();
    final PropertyChangeValues _propertyChangeValues = new PropertyChangeValues();
+   boolean _isReady = false;
 
    class PropertyChangeValues {
       String _returnVal;
@@ -31,6 +32,7 @@ public class StandaloneSimpleVCActions implements VCActions {
          List<VMEventData> vmDataList) throws InterruptedException {
       _latestArgs.put("waitForPropertyChange", new Object[]{folderName, version, vmDataList});
       synchronized(_propertyChangeValues) {
+         _isReady = true;
          _propertyChangeValues.notify();
          _propertyChangeValues.wait();
       }
@@ -60,6 +62,14 @@ public class StandaloneSimpleVCActions implements VCActions {
    }
 
    public void fakeWaitForUpdatesData(String returnVal, VMEventData eventToReturn) {
+      /* It's essential that we don't fake any data until a thread is actually waiting for the update */
+      while (!_isReady) {
+         try {
+            Thread.sleep(10);
+         } catch (InterruptedException e) {
+            e.printStackTrace();
+         }
+      }
       synchronized(_propertyChangeValues) {
          _propertyChangeValues._returnVal = returnVal;
          _propertyChangeValues._eventToReturn = eventToReturn;

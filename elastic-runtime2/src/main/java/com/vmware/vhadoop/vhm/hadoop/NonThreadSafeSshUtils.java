@@ -59,7 +59,7 @@ public class NonThreadSafeSshUtils implements SshUtils
             _jsch.addIdentity(prvkeyFile); // Setup SSH identity using private key file
          } else {
             session.setPassword(credentials.getSshPassword());
-            UserInfo ui = new SSHUserInfo(credentials.getSshPassword());
+            UserInfo ui = new SSHUserInfo(credentials.getSshPassword(), logger);
             session.setUserInfo(ui);
          }
 
@@ -269,9 +269,11 @@ public class NonThreadSafeSshUtils implements SshUtils
    private class SSHUserInfo implements UserInfo
    {
       String _password;
-
-      public SSHUserInfo(String password) {
+      Logger _log;
+      
+      public SSHUserInfo(String password, Logger log) {
          _password = password;
+         _log = log;
       }
 
       @Override
@@ -301,7 +303,7 @@ public class NonThreadSafeSshUtils implements SshUtils
 
       @Override
       public void showMessage(String arg0) {
-         System.out.println(arg0);
+         _log.info(arg0);
       }
    }
 }

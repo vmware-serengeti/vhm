@@ -30,6 +30,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       if (_messageCallback != null) {
          _log.info("Reporting progress "+percentage+"%");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(false, false, percentage, 0, null, message);
+         /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
       }
    }
@@ -38,6 +39,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       if (_messageCallback != null) {
          _log.info("Reporting error "+message);
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
+         /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
       }
    }
@@ -46,6 +48,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       if (_messageCallback != null) {
          _log.info("Reporting completion");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
+         /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
       }
    }

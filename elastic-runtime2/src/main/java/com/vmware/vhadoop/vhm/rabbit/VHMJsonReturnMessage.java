@@ -26,7 +26,6 @@ public class VHMJsonReturnMessage {
    int error_code;
    String error_msg;
    String progress_msg;
-
    
    public VHMJsonReturnMessage(
           Boolean param_finished,
