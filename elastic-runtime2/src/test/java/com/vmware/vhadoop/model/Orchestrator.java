@@ -135,16 +135,17 @@ public class Orchestrator extends ResourceContainer
     * @return
     */
    public List<VM> getUpdatedVMs() {
+      List<VM> vms = null;
       synchronized (updatedVMs) {
          try {
             while (updatedVMs.isEmpty()) {
                   updatedVMs.wait();
             }
+            vms = new LinkedList<VM>(updatedVMs);
+            updatedVMs.clear();
          } catch (InterruptedException e) {}
       }
 
-      List<VM> vms = new LinkedList<VM>(updatedVMs);
-      updatedVMs.clear();
       return vms;
    }
 
