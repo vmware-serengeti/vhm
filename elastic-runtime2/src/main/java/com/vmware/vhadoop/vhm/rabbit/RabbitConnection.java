@@ -34,10 +34,14 @@ public class RabbitConnection {
       public String getRouteKeyCommand();
       public String getRouteKeyStatus();
    }
-
+   
    private ConnectionFactory _connectionFactory;
    private RabbitCredentials _credentials;
    private Channel _channel;
+   
+   /* For testing only */
+   protected RabbitConnection() {
+   }
 
    public RabbitConnection(RabbitCredentials credentials) {
       _credentials = credentials;
@@ -65,7 +69,7 @@ public class RabbitConnection {
       }
    }
    
-   void sendMessage(String routeKey, byte[] data) {
+   protected void sendMessage(String routeKey, byte[] data) {
       try {
          if (_channel != null) {
             _channel.basicPublish(_credentials.getExchangeName(), routeKey, null, data);
@@ -75,7 +79,7 @@ public class RabbitConnection {
       }
    }
    
-   void sendMessage(byte[] data) {
+   protected void sendMessage(byte[] data) {
       sendMessage(_credentials.getRouteKeyStatus(), data);
    }
    

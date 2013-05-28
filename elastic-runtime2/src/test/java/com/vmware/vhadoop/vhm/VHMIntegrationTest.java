@@ -17,6 +17,11 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.TrivialClusterScaleEvent.ChannelReporter;
 import com.vmware.vhadoop.vhm.TrivialScaleStrategy.TrivialClusterScaleOperation;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor.RabbitConnectionCallback;
+import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
+import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
+import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHMIntegrationTest extends AbstractJUnitTest implements EventProducer, ClusterMapReader {
    VHM _vhm;
@@ -45,6 +50,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    @Override
    void processNewEventData(VMEventData eventData) {
       _vcActions.fakeWaitForUpdatesData("", eventData);
+      _vcActions.addVMToFolder(eventData._serengetiFolder, eventData._vmMoRef);
    }
    
    @Before
@@ -54,7 +60,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(VMEventData vmd) {
-            return STRATEGY_KEY;
+            return vmd._masterVmData._enableAutomation ? STRATEGY_KEY : ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
@@ -62,8 +68,12 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
             return null;
          }
       };
+      
+      /* TrivialScaleStrategy is the default used as is picked if vmd._masterVmData._enableAutomation is true (see above) */
       _trivialScaleStrategy = new TrivialScaleStrategy(STRATEGY_KEY);
-      _vhm = new VHM(_vcActions, new ScaleStrategy[]{_trivialScaleStrategy}, _strategyMapper, new ThreadLocalCompoundStatus());
+      ManualScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(_vcActions));
+      _vhm = new VHM(_vcActions, new ScaleStrategy[]{_trivialScaleStrategy, manualScaleStrategy}, 
+            _strategyMapper, new ThreadLocalCompoundStatus());
       _vhm.registerEventProducer(_clusterStateChangeListener);
       _vhm.registerEventProducer(this);
       _vhm.start();
@@ -322,6 +332,132 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* The two extra events should have been picked up and should result in a second consolidated invocation. This should not time out. */
       Set<ClusterScaleCompletionEvent> results2 = waitForClusterScaleCompletionEvents(clusterId, 2, 4000);
       assertEquals(2, results2.size());
+   }
+   
+   private class ReportResult {
+      String _routeKey;
+      byte[] _data;
+   }
+   
+   /* Checks what happens if Serengeti sends a blocking call to put a cluster into manual mode, when the cluster is not currently scaling */
+   @Test
+   public void testSwitchToManualFromOtherNotScaling() {
+      int numClusters = 3;
+      populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
+      assertTrue(waitForTargetClusterCount(3, 1000));
+      
+      Iterator<String> i = _clusterNames.iterator();
+      String clusterName1 = i.next();
+      String clusterId = deriveClusterIdFromClusterName(clusterName1);
+      String routeKey1 = "routeKey1";
+      
+      /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
+      TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation();
+      
+      /* Add the test ClusterScaleOperation to the test scale strategy */
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
+
+      final ReportResult result = new ReportResult();
+      
+      /* Set up the Rabbit Infrastructure simulating the Serengeti Queue */
+      TestRabbitConnection testConnection = new TestRabbitConnection(new TestRabbitConnection.TestChannel() {
+         public void basicPublish(String routeKey, byte[] data) {
+            result._routeKey = routeKey;
+            result._data = data;
+         }
+      });
+      
+      /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
+      SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
+            getFolderNameForClusterName(clusterName1), 
+            ManualScaleStrategy.TARGET_SIZE_SWITCH_TO_MANUAL, 
+            new RabbitConnectionCallback(routeKey1, testConnection));
+
+      /* Check that the existing scale strategy is not manual */
+      ClusterMap clusterMap = getAndReadLockClusterMap();
+      assertEquals(_trivialScaleStrategy._testKey, clusterMap.getScaleStrategyKey(clusterId));
+      unlockClusterMap(clusterMap);
+
+      /* Send the manual event on the message queue */
+      _eventConsumer.placeEventOnQueue(limitEvent1);
+      
+      /* Wait for a period to allow the Serengeti event to be picked up */
+      try {
+         Thread.sleep(2000);
+
+         /* The scale strategy switch should not be processed until CSCL has picked up the extraInfo change */
+         assertNull(result._data);
+
+         /* Event should be ignored - wait should time out */
+         _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, 
+               deriveClusterIdFromClusterName(clusterName1), routeKey1, null));
+         assertNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
+         
+         /* Create a simulated VC event, changing extraInfo to the manual strategy */
+         VMEventData switchToManualEvent1 = createEventData(clusterName1, 
+               getMasterVmNameForCluster(clusterName1), true, null, null, null, false, null);
+         processNewEventData(switchToManualEvent1);
+
+         /* Give it some time to be processed and then check it reported back */
+         Thread.sleep(2000);
+
+         assertNotNull(result._data);
+         assertEquals(result._routeKey, routeKey1);
+      } catch (InterruptedException e) {
+         e.printStackTrace();
+      }
+      
+      /* Do a second test where the CSCL update occurs before the manual limit event arrives */
+      result._data = null;
+      String clusterName2 = i.next();
+      String routeKey2 = "routeKey2";
+      
+      /* Create a simulated VC event, changing extraInfo to the manual strategy */
+      VMEventData switchToManualEvent2 = createEventData(clusterName2, 
+            getMasterVmNameForCluster(clusterName2), true, null, null, null, false, null);
+      processNewEventData(switchToManualEvent2);
+      
+      /* Verify this scale event should be ignored, since the manual scale strategy 
+         should not respond to these events - wait should time out */
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, 
+            deriveClusterIdFromClusterName(clusterName2), routeKey2, null));
+      assertNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
+
+      /* Verify nothing yet reported on the Serengeti queue - blocking behavior */
+      assertNull(result._data);
+     
+      SerengetiLimitInstruction limitEvent2 = new SerengetiLimitInstruction(
+            getFolderNameForClusterName(clusterName2), 
+            ManualScaleStrategy.TARGET_SIZE_SWITCH_TO_MANUAL, 
+            new RabbitConnectionCallback(routeKey2, testConnection));
+
+      /* Verify that the scale strategy is not yet manual */
+      clusterMap = getAndReadLockClusterMap();
+      assertEquals(_trivialScaleStrategy._testKey, clusterMap.getScaleStrategyKey(clusterId));
+      unlockClusterMap(clusterMap);
+      
+      /* Serengeti limit event arrives */
+      _eventConsumer.placeEventOnQueue(limitEvent2);
+
+      try {
+         /* Give it some time to be processed and then check it reported back */
+         Thread.sleep(2000);
+         assertNotNull(result._data);
+         assertEquals(result._routeKey, routeKey2);
+      } catch (InterruptedException e) {
+         e.printStackTrace();
+      }
+      
+   }
+
+//   @Test
+   public void testSwitchToManualFromOtherScaling() {
+      
+   }
+
+//   @Test
+   public void testSwitchToManualFromOther() {
+      
    }
 
    @Override

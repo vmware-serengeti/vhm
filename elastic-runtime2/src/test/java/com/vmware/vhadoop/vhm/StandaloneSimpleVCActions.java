@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ public class StandaloneSimpleVCActions implements VCActions {
    Map<String, Object[]> _latestArgs = new HashMap<String, Object[]>();
    final PropertyChangeValues _propertyChangeValues = new PropertyChangeValues();
    boolean _isReady = false;
+   Map<String, List<String>> _vmsInFolderMap = new HashMap<String, List<String>>();
 
    class PropertyChangeValues {
       String _returnVal;
@@ -58,7 +60,16 @@ public class StandaloneSimpleVCActions implements VCActions {
    @Override
    public List<String> listVMsInFolder(String folderName) {
       _latestArgs.put("listVMsInFolder", new Object[]{folderName});
-      return null;
+      return _vmsInFolderMap.get(folderName);
+   }
+   
+   protected void addVMToFolder(String folderName, String vmId) {
+      List<String> vms = _vmsInFolderMap.get(folderName);
+      if (vms == null) {
+         vms = new ArrayList<String>();
+         _vmsInFolderMap.put(folderName, vms);
+      }
+      vms.add(vmId);
    }
 
    public void fakeWaitForUpdatesData(String returnVal, VMEventData eventToReturn) {

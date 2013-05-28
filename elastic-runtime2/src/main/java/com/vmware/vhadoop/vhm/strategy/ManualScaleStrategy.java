@@ -25,6 +25,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    
    public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
    public static final int TARGET_SIZE_UNLIMITED = -1;
+   public static final int TARGET_SIZE_SWITCH_TO_MANUAL = -2;
    
    public ManualScaleStrategy(VMChooser vmChooser, EDPolicy edPolicy) {
       _vmChooser = vmChooser;
