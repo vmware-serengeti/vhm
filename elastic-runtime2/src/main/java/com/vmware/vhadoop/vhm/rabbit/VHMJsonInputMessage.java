@@ -19,20 +19,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.gson.Gson;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 public class VHMJsonInputMessage {
    private static final Logger _log = Logger.getLogger(VHMJsonInputMessage.class.getName());
+   public static final int TARGET_SIZE_UNLIMITED = -1;
+   
 
    private byte[] _data;
    
    // TODO:  move to separate file?
    private class VHMCommandMessage {
-      int version;          // currently at version 1 
+      int version;          // currently at version 3 
+      String action;        // one of ("SetTarget", "Unlimit", "WaitForManual")
       String cluster_name;  // name of VM folder
-      String jobtracker;    // IP address of jobtracker
       int instance_num;     // number of desired instances (-1 for unlimit)
-      String[] node_groups; // list of nodegroups (vm folders) on which to apply the setting
-      String serengeti_instance; // VM folder for the instance of serengeti that sent the command
       String route_key;     // routing key to use for progress and completion update messages 
    }
 
@@ -45,15 +46,32 @@ public class VHMJsonInputMessage {
 
       try {
          _command = gson.fromJson(jsonString, VHMCommandMessage.class);
-
-         if ((_command.version != 1) && (_command.version != 2)) {
-            _log.log(Level.WARNING, "Unknown version = " + _command.version);
-            _command = new VHMCommandMessage();
+         if (_command.version < 3) {
+            _command.action =  SerengetiLimitInstruction.actionSetTarget;
          }
+         if (_command.instance_num == TARGET_SIZE_UNLIMITED) {
+            _command.action =  SerengetiLimitInstruction.actionUnlimit;
+         }
+
+         if ((_command.version < 1) || (_command.version > 3)) {
+            _log.log(Level.WARNING, "Unknown version = " + _command.version);
+            throw new RuntimeException();
+         }
+         if (!_command.action.equals(SerengetiLimitInstruction.actionSetTarget) &&
+               !_command.action.equals(SerengetiLimitInstruction.actionUnlimit) &&
+               !_command.action.equals(SerengetiLimitInstruction.actionWaitForManual)) {
+            _log.log(Level.WARNING, "Unknown action = " + _command.action);
+            throw new RuntimeException();
+         }
+
       } catch (Exception e) {
          _log.log(Level.WARNING, "Json parse error (" + e.getMessage() + ") for message: " + jsonString);
          _command = new VHMCommandMessage();
       }
+   }
+
+   public String getAction() {
+      return _command.action;
    }
 
    public String getClusterId() {

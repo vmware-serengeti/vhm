@@ -6,18 +6,28 @@ import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor.RabbitConnectionCallback;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
+   public static final String actionSetTarget = "SetTarget";
+   public static final String actionUnlimit = "Unlimit";
+   public static final String actionWaitForManual = "WaitForManual";
+
+   String _action;
    String _clusterFolderName;
    int _toSize;
    RabbitConnectionCallback _messageCallback;
 
    private static final Logger _log = Logger.getLogger(SerengetiLimitInstruction.class.getName());
 
-   public SerengetiLimitInstruction(String clusterFolderName, int toSize, RabbitConnectionCallback messageCallback) {
+   public SerengetiLimitInstruction(String clusterFolderName, String action, int toSize, RabbitConnectionCallback messageCallback) {
+      _action = action;
       _clusterFolderName = clusterFolderName;
       _toSize = toSize;
       _messageCallback = messageCallback;
    }
 
+   public String getAction() {
+      return _action;
+   }
+   
    public String getClusterFolderName() {
       return _clusterFolderName;
    }

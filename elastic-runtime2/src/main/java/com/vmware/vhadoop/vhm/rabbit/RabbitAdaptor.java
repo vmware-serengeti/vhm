@@ -80,7 +80,8 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("Rabbit queue waiting for message");
                   QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                   VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                  ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(), 
+                  ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(),
+                        message.getAction(),
                         message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
                   _eventConsumer.placeEventOnQueue(event);
                   _log.info("New Serengeti limit event placed on queue");

@@ -81,7 +81,8 @@ public class Serengeti extends ResourceContainer
          if (!isAuto() && eventConsumer != null) {
             int min = Integer.valueOf(getExtraInfo().get("vhmInfo.min.computeNodeNum"));
             /* TODO: decide whether we want to support a callback mechanism */
-            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId, min, null));
+            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId,
+                  SerengetiLimitInstruction.actionSetTarget, min, null));
          }
       }
 

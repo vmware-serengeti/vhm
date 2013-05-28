@@ -24,8 +24,6 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    final EDPolicy _enableDisablePolicy;
    
    public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
-   public static final int TARGET_SIZE_UNLIMITED = -1;
-   public static final int TARGET_SIZE_SWITCH_TO_MANUAL = -2;
    
    public ManualScaleStrategy(VMChooser vmChooser, EDPolicy edPolicy) {
       _vmChooser = vmChooser;
@@ -75,7 +73,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   int poweredOffVms = (poweredOffVmList == null) ? 0 : poweredOffVmList.size();
                   Set<String> poweredOnVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
                   int poweredOnVms = (poweredOnVmList == null) ? 0 : poweredOnVmList.size();
-                  if (limitEvent.getToSize() == TARGET_SIZE_UNLIMITED) {
+                  if (limitEvent.getAction().equals(SerengetiLimitInstruction.actionUnlimit)) {
                      targetSize = poweredOnVms + poweredOffVms;
                      delta = poweredOffVms;
                   } else {

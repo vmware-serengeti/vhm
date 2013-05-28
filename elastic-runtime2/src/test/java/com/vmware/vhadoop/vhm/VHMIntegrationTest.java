@@ -370,7 +370,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
       SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
             getFolderNameForClusterName(clusterName1), 
-            ManualScaleStrategy.TARGET_SIZE_SWITCH_TO_MANUAL, 
+            SerengetiLimitInstruction.actionWaitForManual, 0, 
             new RabbitConnectionCallback(routeKey1, testConnection));
 
       /* Check that the existing scale strategy is not manual */
@@ -428,7 +428,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
      
       SerengetiLimitInstruction limitEvent2 = new SerengetiLimitInstruction(
             getFolderNameForClusterName(clusterName2), 
-            ManualScaleStrategy.TARGET_SIZE_SWITCH_TO_MANUAL, 
+            SerengetiLimitInstruction.actionWaitForManual, 0, 
             new RabbitConnectionCallback(routeKey2, testConnection));
 
       /* Verify that the scale strategy is not yet manual */

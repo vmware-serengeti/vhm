@@ -262,7 +262,7 @@ public class VHM implements EventConsumer {
       for (ClusterScaleEvent clusterScaleEvent : consolidatedEvents) {
          if (clusterScaleEvent instanceof SerengetiLimitInstruction) {
             SerengetiLimitInstruction returnVal = (SerengetiLimitInstruction)clusterScaleEvent;
-            if (returnVal.getToSize() == ManualScaleStrategy.TARGET_SIZE_SWITCH_TO_MANUAL) {
+            if (returnVal.getAction().equals(SerengetiLimitInstruction.actionWaitForManual)) {
                return returnVal;
             }
          }
