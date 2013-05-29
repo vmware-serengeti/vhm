@@ -22,7 +22,7 @@ public interface ClusterMap {
       Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId);
 
       /* Allows for the creation of new scale events based on cluster state change */
-      Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId);
+      Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId, boolean isNewCluster);
    }
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);

@@ -54,7 +54,7 @@ public class PopulateClusterMap {
          }
 
          @Override
-         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId) {
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId, boolean isNewCluster) {
             return null;
          }
       };

@@ -175,6 +175,8 @@ public class ClusterMapImpl implements ClusterMap {
             if (vmd._masterVmData._enableAutomation != null) {
                vmInfo._isMaster = true;
                String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd, clusterId);
+               String logVerb = (ci._scaleStrategyKey == null) ? "Setting" : "Switching";
+               _log.info(logVerb+" scale strategy in ClusterMap to "+scaleStrategyKey+" for cluster <%C"+clusterId);
                ci._scaleStrategyKey = scaleStrategyKey;
             }
             if (ci._extraInfo == null) {
@@ -185,13 +187,10 @@ public class ClusterMapImpl implements ClusterMap {
                   ci._extraInfo.putAll(toAdd);
                }
             }
-            /* If this is an update to an existing VM, it may imply the scale strategy should change the size of the cluster
-             * The extraInfoMapper has a chance to define if any implied scale events should be returned for this update */
-            if (!isNewVm) {
-               Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(vmd, clusterId);
-               if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
-                  impliedScaleEventsResultSet.addAll(impliedScaleEvents);
-               }
+            /* isNewVM implies isNewCluster in this context, as only the master VM will get to this point */
+            Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(vmd, clusterId, isNewVm);
+            if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
+               impliedScaleEventsResultSet.addAll(impliedScaleEvents);
             }
             if (vmd._serengetiFolder != null) {
                ci._folderName = vmd._serengetiFolder;

@@ -320,6 +320,7 @@ public class VHM implements EventConsumer {
                      boolean extraInfoChanged = _clusterMap.getScaleStrategyKey(clusterId).equals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY);
                      boolean scalingCompleted = !_executionStrategy.isClusterScaleInProgress(clusterId);
                      if (extraInfoChanged && scalingCompleted) {
+                        _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"C%> is now complete. Reporting back to Serengeti");
                         switchToManualEvent.reportCompletion();
                      } else {
                         /* Continue to block Serengeti CLI by putting the event back on the queue */

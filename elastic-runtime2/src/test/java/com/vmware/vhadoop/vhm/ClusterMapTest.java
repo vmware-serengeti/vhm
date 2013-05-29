@@ -27,6 +27,7 @@ import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
 public class ClusterMapTest extends AbstractJUnitTest {
    ClusterMapImpl _clusterMap;
    static final String EXTRA_INFO_KEY = "extraInfo1";
+   List<Boolean> _isNewClusterResult;
 
    @Override
    void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
@@ -50,6 +51,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
    
    @Before
    public void initialize() {
+      _isNewClusterResult = new ArrayList<Boolean>();
       _clusterMap = new ClusterMapImpl(new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(VMEventData vmd, String clusterId) {
@@ -73,8 +75,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
          }
 
          @Override
-         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId) {
-            if ((vmd._masterVmData != null) && (vmd._masterVmData._minInstances != null)) {
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId, boolean isNewCluster) {
+            _isNewClusterResult.add(isNewCluster);
+            if (!isNewCluster && (vmd._masterVmData != null) && (vmd._masterVmData._minInstances != null)) {
                int minInstances = vmd._masterVmData._minInstances;
                if (minInstances >= 0) {
                   Set<ClusterScaleEvent> newSet = new HashSet<ClusterScaleEvent>();
@@ -410,25 +413,36 @@ public class ClusterMapTest extends AbstractJUnitTest {
    public void testImpliedScaleEvents() {
       String clusterName = CLUSTER_NAME_PREFIX+0;
       
+      /* Create new cluster */
       populateClusterSameHost(clusterName, "DEFAULT_HOST1", 4, false, false, 0, null);
+      assertEquals(1, _isNewClusterResult.size());
+      assertEquals(true, _isNewClusterResult.get(0));
       
-      Integer newData = 3;
+      /* Modify the minInstances value of the cluster extraInfo through VC */
+      Integer newInstances = 3;
       String masterVmName = getMasterVmNameForCluster(clusterName);
       VMEventData eventDataToCreateScaleEvent = createEventData(clusterName, 
-            masterVmName, true, null, null, masterVmName, false, newData);
+            masterVmName, true, null, null, masterVmName, false, newInstances);
+      /* This set will contain any implied events created by the cluster state change */
       Set<ClusterScaleEvent> impliedScaleEventsResultSet = new HashSet<ClusterScaleEvent>();
 
       _clusterMap.handleClusterEvent(new VMUpdatedEvent(eventDataToCreateScaleEvent), impliedScaleEventsResultSet);
-      assertEquals(1, impliedScaleEventsResultSet.size());
+      assertEquals(1, impliedScaleEventsResultSet.size());  /* We should have a new event */
+      assertEquals(2, _isNewClusterResult.size());          
+      assertEquals(false, _isNewClusterResult.get(1));      /* This is not a new cluster, rather an update to an existing cluster */
       
+      /* Validate the contents of the generated event */
       ImpliedScaleEvent impliedScaleEvent = (ImpliedScaleEvent)impliedScaleEventsResultSet.iterator().next();
-      assertEquals(newData, impliedScaleEvent._data);
+      assertEquals(newInstances, impliedScaleEvent._data);
       impliedScaleEventsResultSet.clear();
       
+      /* Create a new cluster map update, but one which our ExtraInfoToClusterMapper has been coded to ignore */
       VMEventData eventDataLessThanZeroEvent = createEventData(clusterName, 
             masterVmName, true, null, null, masterVmName, false, -1);
       _clusterMap.handleClusterEvent(new VMUpdatedEvent(eventDataLessThanZeroEvent), impliedScaleEventsResultSet);
-      assertEquals(0, impliedScaleEventsResultSet.size());
+      assertEquals(0, impliedScaleEventsResultSet.size());    /* Verify that an event was not generated */
+      assertEquals(3, _isNewClusterResult.size());             /* Verify that getImpliedScaleEventsForUpdate was invoked */ 
+      assertEquals(false, _isNewClusterResult.get(2));
    }
    
    @Test
