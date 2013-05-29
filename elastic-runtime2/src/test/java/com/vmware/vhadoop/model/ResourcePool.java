@@ -9,7 +9,7 @@ public class ResourcePool extends ResourceContainer
 {
 
    public ResourcePool(String id, Orchestrator orchestrator) {
-      super(id, orchestrator);
+      super(id);
    }
 
 }

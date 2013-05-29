@@ -3,20 +3,19 @@ package com.vmware.vhadoop.model;
 import static com.vmware.vhadoop.model.Resource.CPU;
 import static com.vmware.vhadoop.model.Resource.MEMORY;
 
-import java.util.Map;
-import java.util.TreeMap;
+import com.vmware.vhadoop.model.allocation.Allocation;
+import com.vmware.vhadoop.model.allocation.CpuAllocator;
+import com.vmware.vhadoop.model.allocation.MemoryAllocator;
 
 abstract public class ResourceLimits implements Limits
 {
-   private Map<Resource,Object> limits;
+   protected Allocation limits;
 
    /**
     * Creates unlimited resource limits
     */
    ResourceLimits() {
-      limits = new TreeMap<Resource,Object>();
-      limits.put(MEMORY, Limits.UNLIMITED);
-      limits.put(CPU, Limits.UNLIMITED);
+      limits = new Allocation("Limits");
    }
 
    /**
@@ -25,7 +24,7 @@ abstract public class ResourceLimits implements Limits
     */
    @Override
    public long getMemoryLimit() {
-      return (Long)(limits.get(MEMORY));
+      return limits.getResourceUsage(MEMORY, MemoryAllocator.TOTAL);
    }
 
    /**
@@ -34,7 +33,7 @@ abstract public class ResourceLimits implements Limits
     */
    @Override
    public long getCpuLimit() {
-      return (Long)(limits.get(CPU));
+      return limits.getResourceUsage(CPU, CpuAllocator.TOTAL);
    }
 
    /**
@@ -43,7 +42,7 @@ abstract public class ResourceLimits implements Limits
     */
    @Override
    public void setMemoryLimit(long allocation) {
-      limits.put(MEMORY, allocation);
+      limits.setResourceUsage(MEMORY, MemoryAllocator.TOTAL, allocation);
    }
 
    /**
@@ -52,6 +51,6 @@ abstract public class ResourceLimits implements Limits
     */
    @Override
    public void setCpuLimit(long allocation) {
-      limits.put(CPU, allocation);
+      limits.setResourceUsage(CPU, CpuAllocator.TOTAL, allocation);
    }
 }

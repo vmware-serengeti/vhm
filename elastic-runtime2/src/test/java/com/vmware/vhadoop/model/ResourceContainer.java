@@ -1,9 +1,14 @@
 package com.vmware.vhadoop.model;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import com.vmware.vhadoop.model.allocation.Allocation;
+import com.vmware.vhadoop.model.allocation.Allocator;
 
 
 public abstract class ResourceContainer extends ResourceLimits implements Usage
@@ -14,22 +19,48 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
    long shares = DEFAULT_SHARES;
    long minMemory = Limits.UNLIMITED;
    long minCpu = Limits.UNLIMITED;
+   protected Allocation allocation;
 
-   private Set<ResourceContainer> parents;
+   protected Set<ResourceContainer> parents;
    Set<ResourceContainer> children;
-   Set<ResourceUsage> usages;
-   protected Orchestrator orchestrator;
+   protected Map<Resource,Allocator> allocators;
 
    protected ResourceContainer(String id) {
       this.id = id;
       parents = new HashSet<ResourceContainer>();
       children = new HashSet<ResourceContainer>();
-      usages = new HashSet<ResourceUsage>();
+      allocators = new HashMap<Resource,Allocator>();
    }
 
-   protected ResourceContainer(String id, Orchestrator orchestrator) {
-      this(id);
-      this.orchestrator = orchestrator;
+   /**
+    * Returns the resources that are available from this containers allocation to the
+    * requesting child. Default implementation is that all resources are available to all children.
+    * Passes the allocation along to parents to approve.
+    *
+    * @param child the child container making the request
+    * @return the available resources
+    */
+   public Allocation getAvailableResources(ResourceContainer child) {
+      Allocation available = allocation.clone();
+      for (ResourceContainer container : parents) {
+         available = available.minimums(container.getAvailableResources(this));
+      }
+
+      return available;
+   }
+
+   /**
+    * Passes the request to the various allocators to process
+    * @param request
+    * @return
+    */
+   public Allocation allocate(String id, Allocation request) {
+      Allocation actual = new Allocation(id);
+      for (Allocator allocator : allocators.values()) {
+         actual = actual.minimums(allocator.allocate(id, request));
+      }
+
+      return actual;
    }
 
    /**
@@ -41,10 +72,6 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
       long total = 0;
       for (ResourceContainer child : children) {
          total+= child.getMemoryUsage();
-      }
-
-      for (ResourceUsage usage : usages) {
-         total+= usage.getMemoryUsage();
       }
 
       return total;
@@ -61,10 +88,6 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
          total+= child.getActiveMemory();
       }
 
-      for (ResourceUsage usage : usages) {
-         total+= usage.getActiveMemory();
-      }
-
       return total;
    }
 
@@ -79,49 +102,18 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
          total+= child.getCpuUsage();
       }
 
-      for (ResourceUsage usage : usages) {
-         total+= usage.getCpuUsage();
-      }
-
       return total;
    }
 
-   /**
-    * Set the upper memory limit of the container
-    * @param allocation - the limit on this container in megabytes, Limits.UNLIMITED means unlimted
-    */
-   @Override
-   public void setMemoryLimit(long allocation) {
-      super.setMemoryLimit(allocation);
-      if (allocation != Limits.UNLIMITED && getMemoryUsage() > allocation) {
-         orchestrator.getAllocationPolicy().allocateMemory(allocation, children);
-      }
-   }
-
-   /**
-    * Sets the upper CPU utilization limit of the container
-    * @param allocation - the limit on this container in Mhz, Limits.UNLIMITED means unlimited
-    */
-   @Override
-   public void setCpuLimit(long allocation) {
-      super.setCpuLimit(allocation);
-      if (allocation != Limits.UNLIMITED && getCpuUsage() > allocation) {
-         orchestrator.getAllocationPolicy().allocateCpu(allocation, children);
-      }
-   }
 
    /**
     * Gets the maximum stable interval for the container and it's children.
-    * @return interval in milliseconds
+    * @return interval in milliseconds and/or instructions
     */
-   @Override
-   public long getStableInterval() {
-      long interval = Long.MAX_VALUE;
+   public Interval getStableInterval() {
+      Interval interval = new Interval();
       for (ResourceContainer child : children) {
-         long i = child.getStableInterval();
-         if (i < interval) {
-            interval = i;
-         }
+         interval = interval.minimum(child.getStableInterval());
       }
 
       return interval;
@@ -150,41 +142,11 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
       return children.remove(child);
    }
 
-   /**
-    * Adds a child usage to this container
-    * @param the usage to add
-    */
-   public void add(ResourceUsage usage) {
-      usages.add(usage);
-      if (!usage.parents.contains(this)) {
-         usage.addParent(this);
-      }
-   }
-
-   /**
-    * Removes the specified usage from this container
-    */
-   public boolean remove(ResourceUsage usage) {
-      /* ensure symmetry, may already have been done */
-      if (usage.parents.contains(this)) {
-         usage.removeParent(this);
-      }
-
-      return usages.remove(usage);
-   }
-
-   /**
-    * Called by child containers or usages when resource usage changes
-    */
-   public void update() {
-
-   }
 
    /**
     * Adds a parent container, to be notified when resource usage changes
     * @param parent - the container to notify
     */
-   @Override
    public void addParent(ResourceContainer parent) {
       parents.add(parent);
       /* ensure that we're added as a child so the relationship remains symmetrical */
@@ -195,7 +157,6 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
     * Removes a parent container from the list
     * @param parent - the container to remove from the list
     */
-   @Override
    public void removeParent(ResourceContainer parent) {
       parents.remove(parent);
       /* ensure that we're removed as a child so the relationship remains symmetrical */
@@ -285,23 +246,12 @@ public abstract class ResourceContainer extends ResourceLimits implements Usage
 
       sb.append(toString());
 
-      if (!usages.isEmpty()) {
-//         sb.append(indent2).append("Usages: ").append(newline);
-         for (ResourceUsage usage : usages) {
-            sb.append(newline);
-            sb.append(usage.report(indent2));
-         }
-      }
-
       if (!children.isEmpty()) {
-//         sb.append(indent2).append("Children: ").append(newline);
          for (ResourceContainer child : children) {
             sb.append(newline);
             sb.append(child.report(indent2));
          }
-      }
-
-      if (usages.isEmpty() && children.isEmpty()) {
+      } else {
          sb.append(newline);
       }
 

@@ -20,13 +20,17 @@ public class Serengeti extends ResourceContainer
    /** default memory for compute nodes in Mb */
    long defaultMem = 2 * 1024;
 
+   Orchestrator orchestrator;
+
    /**
     * Creates a "Serengeti" and adds it to the specified Orchestrator
     * @param id
     * @param orchestrator
     */
    public Serengeti(String id, Orchestrator orchestrator) {
-      super(id, orchestrator);
+      super(id);
+
+      this.orchestrator = orchestrator;
       orchestrator.add(this);
    }
 
