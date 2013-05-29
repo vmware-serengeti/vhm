@@ -15,8 +15,10 @@ import static org.junit.Assert.*;
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
 import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
@@ -27,8 +29,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
    static final String EXTRA_INFO_KEY = "extraInfo1";
 
    @Override
-   void processNewEventData(VMEventData eventData) {
-      _clusterMap.handleClusterEvent(new VMUpdatedEvent(eventData));
+   void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
+      String clusterName = _clusterMap.handleClusterEvent(new VMUpdatedEvent(eventData), impliedScaleEvents);
+      assertEquals(expectedClusterName, clusterName);
    }
    
    @Override
@@ -36,11 +39,20 @@ public class ClusterMapTest extends AbstractJUnitTest {
       _clusterMap.registerScaleStrategy(scaleStrategy);
    }
 
+   class ImpliedScaleEvent extends AbstractClusterScaleEvent {
+      Integer _data;
+      
+      ImpliedScaleEvent(String clusterId, Integer data) {
+         setClusterId(clusterId);
+         _data = data;
+      }
+   }
+   
    @Before
    public void initialize() {
       _clusterMap = new ClusterMapImpl(new ExtraInfoToClusterMapper() {
          @Override
-         public String getStrategyKey(VMEventData vmd) {
+         public String getStrategyKey(VMEventData vmd, String clusterId) {
             if ((vmd._masterVmData != null) && (vmd._masterVmData._enableAutomation)) {
                return AUTO_SCALE_STRATEGY_KEY;
             }
@@ -48,7 +60,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+         public Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId) {
             Map<String, String> result = null;
             if (vmd._masterVmData != null) {
                Integer minInstances = vmd._masterVmData._minInstances;
@@ -58,6 +70,19 @@ public class ClusterMapTest extends AbstractJUnitTest {
                }
             }
             return result;
+         }
+
+         @Override
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId) {
+            if ((vmd._masterVmData != null) && (vmd._masterVmData._minInstances != null)) {
+               int minInstances = vmd._masterVmData._minInstances;
+               if (minInstances >= 0) {
+                  Set<ClusterScaleEvent> newSet = new HashSet<ClusterScaleEvent>();
+                  newSet.add(new ImpliedScaleEvent(clusterId, minInstances));
+                  return newSet;
+               }
+            }
+            return null;
          }
       });
    }
@@ -205,9 +230,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
    
    @Test
    public void testScaleStrategies() {
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST", 4, false, false, null);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST", 4, false, false, 1);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST", 4, false, true, 2);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST", 4, false, false, null, null);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST", 4, false, false, 1, null);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST", 4, false, true, 2, null);
 
       String cid0 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+0);
       ScaleStrategy ss0 = _clusterMap.getScaleStrategyForCluster(cid0);
@@ -225,7 +250,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(ssBogus);
       
       /* Change ss1 to use AUTO */
-      _clusterMap.handleClusterEvent(new ScaleStrategyChangeEvent(cid1, AUTO_SCALE_STRATEGY_KEY));
+      _clusterMap.handleClusterEvent(new ScaleStrategyChangeEvent(cid1, AUTO_SCALE_STRATEGY_KEY), null);
       
       ss1 = _clusterMap.getScaleStrategyForCluster(cid1);
       assertEquals(AUTO_SCALE_STRATEGY_KEY, ss1.getKey());
@@ -242,9 +267,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
    @Test
    public void powerStateAndListTests() {
       /* Create 3 clusters, each with 3 compute VMs and a master. Two have vms powered one and one cluster is powered off */
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, null);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST1", 4, true, false, 1);
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST2", 4, true, true, 2);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, null, null);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST1", 4, true, false, 1, null);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST2", 4, true, true, 2, null);
       
       /* Note expected result is 3, not 4, since 3 VMs are compute VMs and 1 is master */
       Integer[][] expectedSizes1 = new Integer[][]{new Integer[]{3, null}, new Integer[]{null, 3}, new Integer[]{null, 3}};
@@ -338,7 +363,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
    
    @Test
    public void getVCPU() {
-      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, 0);
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, 0, null);
       for (String vmName : _vmNames) {
          String vmId = getVmIdFromVmName(vmName);
          assertEquals((Integer)DEFAULT_VCPUS, _clusterMap.getNumVCPUsForVm(vmId));
@@ -348,13 +373,12 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getNumVCPUsForVm("bogus"));
       assertNull(_clusterMap.getNumVCPUsForVm(null));
    }
-
    
    @Test
    public void testRemoveVM() {
       String clusterName = CLUSTER_NAME_PREFIX+0;
       String clusterId = deriveClusterIdFromClusterName(clusterName);
-      populateClusterSameHost(clusterName, "DEFAULT_HOST1", 4, false, false, 0);
+      populateClusterSameHost(clusterName, "DEFAULT_HOST1", 4, false, false, 0, null);
       Set<String> vms = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
       int runningTotal = 3;
       assertEquals(runningTotal, vms.size());
@@ -362,7 +386,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       /* Remove the compute VMs */
       for (String vmId : vms) {
          --runningTotal;
-         _clusterMap.handleClusterEvent(new VMRemovedFromClusterEvent(vmId));
+         _clusterMap.handleClusterEvent(new VMRemovedFromClusterEvent(vmId), null);
          Set<String> remaining = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
          if (runningTotal > 0) {
             assertEquals(runningTotal, remaining.size());
@@ -377,9 +401,34 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertEquals(clusterId, _clusterMap.getClusterIdForVm(masterVmId));
       
       /* Remove master VM and the cluster should be removed also */
-      _clusterMap.handleClusterEvent(new VMRemovedFromClusterEvent(masterVmId));
+      _clusterMap.handleClusterEvent(new VMRemovedFromClusterEvent(masterVmId), null);
       assertNull(_clusterMap.getClusterIdForVm(getVmIdFromVmName(masterVmId)));
       assertNull(_clusterMap.getAllKnownClusterIds());
+   }
+   
+   @Test
+   public void testImpliedScaleEvents() {
+      String clusterName = CLUSTER_NAME_PREFIX+0;
+      
+      populateClusterSameHost(clusterName, "DEFAULT_HOST1", 4, false, false, 0, null);
+      
+      Integer newData = 3;
+      String masterVmName = getMasterVmNameForCluster(clusterName);
+      VMEventData eventDataToCreateScaleEvent = createEventData(clusterName, 
+            masterVmName, true, null, null, masterVmName, false, newData);
+      Set<ClusterScaleEvent> impliedScaleEventsResultSet = new HashSet<ClusterScaleEvent>();
+
+      _clusterMap.handleClusterEvent(new VMUpdatedEvent(eventDataToCreateScaleEvent), impliedScaleEventsResultSet);
+      assertEquals(1, impliedScaleEventsResultSet.size());
+      
+      ImpliedScaleEvent impliedScaleEvent = (ImpliedScaleEvent)impliedScaleEventsResultSet.iterator().next();
+      assertEquals(newData, impliedScaleEvent._data);
+      impliedScaleEventsResultSet.clear();
+      
+      VMEventData eventDataLessThanZeroEvent = createEventData(clusterName, 
+            masterVmName, true, null, null, masterVmName, false, -1);
+      _clusterMap.handleClusterEvent(new VMUpdatedEvent(eventDataLessThanZeroEvent), impliedScaleEventsResultSet);
+      assertEquals(0, impliedScaleEventsResultSet.size());
    }
    
    @Test

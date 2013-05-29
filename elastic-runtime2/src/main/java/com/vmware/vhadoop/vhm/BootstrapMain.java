@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.LogManager;
@@ -16,6 +17,7 @@ import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.HadoopActions.JTConfigInfo;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.LogFormatter;
@@ -216,12 +218,17 @@ public class BootstrapMain
    ExtraInfoToClusterMapper getStrategyMapper() {
       return new ExtraInfoToClusterMapper() {
          @Override
-         public String getStrategyKey(final VMEventData vmd) {
+         public String getStrategyKey(final VMEventData vmd, String clusterId) {
             return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+         public Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId) {
+            return null;
+         }
+
+         @Override
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId) {
             return null;
          }
       };

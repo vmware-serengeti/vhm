@@ -2,12 +2,14 @@ package com.vmware.vhadoop.vhm;
 
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import org.junit.Test;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
@@ -42,12 +44,17 @@ public class PopulateClusterMap {
 
       ExtraInfoToClusterMapper strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
-         public String getStrategyKey(VMEventData vmd) {
+         public String getStrategyKey(VMEventData vmd, String clusterId) {
             return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+         public Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId) {
+            return null;
+         }
+
+         @Override
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId) {
             return null;
          }
       };

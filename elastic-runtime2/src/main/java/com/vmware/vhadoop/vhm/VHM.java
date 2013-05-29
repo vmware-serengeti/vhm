@@ -193,22 +193,22 @@ public class VHM implements EventConsumer {
       return clusterId;
    }
 
-   private Map<String, Set<ClusterScaleEvent>> getScaleEventsForCluster(Set<NotificationEvent> events) {
-      Map<String, Set<ClusterScaleEvent>> results = new HashMap<String, Set<ClusterScaleEvent>>();
-      for (NotificationEvent event : events) {
-         if (event instanceof AbstractClusterScaleEvent) {
-            String clusterId = completeClusterScaleEventDetails((AbstractClusterScaleEvent)event);
-            if (clusterId != null) {
-               Set<ClusterScaleEvent> clusterScaleEvents = results.get(clusterId);
-               if (clusterScaleEvents == null) {
-                  clusterScaleEvents = new HashSet<ClusterScaleEvent>();
-                  results.put(clusterId, clusterScaleEvents);
+   private void getQueuedScaleEventsForCluster(Set<NotificationEvent> events, Map<String, Set<ClusterScaleEvent>> results) {
+      if (results != null) {
+         for (NotificationEvent event : events) {
+            if (event instanceof AbstractClusterScaleEvent) {
+               String clusterId = completeClusterScaleEventDetails((AbstractClusterScaleEvent)event);
+               if (clusterId != null) {
+                  Set<ClusterScaleEvent> clusterScaleEvents = results.get(clusterId);
+                  if (clusterScaleEvents == null) {
+                     clusterScaleEvents = new HashSet<ClusterScaleEvent>();
+                     results.put(clusterId, clusterScaleEvents);
+                  }
+                  clusterScaleEvents.add((ClusterScaleEvent)event);
                }
-               clusterScaleEvents.add((ClusterScaleEvent)event);
             }
          }
       }
-      return results;
    }
 
    private Set<ClusterStateChangeEvent> getClusterStateChangeEvents(Set<NotificationEvent> events) {
@@ -274,14 +274,26 @@ public class VHM implements EventConsumer {
       final Set<ClusterStateChangeEvent> clusterStateChangeEvents = getClusterStateChangeEvents(events);
       final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
+      final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
+
       /* Update ClusterMap first */
       if ((clusterStateChangeEvents.size() + completionEvents.size()) > 0) {
          _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
+               Set<ClusterScaleEvent> impliedScaleEvents = new HashSet<ClusterScaleEvent>();
                for (ClusterStateChangeEvent event : clusterStateChangeEvents) {
                   _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
-                  _clusterMap.handleClusterEvent(event);
+                  String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEvents);
+                  if (impliedScaleEvents.size() > 0) {
+                     if (clusterScaleEvents.get(clusterId) == null) {
+                        clusterScaleEvents.put(clusterId, impliedScaleEvents);
+                        impliedScaleEvents = new HashSet<ClusterScaleEvent>();
+                     } else {
+                        clusterScaleEvents.get(clusterId).addAll(impliedScaleEvents);
+                        impliedScaleEvents.clear();
+                     }
+                  }
                }
                for (ClusterScaleCompletionEvent event : completionEvents) {
                   _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
@@ -292,7 +304,7 @@ public class VHM implements EventConsumer {
          });
       }
 
-      Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = getScaleEventsForCluster(events);
+      getQueuedScaleEventsForCluster(events, clusterScaleEvents);
 
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {

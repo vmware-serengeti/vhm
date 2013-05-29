@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.*;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -10,6 +11,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
@@ -48,23 +50,40 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    }
 
    @Override
+   void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
+      processNewEventData(eventData);
+   }
+   
    void processNewEventData(VMEventData eventData) {
       _vcActions.fakeWaitForUpdatesData("", eventData);
       _vcActions.addVMToFolder(eventData._serengetiFolder, eventData._vmMoRef);
    }
-   
+
    @Before
    public void initialize() {
       _vcActions = new StandaloneSimpleVCActions();
       _clusterStateChangeListener = new ClusterStateChangeListenerImpl(_vcActions, "myFolder");
       _strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
-         public String getStrategyKey(VMEventData vmd) {
+         public String getStrategyKey(VMEventData vmd, String clusterId) {
             return vmd._masterVmData._enableAutomation ? STRATEGY_KEY : ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(VMEventData vmd) {
+         public Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId) {
+            return null;
+         }
+
+         @Override
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId) {
+            if ((vmd._masterVmData != null) && (vmd._masterVmData._minInstances != null)) {
+               int minInstances = vmd._masterVmData._minInstances;
+               if (minInstances >= 0) {
+                  Set<ClusterScaleEvent> newSet = new HashSet<ClusterScaleEvent>();
+                  newSet.add(new TrivialClusterScaleEvent(clusterId));
+                  return newSet;
+               }
+            }
             return null;
          }
       };
@@ -361,6 +380,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       
       /* Set up the Rabbit Infrastructure simulating the Serengeti Queue */
       TestRabbitConnection testConnection = new TestRabbitConnection(new TestRabbitConnection.TestChannel() {
+         @Override
          public void basicPublish(String routeKey, byte[] data) {
             result._routeKey = routeKey;
             result._data = data;
@@ -456,8 +476,34 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    }
 
 //   @Test
-   public void testSwitchToManualFromOther() {
+   public void testSwitchFromManualToOther() {
       
+   }
+   
+   @Test
+   public void testImpliedScaleEvent() {
+      int numClusters = 3;
+      populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
+      assertTrue(waitForTargetClusterCount(3, 1000));
+      
+      String clusterName = _clusterNames.iterator().next();
+      String clusterId = deriveClusterIdFromClusterName(clusterName);
+      /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
+      TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation();
+      /* Add the test ClusterScaleOperation to the test scale strategy */
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
+
+      /* Simulate a CSCL update event that produces a subsequent scale event */
+      Integer newData = 1;
+      String masterVmName = getMasterVmNameForCluster(clusterName);
+      /* It's important that the scale strategy isn't switched by having enableAutomation=false */
+      VMEventData eventDataToCreateScaleEvent = createEventData(clusterName, 
+            masterVmName, true, null, null, masterVmName, true, newData);
+      processNewEventData(eventDataToCreateScaleEvent);
+
+      /* Wait for VHM to respond, having invoked the ScaleStrategy */
+      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
+      assertEquals(clusterId, tcso.getClusterId());
    }
 
    @Override

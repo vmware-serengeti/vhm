@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
@@ -69,7 +70,7 @@ public abstract class AbstractJUnitTest {
    }
    
    void populateClusterSameHost(String clusterName, String hostName, int numVms, boolean defaultPowerState, 
-         boolean autoCluster, Integer minInstances) {
+         boolean autoCluster, Integer minInstances, Set<ClusterScaleEvent> impliedScaleEvents) {
       String masterVmName = null;
       for (int i=0; i<numVms; i++) {
          String vmName = clusterName+"_"+VM_NAME_PREFIX+i;
@@ -79,36 +80,44 @@ public abstract class AbstractJUnitTest {
             _masterVmNames.add(masterVmName);
          }
          VMEventData eventData = createEventData(clusterName, vmName, i==0, defaultPowerState, hostName, masterVmName, autoCluster, minInstances);
-         processNewEventData(eventData);
+         processNewEventData(eventData, deriveClusterIdFromClusterName(clusterName), impliedScaleEvents);
       }
       registerScaleStrategy(new TrivialScaleStrategy(DEFAULT_SCALE_STRATEGY_KEY));
       registerScaleStrategy(new TrivialScaleStrategy(AUTO_SCALE_STRATEGY_KEY));
    }
    
    /* Override */
-   void processNewEventData(VMEventData eventData) {}
+   void processNewEventData(VMEventData eventData, String expectedClusterId, Set<ClusterScaleEvent> impliedScaleEvents) {}
    
    /* Override */
    void registerScaleStrategy(ScaleStrategy scaleStrategy) {}
-   
-   void populateSimpleClusterMap(int numClusters, int vmsPerCluster, boolean defaultPowerState) {
+
+   void populateSimpleClusterMap(int numClusters, int vmsPerCluster, boolean defaultPowerState, Set<ClusterScaleEvent> impliedScaleEvents) {
       for (int i=0; i<numClusters; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
          Integer minInstances = (i==0) ? null : i;
          /* Default automation value is true, so that if it's false, we can assert that VHM defaults to the real ManualScaleStrategy */
-         populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, true, minInstances);
+         populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, true, minInstances, impliedScaleEvents);
       }
    }
 
-   void populateClusterPerHost(int numClusters, int vmsPerCluster, boolean defaultPowerState) {
+   void populateSimpleClusterMap(int numClusters, int vmsPerCluster, boolean defaultPowerState) {
+      populateSimpleClusterMap(numClusters, vmsPerCluster, defaultPowerState, null);
+   }
+
+   void populateClusterPerHost(int numClusters, int vmsPerCluster, boolean defaultPowerState, Set<ClusterScaleEvent> impliedScaleEvents) {
       for (int i=0; i<numClusters; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
          Integer minInstances = (i==0) ? (null) : i;
          /* Default automation value is true, so that if it's false, we can assert that VHM defaults to the real ManualScaleStrategy */
-         populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, true, minInstances);
+         populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, true, minInstances, impliedScaleEvents);
       }
+   }
+
+   void populateClusterPerHost(int numClusters, int vmsPerCluster, boolean defaultPowerState) {
+      populateClusterPerHost(numClusters, vmsPerCluster, defaultPowerState, null);
    }
 
    String getClusterIdForMasterVmName(String masterVmName) {

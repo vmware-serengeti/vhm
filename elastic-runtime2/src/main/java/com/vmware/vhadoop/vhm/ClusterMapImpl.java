@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
@@ -106,25 +107,30 @@ public class ClusterMapImpl implements ClusterMap {
       return cluster;
    }
 
-   private void updateVMState(VMEventData vmd) {
+   private String updateVMState(VMEventData vmd, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
       VMInfo vmInfo = _vms.get(vmd._vmMoRef);
       ClusterInfo ci = null;
+      String clusterId = null;
+      boolean isNewVm = false;
       
       if (vmInfo == null) {
          vmInfo = new VMInfo(vmd._vmMoRef);
          _vms.put(vmd._vmMoRef, vmInfo);
+         isNewVm = true;
          _log.log(Level.INFO, "New VM <%V" + vmInfo._moRef);
       }
 
       /* When a new VM is added, we expect a complete vmd with masterUUID and everything */
       /* If the state of a VM is updated, we only get partial info - almost certainly no masterUUID */
       if (vmd._masterUUID != null) {
+         clusterId = vmd._masterUUID;
          ci = vmInfo._cluster = getCluster(vmd._masterUUID);
       }
       
       /* If we didn't get a masterUUID, we may be able to find the cluster from the VMInfo */
       if (ci == null) {
          ci = vmInfo._cluster;
+         clusterId = ci._masterUUID;
       }
 
       if (vmd._hostMoRef != null) {
@@ -168,15 +174,23 @@ public class ClusterMapImpl implements ClusterMap {
             }
             if (vmd._masterVmData._enableAutomation != null) {
                vmInfo._isMaster = true;
-               String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd);
+               String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd, clusterId);
                ci._scaleStrategyKey = scaleStrategyKey;
             }
             if (ci._extraInfo == null) {
-               ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd);
+               ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd, clusterId);
             } else {
-               Map<String, String> toAdd = _extraInfoMapper.parseExtraInfo(vmd);
+               Map<String, String> toAdd = _extraInfoMapper.parseExtraInfo(vmd, clusterId);
                if (toAdd != null) {
                   ci._extraInfo.putAll(toAdd);
+               }
+            }
+            /* If this is an update to an existing VM, it may imply the scale strategy should change the size of the cluster
+             * The extraInfoMapper has a chance to define if any implied scale events should be returned for this update */
+            if (!isNewVm) {
+               Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(vmd, clusterId);
+               if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
+                  impliedScaleEventsResultSet.addAll(impliedScaleEvents);
                }
             }
             if (vmd._serengetiFolder != null) {
@@ -185,11 +199,10 @@ public class ClusterMapImpl implements ClusterMap {
             if (vmd._masterVmData._jobTrackerPort != null) {
                ci._jobTrackerPort = vmd._masterVmData._jobTrackerPort;
             }
-         } else {
-            _log.severe("VMEventData is providing cluster level updates without a masterUUID!");
          }
       }
       dumpState(Level.FINE);
+      return clusterId;
    }
 
    private void removeCluster(ClusterInfo cluster) {
@@ -199,9 +212,13 @@ public class ClusterMapImpl implements ClusterMap {
       }
    }
 
-   private void removeVM(String vmMoRef) {
+   private String removeVM(String vmMoRef) {
       VMInfo vmInfo = _vms.get(vmMoRef);
+      String clusterId = null;
       if (vmInfo != null) {
+         if (vmInfo._cluster != null) {
+            clusterId = vmInfo._cluster._masterUUID;
+         }
          if (vmInfo._isMaster) {
             removeCluster(vmInfo._cluster);
          }
@@ -209,6 +226,7 @@ public class ClusterMapImpl implements ClusterMap {
          _vms.remove(vmMoRef);
       }
       dumpState(Level.FINE);
+      return clusterId;
    }
 
    private void changeScaleStrategy(String clusterId, String newStrategyKey) {
@@ -216,17 +234,22 @@ public class ClusterMapImpl implements ClusterMap {
       cluster._scaleStrategyKey = newStrategyKey;
    }
 
-   public void handleClusterEvent(ClusterStateChangeEvent event) {
+   /* Returns clusterId of the cluster affected */
+   /* May also return any implied scale events of the cluster state change */
+   public String handleClusterEvent(ClusterStateChangeEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
+      String clusterId = null;
       if (event instanceof VMUpdatedEvent) {
          VMUpdatedEvent ace = (VMUpdatedEvent)event;
-         updateVMState(ace.getVm());
+         clusterId = updateVMState(ace.getVm(), impliedScaleEventsResultSet);
       } else if (event instanceof VMRemovedFromClusterEvent) {
          VMRemovedFromClusterEvent rce = (VMRemovedFromClusterEvent)event;
-         removeVM(rce.getVmMoRef());
+         clusterId = removeVM(rce.getVmMoRef());
       } else if (event instanceof ScaleStrategyChangeEvent) {
          ScaleStrategyChangeEvent sce = (ScaleStrategyChangeEvent)event;
-         changeScaleStrategy(sce.getClusterId(), sce.getNewStrategyKey());
+         clusterId = sce.getClusterId();
+         changeScaleStrategy(clusterId, sce.getNewStrategyKey());
       }
+      return clusterId;
    }
 
    public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
