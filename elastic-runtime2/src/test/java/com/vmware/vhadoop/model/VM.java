@@ -1,23 +1,21 @@
 package com.vmware.vhadoop.model;
 
+import static com.vmware.vhadoop.model.Resource.MEMORY;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.vmware.vhadoop.model.allocation.VirtualMemoryAllocator;
 
-public class VM extends ResourceContainer
+
+public class VM extends WorkloadExecutor
 {
+   Orchestrator orchestrator;
    Host host;
    Map<String,String> extraInfo;
 
    boolean power = false;
-
-   long balloon = 0;
-   long balloonTarget = 0;
-   long hostSwapped = 0;
-
-   long swapped = 0;
-   long committedMemory = 0;
 
    /**
     * This creates a new VM with the specifed configuration and management orchestration
@@ -26,19 +24,17 @@ public class VM extends ResourceContainer
     * @param cpu - the max memory configured for the VM
     */
    protected VM(String id, long cpu, long vRAM, Orchestrator orchestrator) {
-      super(id, orchestrator);
+      super(id);
+
+      this.orchestrator = orchestrator;
 
       setCpuLimit(cpu);
       setMemoryLimit(vRAM);
 
+      allocators.put(MEMORY, new VirtualMemoryAllocator(id, vRAM));
+
       extraInfo = new HashMap<String,String>();
       orchestrator.configurationUpdated(this);
-   }
-
-   public void execute(Workload workload) {
-      add(workload);
-      workload.start();
-      orchestrator.usageUpdated(this);
    }
 
    /**
@@ -47,14 +43,28 @@ public class VM extends ResourceContainer
     */
    public boolean powerOn(Limits config) {
       /* TODO: if we ever model this as taking time, we need to update the Futures in Orchestrator */
+      if (getHost() == null) {
+         /* we can't power on a VM without a host set */
+         return false;
+      }
+
+      /* if we already have an allocation we don't need to proxy the power on to the host */
+      if (allocation == null) {
+         if (!getHost().powerOn(this)) {
+            /* the host couldn't power this VM on */
+            return false;
+         }
+      }
+
       power = true;
 
       setCpuLimit(config.getCpuLimit());
       setMemoryLimit(config.getMemoryLimit());
 
+      orchestrator.configurationUpdated(this);
+
       /* TODO: create a 'bootup' workload that runs immediately after poweron */
 
-      orchestrator.configurationUpdated(this);
       return true;
    }
 
@@ -69,16 +79,14 @@ public class VM extends ResourceContainer
     * Power off the VM. This also terminates any workloads that are running
     */
    public boolean powerOff() {
-      for (ResourceUsage usage : usages) {
-         if (usage instanceof Workload) {
-            Workload workload = (Workload)usage;
-            workload.stop(true);
+      for (ResourceContainer container : children) {
+         if (container instanceof Workload) {
+            Workload workload = (Workload)container;
+            workload.stop("Powering off VM", true);
          }
       }
 
-
-      usages.clear();
-      orchestrator.update();
+      children.clear();
 
       /* TODO: if we ever model this as taking time, we need to update the Futures in Orchestrator */
       power = false;
@@ -87,92 +95,6 @@ public class VM extends ResourceContainer
       return true;
    }
 
-   /**
-    * Memory usage equates to memory held by the OS. This only goes down by virtue of ballooning.
-    * The actual usage of a workload only serves to deflate the balloon and contribute to active.
-    * @return the current memory usage (committed - balloon)
-    */
-   @Override
-   public long getMemoryUsage() {
-      long usage = super.getMemoryUsage();
-      long limit = getMemoryLimit();
-      if (usage > limit) {
-         long swapTarget = usage - limit;
-         if (swapTarget < swapped) {
-            swapin(swapped - swapTarget);
-         } else {
-            swapout(swapTarget - swapped);
-         }
-
-         usage = limit;
-      } else {
-         swapin(swapped);
-      }
-
-      if (usage > committedMemory) {
-         committedMemory = usage;
-      }
-
-      return committedMemory - balloon;
-   }
-
-   public long getBalloonSize() {
-      return balloon;
-   }
-
-   /**
-    * Sets the balloon target size for the VM
-    * @param target - target size in Mb
-    * @return the size of the resulting balloon
-    */
-   public long setBalloonTarget(long target) {
-      long active = getActiveMemory();
-      long limit = getMemoryLimit();
-
-      if (target < balloon) {
-         /* we're can deflate the balloon */
-         long pressure = active - (limit - balloon);
-         if (pressure > 0) {
-            /* we have the memory pressure to deflate the balloon */
-            balloon-= Math.min(pressure, balloon - target);
-         } else if (swapped > 0) {
-            /* we've now got some free memory, so assume that we can swap in */
-            long delta = Math.min(swapped, balloon - target);
-            swapin(delta);
-            balloon-= delta;
-         }
-
-      } else if (target > balloon) {
-         /* see how much we can balloon - we work on the assumption that the entire VM vRAM is committed at this point */
-         long available = limit - active;
-         balloon = available;
-
-         /* TODO: this is where we'd be swapping out if the balloon pressure caused us to evict running processes. See whether we're favouring host or guest swapping */
-      }
-
-      /* TODO: make sure that we don't recursively/repeatedly call this as a result of the Orchestrator setting the balloon target. It may be we want this method
-       * package visability and only called by it's host
-       */
-      orchestrator.usageUpdated(this);
-      orchestrator.configurationUpdated(this);
-      return balloon;
-   }
-
-   private void swapin(long mb) {
-      swapped-= mb;
-   }
-
-   private void swapout(long mb) {
-      swapped+= mb;
-   }
-
-   /**
-    * VM basic toString description that includes power state, balloon and swap sizes
-    */
-   @Override
-   public String toString() {
-      return super.toString() + ", power: "+(power ? "on" : "off")+", balloon: "+balloon+", swapped: "+swapped;
-   }
 
    /**
     * Accessor for the power state
@@ -180,6 +102,30 @@ public class VM extends ResourceContainer
     */
    public boolean getPowerState() {
       return power;
+   }
+
+   @Override
+   public long getMemoryUsage() {
+      return allocation.getResourceUsage(MEMORY, "total");
+   }
+
+   /**
+    * VM basic toString description that includes power state, balloon and swap sizes
+    */
+   @Override
+   public String toString() {
+      return super.toString() + ", power: "+(power ? "on" : "off");
+   }
+
+   /**
+    * This doesn't bother cleaning up, just discards everything
+    */
+   @Override
+   public void stop(String reason, boolean force) {
+      super.stop(reason, force);
+
+      children.clear();
+      orchestrator.configurationUpdated(this);
    }
 
    /**
@@ -202,11 +148,11 @@ public class VM extends ResourceContainer
       metrics[1] = 0;
       metrics[2] = getMemoryUsage() * 1024;
       metrics[3] = getActiveMemory() * 1024;
-      metrics[4] = getBalloonSize() * 1024;
-      metrics[5] = balloonTarget * 1024;
-      metrics[6] = 0;
-      metrics[7] = hostSwapped * 1024;
-      metrics[8] = hostSwapped * 1024;
+//      metrics[4] = getBalloonSize() * 1024;
+//      metrics[5] = balloonTarget * 1024;
+//      metrics[6] = 0;
+//      metrics[7] = hostSwapped * 1024;
+//      metrics[8] = hostSwapped * 1024;
 
       return metrics;
    }

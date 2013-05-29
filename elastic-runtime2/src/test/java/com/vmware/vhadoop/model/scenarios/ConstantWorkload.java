@@ -1,6 +1,12 @@
 package com.vmware.vhadoop.model.scenarios;
 
+import static com.vmware.vhadoop.model.Resource.CPU;
+import static com.vmware.vhadoop.model.Resource.MEMORY;
+
 import com.vmware.vhadoop.model.Workload;
+import com.vmware.vhadoop.model.allocation.Allocation;
+import com.vmware.vhadoop.model.allocation.CpuAllocator;
+import com.vmware.vhadoop.model.allocation.MemoryAllocator;
 
 public class ConstantWorkload extends Workload
 {
@@ -21,21 +27,12 @@ public class ConstantWorkload extends Workload
       this.memory = memory;
    }
 
-   /**
-    * Starts the workload, starts using resources
-    */
    @Override
-   public void start() {
-      setCpuUsage(cpu);
-      setMemoryUsage(memory);
-   }
+   public Allocation load(Allocation available) {
+      allocation = new Allocation("ConstantWorkload");
+      allocation.setResourceUsage(MEMORY, MemoryAllocator.TOTAL, memory);
+      allocation.setResourceUsage(CPU, CpuAllocator.TOTAL, cpu);
 
-   /**
-    * Provides basic assumption that a given proportion of the memory usage is active at any given point
-    * @return the active memory in Mb
-    */
-   @Override
-   public long getActiveMemory() {
-      return (long) (getMemoryUsage() * DEFAULT_ACTIVE_PROPORTION);
+      return allocation;
    }
 }
