@@ -25,7 +25,7 @@ public abstract class AbstractJUnitTest {
    final String FOLDER_PREFIX = "FOLDER_";
    final String HOST_PREFIX = "HOST_";
    
-   final String AUTO_SCALE_STRATEGY_KEY = "autoScaleStrategy";
+   final String OTHER_SCALE_STRATEGY_KEY = "otherScaleStrategy";
    final String DEFAULT_SCALE_STRATEGY_KEY = "defaultScaleStrategy";
    
    final int DEFAULT_PORT = 1234;
@@ -83,7 +83,7 @@ public abstract class AbstractJUnitTest {
          processNewEventData(eventData, deriveClusterIdFromClusterName(clusterName), impliedScaleEvents);
       }
       registerScaleStrategy(new TrivialScaleStrategy(DEFAULT_SCALE_STRATEGY_KEY));
-      registerScaleStrategy(new TrivialScaleStrategy(AUTO_SCALE_STRATEGY_KEY));
+      registerScaleStrategy(new TrivialScaleStrategy(OTHER_SCALE_STRATEGY_KEY));
    }
    
    /* Override */

@@ -56,7 +56,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          @Override
          public String getStrategyKey(VMEventData vmd, String clusterId) {
             if ((vmd._masterVmData != null) && (vmd._masterVmData._enableAutomation)) {
-               return AUTO_SCALE_STRATEGY_KEY;
+               return OTHER_SCALE_STRATEGY_KEY;
             }
             return DEFAULT_SCALE_STRATEGY_KEY;
          }
@@ -247,17 +247,17 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
       String cid2 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+2);
       ScaleStrategy ss2 = _clusterMap.getScaleStrategyForCluster(cid2);
-      assertEquals(AUTO_SCALE_STRATEGY_KEY, ss2.getKey());
+      assertEquals(OTHER_SCALE_STRATEGY_KEY, ss2.getKey());
 
       ScaleStrategy ssBogus = _clusterMap.getScaleStrategyForCluster("bogus");
       assertNull(ssBogus);
       
       /* Change ss1 to use AUTO */
-      _clusterMap.handleClusterEvent(new ScaleStrategyChangeEvent(cid1, AUTO_SCALE_STRATEGY_KEY), null);
+      _clusterMap.handleClusterEvent(new ScaleStrategyChangeEvent(cid1, OTHER_SCALE_STRATEGY_KEY), null);
       
       ss1 = _clusterMap.getScaleStrategyForCluster(cid1);
-      assertEquals(AUTO_SCALE_STRATEGY_KEY, ss1.getKey());
-      assertEquals(AUTO_SCALE_STRATEGY_KEY, _clusterMap.getScaleStrategyKey(cid1));
+      assertEquals(OTHER_SCALE_STRATEGY_KEY, ss1.getKey());
+      assertEquals(OTHER_SCALE_STRATEGY_KEY, _clusterMap.getScaleStrategyKey(cid1));
       
       /* Negative tests */
       assertNull(_clusterMap.getScaleStrategyForCluster(null));
