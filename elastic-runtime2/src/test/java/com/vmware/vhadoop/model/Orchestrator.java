@@ -57,8 +57,8 @@ public class Orchestrator extends ResourceContainer
       configUpdated.add(container);
 
       if (container instanceof VM) {
-         updatedVMs.add((VM)container);
          synchronized (updatedVMs) {
+            updatedVMs.add((VM)container);
             updatedVMs.notifyAll();
          }
       }

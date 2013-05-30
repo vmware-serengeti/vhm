@@ -531,10 +531,10 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       String clusterName1 = i.next();
       final ReportResult serengetiQueueResult = new ReportResult();
       String routeKey1 = "routeKey1";
-      String clusterId = deriveClusterIdFromClusterName(clusterName1);
+      String clusterId1 = deriveClusterIdFromClusterName(clusterName1);
 
       /* Creating a new cluster with a non manual scale strategy will produce an initial ClusterScaleEvent */
-      final Set<ClusterScaleCompletionEvent> completionEventsFromInit1 = waitForClusterScaleCompletionEvents(clusterId, 1, 1000);
+      final Set<ClusterScaleCompletionEvent> completionEventsFromInit1 = waitForClusterScaleCompletionEvents(clusterId1, 1, 1000);
       assertNotNull(completionEventsFromInit1);
 
       int scaleDelayMillis = 8000;
@@ -548,7 +548,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Simulate a cluster scale event being triggered from an EventProducer. 
        * The delayMillis will ensure that it takes a while to complete the scale */
-      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId));
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId1));
       
       /* Wait long enough for the scale event to start, but not to have completed */
       int waitForStartMillis = 2000;
@@ -559,27 +559,39 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       
       /* This should time out, showing that the manual switch is correctly being blocked */
       int waitForLimitInstructionMillis = 2000;
-      assertNull(waitForClusterScaleCompletionEvent(clusterId, waitForLimitInstructionMillis, completionEventsFromInit1));
+      assertNull(waitForClusterScaleCompletionEvent(clusterId1, waitForLimitInstructionMillis, completionEventsFromInit1));
 
       /* Create a simulated VC event, changing extraInfo to the manual strategy */
       simulateVcExtraInfoChange(clusterName1, false, null);
 
       /* By this point, the manual switch should have completed */
       int waitForManualSwitch = (scaleDelayMillis - (waitForStartMillis + waitForLimitInstructionMillis)) + 2000;
-      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, waitForManualSwitch, completionEventsFromInit1));
+      ClusterScaleCompletionEvent latestEvent = waitForClusterScaleCompletionEvent(clusterId1, waitForManualSwitch, completionEventsFromInit1);
+      assertNotNull(latestEvent);
+      completionEventsFromInit1.add(latestEvent);        /* Ignore this event in the next wait */
       
       /* Ensure thread has had enough time to report back on Serengeti queue */
       Thread.sleep(2000);
 
       assertNotNull(serengetiQueueResult._data);
       assertEquals(serengetiQueueResult._routeKey, routeKey1);
+      
+      /* Verify that the scale strategy is now manual */
+      ClusterMap clusterMap = getAndReadLockClusterMap();
+      assertEquals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY, clusterMap.getScaleStrategyKey(clusterId1));
+      unlockClusterMap(clusterMap);
+
+      /* Now switch to automatic and assert that this invokes the scale strategy */
+      simulateVcExtraInfoChange(clusterName1, true, 2);
+      
+      /* Verify that the scale operation blocks as expected */
+      assertNull(waitForClusterScaleCompletionEvent(clusterId1, 2000, completionEventsFromInit1));
+      
+      /* Verify that it completes successfully */
+      latestEvent = waitForClusterScaleCompletionEvent(clusterId1, scaleDelayMillis, completionEventsFromInit1);
+      assertNotNull(latestEvent);
    }
 
-   @Test
-   public void testSwitchFromManualToOther() {
-      
-   }
-   
    @Test
    public void testImpliedScaleEvent() {
       int numClusters = 3;
