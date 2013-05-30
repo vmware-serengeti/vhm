@@ -113,7 +113,10 @@ public class NonThreadSafeSshUtils implements SshUtils
 
             if (!channel.isConnected()) {
                exitStatus = channel.getExitStatus();
-               logger.log(Level.SEVERE, "Channel or session is no longer connected. Exit status from exec is: " + channel.getExitStatus());
+               if (exitStatus != 0) {
+                  logger.log(Level.SEVERE, "Channel or session is no longer connected. Exit status from exec is: " + channel.getExitStatus());
+               }
+
                break;
             }
 
@@ -253,7 +256,7 @@ public class NonThreadSafeSshUtils implements SshUtils
             log.log(Level.WARNING, "Unexpected exception in SSH OutputStream cleanup", e);
          }
       }
-      if (channel != null && channel.isConnected()) {
+      if (channel != null) {
          try {
             session = channel.getSession();
          } catch (JSchException e) {
@@ -261,8 +264,15 @@ public class NonThreadSafeSshUtils implements SshUtils
          }
          channel.disconnect();
       }
+
       if (session != null && session.isConnected()) {
          session.disconnect();
+      }
+
+      try {
+         _jsch.removeAllIdentity();
+      } catch (JSchException e) {
+         log.log(Level.WARNING, "Unexpected exception in SSH channel cleanup while removing identities", e);
       }
    }
 
@@ -270,7 +280,7 @@ public class NonThreadSafeSshUtils implements SshUtils
    {
       String _password;
       Logger _log;
-      
+
       public SSHUserInfo(String password, Logger log) {
          _password = password;
          _log = log;
