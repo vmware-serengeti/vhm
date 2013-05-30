@@ -319,28 +319,34 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Simulate cluster scale events being triggered from an EventProducer */
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId1, routeKey1, reporter1));
+      final long cluster1finishedAtTime = System.currentTimeMillis() + cluster1delay;
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId2, routeKey2, reporter2));
+      final long cluster2finishedAtTime = System.currentTimeMillis() + cluster2delay;
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId3, routeKey3, reporter3));
+      final long cluster3finishedAtTime = System.currentTimeMillis() + cluster3delay;
 
       /* Three threads concurrently wait for the response from the 3 clusters and check that the response is neither early nor significantly late */
       new Thread(new Runnable(){
          @Override
          public void run() {
-            waitResult1._testNotFinished = waitForClusterScaleCompletionEvent(clusterId1, cluster1delay-500, completionEventsFromInit1);
+            int delayTillCluster1finished = (int)(cluster1finishedAtTime - System.currentTimeMillis());
+            waitResult1._testNotFinished = waitForClusterScaleCompletionEvent(clusterId1, delayTillCluster1finished-500, completionEventsFromInit1);
             waitResult1._testFinished = waitForClusterScaleCompletionEvent(clusterId1, 1500, completionEventsFromInit1);
       }}).start();
 
       new Thread(new Runnable(){
          @Override
          public void run() {
-            waitResult2._testNotFinished = waitForClusterScaleCompletionEvent(clusterId2, cluster2delay-500, completionEventsFromInit2);
+            int delayTillCluster2finished = (int)(cluster2finishedAtTime - System.currentTimeMillis());
+            waitResult2._testNotFinished = waitForClusterScaleCompletionEvent(clusterId2, delayTillCluster2finished-500, completionEventsFromInit2);
             waitResult2._testFinished = waitForClusterScaleCompletionEvent(clusterId2, 1500, completionEventsFromInit2);
       }}).start();
 
       new Thread(new Runnable(){
          @Override
          public void run() {
-            waitResult3._testNotFinished = waitForClusterScaleCompletionEvent(clusterId3, cluster3delay-500, completionEventsFromInit3);
+            int delayTillCluster3finished = (int)(cluster3finishedAtTime - System.currentTimeMillis());
+            waitResult3._testNotFinished = waitForClusterScaleCompletionEvent(clusterId3, delayTillCluster3finished-500, completionEventsFromInit3);
             waitResult3._testFinished = waitForClusterScaleCompletionEvent(clusterId3, 1500, completionEventsFromInit3);
       }}).start();
       
