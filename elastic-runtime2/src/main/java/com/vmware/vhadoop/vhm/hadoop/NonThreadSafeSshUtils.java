@@ -59,7 +59,7 @@ public class NonThreadSafeSshUtils implements SshUtils
             _jsch.addIdentity(prvkeyFile); // Setup SSH identity using private key file
          } else {
             session.setPassword(credentials.getSshPassword());
-            UserInfo ui = new SSHUserInfo(credentials.getSshPassword(), logger);
+            UserInfo ui = new SSHUserInfo(credentials.getSshPassword(), Logger.getLogger(logger.getName()));
             session.setUserInfo(ui);
          }
 
@@ -114,7 +114,7 @@ public class NonThreadSafeSshUtils implements SshUtils
             if (!channel.isConnected()) {
                exitStatus = channel.getExitStatus();
                if (exitStatus != 0) {
-                  logger.log(Level.SEVERE, "Channel or session is no longer connected. Exit status from exec is: " + channel.getExitStatus());
+                  logger.log(Level.SEVERE, "Exit status from exec is: " + channel.getExitStatus());
                }
 
                break;
