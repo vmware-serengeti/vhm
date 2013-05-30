@@ -85,7 +85,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
             _log.log(Level.SEVERE, "Unexpected exception initializing ClusterTaskContext", e);
          }
          if (ctc._completionEventPending != null) {
-            _log.info("Cluster scale event already being handled for cluster <%C"+clusterId);
+            _log.finest("Cluster scale events already being handled for cluster <%C"+clusterId);
          } else {
             ctc._completionEventPending = 
                   _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, ctc._scaleStrategyContext));

@@ -328,7 +328,7 @@ public class VHM implements EventConsumer {
                      }
                   } else if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
                      /* If we couldn't schedule handling of the events, put them back on the queue in their un-consolidated form */
-                     _log.info("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
+                     _log.finest("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
                      placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
                   }
                } else {
