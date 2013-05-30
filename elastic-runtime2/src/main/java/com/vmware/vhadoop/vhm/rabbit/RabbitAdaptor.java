@@ -15,11 +15,11 @@
 
 package com.vmware.vhadoop.vhm.rabbit;
 
-import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.rabbitmq.client.QueueingConsumer;
+import com.rabbitmq.client.ShutdownSignalException;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
@@ -87,6 +87,12 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("New Serengeti limit event placed on queue");
                } catch (InterruptedException e) {
                   /* Almost certainly stop() was invoked */
+               } catch (ShutdownSignalException e) {
+                  stop();
+                  _log.info("Rabbit queue shutting down");
+               } catch (Throwable t) {
+                  stop();
+                  _log.log(Level.WARNING, "Unexpected exception from Rabbit queue ", t);
                }
             }
             _log.info("RabbitAdaptor stopping...");
@@ -99,7 +105,7 @@ public class RabbitAdaptor implements MQClient {
       try {
          /* TODO: Is this the right approach? */
          _connection.getConsumer().getChannel().close();
-      } catch (IOException e) {
+      } catch (Exception e) {
          _log.log(Level.INFO, "Unexpected exception stopping MQClient", e);
       }
    }

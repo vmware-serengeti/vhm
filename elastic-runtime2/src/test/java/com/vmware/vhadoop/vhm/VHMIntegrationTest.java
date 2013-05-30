@@ -399,6 +399,13 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       byte[] _data;
    }
    
+   private void simulateVcExtraInfoChange(String clusterName, Boolean isAuto, Integer minInstances) {
+      String masterVmName1 = getMasterVmNameForCluster(clusterName);
+      VMEventData switchEvent = createEventData(clusterName, 
+            masterVmName1, true, null, null, masterVmName1, isAuto, minInstances);
+      processNewEventData(switchEvent);
+   }
+   
    /* Checks what happens if Serengeti sends a blocking call to put a cluster into manual mode, when the cluster is not currently scaling */
    @Test
    public void testSwitchToManualFromOtherNotScaling() throws InterruptedException {
@@ -445,11 +452,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertNull(waitForClusterScaleCompletionEvent(clusterId1, 2000, completionEventsFromInit1));
       
       /* Create a simulated VC event, changing extraInfo to the manual strategy for cluster1 */
-      String masterVmName1 = getMasterVmNameForCluster(clusterName1);
-      VMEventData switchToManualEvent1 = createEventData(clusterName1, 
-            masterVmName1, true, null, null, masterVmName1, false, null);
-      processNewEventData(switchToManualEvent1);
-
+      simulateVcExtraInfoChange(clusterName1, false, null);
       /* Give it some time to be processed and then check it reported back */
       Thread.sleep(2000);
 
@@ -460,10 +463,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       serengetiQueueResult._data = null;
       
       /* Create a simulated VC event, changing extraInfo to the manual strategy for cluster2 */
-      String masterVmName2 = getMasterVmNameForCluster(clusterName2);
-      VMEventData switchToManualEvent2 = createEventData(clusterName2, 
-            masterVmName2, true, null, null, masterVmName2, false, null);
-      processNewEventData(switchToManualEvent2);
+      simulateVcExtraInfoChange(clusterName2, false, null);
       
       /* Give it some time to be processed */
       Thread.sleep(2000);
@@ -562,10 +562,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertNull(waitForClusterScaleCompletionEvent(clusterId, waitForLimitInstructionMillis, completionEventsFromInit1));
 
       /* Create a simulated VC event, changing extraInfo to the manual strategy */
-      String masterVmName = getMasterVmNameForCluster(clusterName1);
-      VMEventData switchToManualEvent1 = createEventData(clusterName1, 
-            masterVmName, true, null, null, masterVmName, false, null);
-      processNewEventData(switchToManualEvent1);
+      simulateVcExtraInfoChange(clusterName1, false, null);
 
       /* By this point, the manual switch should have completed */
       int waitForManualSwitch = (scaleDelayMillis - (waitForStartMillis + waitForLimitInstructionMillis)) + 2000;
@@ -604,12 +601,8 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
 
       /* Simulate a CSCL update event that produces a subsequent implied scale event */
-      Integer newData = 1;
-      String masterVmName = getMasterVmNameForCluster(clusterName);
-      /* It's important that the scale strategy isn't switched, so enableAutomation=false */
-      VMEventData eventDataToCreateScaleEvent = createEventData(clusterName, 
-            masterVmName, true, null, null, masterVmName, true, newData);
-      processNewEventData(eventDataToCreateScaleEvent);
+      /* It's important that the scale strategy isn't switched, so enableAutomation=true */
+      simulateVcExtraInfoChange(clusterName, true, 1);
 
       /* Wait for VHM to respond, having invoked the ScaleStrategy */
       assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
