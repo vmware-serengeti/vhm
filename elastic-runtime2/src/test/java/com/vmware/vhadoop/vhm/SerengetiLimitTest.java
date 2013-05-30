@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -65,6 +66,7 @@ public class SerengetiLimitTest extends ModelTestBase {
          unlockClusterMap(map);
       } while ((vms == null || vms.size() < numberOfComputeNodes) && timeout() > 0);
 
+      assertNotNull("No VMs register in cluster map", vms);
       assertEquals("Not enough VMs registered in cluster map", numberOfComputeNodes, vms.size());
 
       /* power on the compute nodes */
