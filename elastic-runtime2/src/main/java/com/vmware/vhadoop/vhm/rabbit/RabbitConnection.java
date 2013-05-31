@@ -16,6 +16,8 @@
 package com.vmware.vhadoop.vhm.rabbit;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -29,6 +31,8 @@ import com.rabbitmq.client.ShutdownSignalException;
  *
  */
 public class RabbitConnection {
+   private static final Logger _log = Logger.getLogger(RabbitConnection.class.getName());
+
 
    interface RabbitCredentials {
       public String getHostName();
@@ -61,10 +65,13 @@ public class RabbitConnection {
    private Connection getConnection() throws IOException {
       synchronized(_connectionLock) {
          if (_connection == null || !_connection.isOpen()) {
+            _connection = null;
             _connection = _connectionFactory.newConnection();
             _connection.addShutdownListener(new ShutdownListener() {
                @Override
                public void shutdownCompleted(ShutdownSignalException cause) {
+                  _log.info("Connection shut down");
+                  _log.log(Level.FINE, "{0}", cause.getReason());
                   synchronized(_connectionLock) {
                      _connection = null;
                      _channel = null;
@@ -72,6 +79,7 @@ public class RabbitConnection {
                   }
                }
             });
+            _log.fine("Created new connection");
          }
 
          return _connection;
@@ -81,11 +89,15 @@ public class RabbitConnection {
    private Channel getChannel() throws IOException {
       synchronized(_channelLock) {
          if (_channel == null || !_channel.isOpen()) {
+            _log.fine("Creating new channel");
+            _channel = null;
             Connection connection = getConnection();
             _channel = connection.createChannel();
             _channel.addShutdownListener(new ShutdownListener() {
                @Override
                public void shutdownCompleted(ShutdownSignalException cause) {
+                  _log.info("Channel shut down");
+                  _log.log(Level.FINE, "{0}", cause.getReason());
                   synchronized(_channelLock) {
                      _channel = null;
                      _queueName = null;
@@ -105,6 +117,7 @@ public class RabbitConnection {
          channel.exchangeDeclare(exchangeName, "direct", true, false, null); /* TODO: Externalize? */
          _queueName = channel.queueDeclare().getQueue();
          channel.queueBind(_queueName, exchangeName, _credentials.getRouteKeyCommand());
+         _log.fine("Created transient queue: "+_queueName);
       }
 
       return _queueName;
@@ -114,11 +127,16 @@ public class RabbitConnection {
    QueueingConsumer getConsumer() {
       synchronized(_consumerLock) {
          if (_consumer == null) {
+            _log.fine("Creating new consumer");
             try {
                Channel channel = getChannel();
                _consumer = new QueueingConsumer(channel) {
                   @Override
                   public void handleShutdownSignal(java.lang.String consumerTag, ShutdownSignalException sig) {
+                     super.handleShutdownSignal(consumerTag, sig);
+                     _log.info("Consumer received shutdown notification");
+                     _log.log(Level.FINE, "{0}", sig.getReason());
+
                      synchronized(_consumerLock) {
                         _consumer = null;
                      }
@@ -132,6 +150,17 @@ public class RabbitConnection {
 
          return _consumer;
       }
+   }
+
+   boolean connect() {
+      Connection connection = null;
+      try {
+         connection = getConnection();
+      } catch (IOException e) {
+         /* squash */
+      }
+
+      return connection != null;
    }
 
    protected void sendMessage(String routeKey, byte[] data) {

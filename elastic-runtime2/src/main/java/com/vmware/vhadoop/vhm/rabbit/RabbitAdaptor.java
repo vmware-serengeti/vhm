@@ -28,7 +28,7 @@ import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
 
 /**
  * Message queue client implementation for RabbitMQ
- * 
+ *
  */
 public class RabbitAdaptor implements MQClient {
    private RabbitConnection _connection;
@@ -40,12 +40,12 @@ public class RabbitAdaptor implements MQClient {
    public static class RabbitConnectionCallback {
       private String _routeKey;
       private RabbitConnection _innerConnection;
-      
+
       public RabbitConnectionCallback(String routeKey, RabbitConnection connection) {
          _routeKey = routeKey;
          _innerConnection = connection;
       }
-      
+
       public void sendMessage(byte[] data) {
          if (_routeKey == null) {
             _innerConnection.sendMessage(data);
@@ -54,7 +54,7 @@ public class RabbitAdaptor implements MQClient {
          }
       }
    }
-   
+
    public RabbitAdaptor(RabbitCredentials rabbitCredentials) {
       _connection = new RabbitConnection(rabbitCredentials);
    }
@@ -76,19 +76,32 @@ public class RabbitAdaptor implements MQClient {
          @Override
          public void run() {
             while (_started) {
+               /* wait for a rabbit instance to talk to */
+               while (!_connection.connect()) {
+                  try {
+                     Thread.sleep(20000);
+                  } catch (InterruptedException e) {
+                     /* squash */
+                  }
+               }
+
+               _log.info("Connected to Rabbit server");
+
                try {
-                  _log.info("Rabbit queue waiting for message");
-                  QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
-                  VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                  ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(),
-                        message.getAction(),
-                        message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
-                  _eventConsumer.placeEventOnQueue(event);
-                  _log.info("New Serengeti limit event placed on queue");
+                  while (_started) {
+                     _log.info("Rabbit queue waiting for message");
+                     QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
+                     VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
+                     ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(),
+                           message.getAction(),
+                           message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
+
+                     _eventConsumer.placeEventOnQueue(event);
+                     _log.info("New Serengeti limit event placed on queue");
+                  }
                } catch (InterruptedException e) {
                   /* Almost certainly stop() was invoked */
                } catch (ShutdownSignalException e) {
-                  stop();
                   _log.info("Rabbit queue shutting down");
                } catch (Throwable t) {
                   stop();
