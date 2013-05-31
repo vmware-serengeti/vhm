@@ -29,7 +29,7 @@ public class SerengetiLimitTest extends ModelTestBase {
       final int numberOfHosts = 2;
       final int computeNodesPerHost = 2;
       final int numberOfComputeNodes = numberOfHosts * computeNodesPerHost;
-      String clusterId = "limitTestPowerAllOnAllOff";
+      String clusterName = "limitTestPowerAllOnAllOff";
 
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
 
@@ -37,7 +37,8 @@ public class SerengetiLimitTest extends ModelTestBase {
 
       /* create a serengeti setup */
       Serengeti serengeti = new Serengeti(getClass().getName()+"-vApp", _orchestrator);
-      _clusterA = serengeti.createCluster(clusterId);
+      _clusterA = serengeti.createCluster(clusterName);
+      String clusterId = _clusterA.getClusterId();
 
       @SuppressWarnings("unchecked")
       List<Host> hosts = (List<Host>) _orchestrator.get(Host.class);
