@@ -32,9 +32,10 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    VCActions _vcActions;
    String _serengetiFolderName;
    boolean _started;
-   HashMap<String, NullData> _interimVMData;
+   HashMap<String, VmCreatedData> _interimVMData;
    
-   class NullData {
+   /* Place-holder that indicates that a VM has been created, so any further data about it will be an update */
+   class VmCreatedData {
    }
 
    class CachedVMConstantData extends VMConstantData {
@@ -42,7 +43,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       Boolean _isMaster;
    }
    
-   class InterimVmData extends NullData {
+   class InterimVmData extends VmCreatedData {
       String _clusterId;
       CachedVMConstantData _vmConstantData;
       VMVariableData _vmVariableData;
@@ -53,7 +54,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    public ClusterStateChangeListenerImpl(VCActions vcActions, String serengetiFolderName) {
       _vcActions = vcActions;
       _serengetiFolderName = serengetiFolderName;
-      _interimVMData = new HashMap<String, NullData>();
+      _interimVMData = new HashMap<String, VmCreatedData>();
    }
    
    @Override
@@ -202,7 +203,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    }
 
    private InterimVmData processInterimVmData(String vmId, VMEventData rawData) {
-      NullData nullData = _interimVMData.get(vmId);
+      VmCreatedData nullData = _interimVMData.get(vmId);
       InterimVmData interimVmData = null;
       if (nullData == null) {
          interimVmData = new InterimVmData();
@@ -227,10 +228,6 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       return interimVmData;
    }
 
-   private void removeInterimVmData(String vmId) {
-      _interimVMData.put(vmId, new NullData());
-   }
-
    /* Turn the raw data from VcVlsi into a rich event hierarchy. 
     * Data may come in from VcVlsi in bits and pieces, particularly when a new cluster is created,
     *   therefore there are clear data-completeness requirements for when we create certain event types
@@ -243,6 +240,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       _log.finest("Received rawData: "+rawData);
 
       if (vmBeingRemoved) {
+         /* Replace any interim data or place-holder */
+         _interimVMData.remove(vmId);
          return new VmRemovedFromClusterEvent(vmId);
       }
       
@@ -267,7 +266,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
             }
          }
          if (result != null) {
-            removeInterimVmData(vmId);
+            /* Replace the interim data with a place-holder */
+            _interimVMData.put(vmId, new VmCreatedData());
             return result;
          }
       } else {
