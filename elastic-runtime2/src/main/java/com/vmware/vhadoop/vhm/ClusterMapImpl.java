@@ -57,14 +57,14 @@ public class ClusterMapImpl implements ClusterMap {
       final String _moRef;
       final VMConstantData _constantData;
       final VMVariableData _variableData;
-      final ClusterInfo _cluster;
+      final String _clusterId;
 
       VMInfo(String moRef, VMConstantData constantData, 
-            VMVariableData variableData, ClusterInfo cluster) {
+            VMVariableData variableData, String clusterId) {
          this._moRef = moRef;
          this._constantData = constantData;
          this._variableData = variableData;
-         this._cluster = cluster;
+         this._clusterId = clusterId;
       }
 
       long _powerOnTime; // most recent timestamp when VHM learned VM is on
@@ -96,34 +96,28 @@ public class ClusterMapImpl implements ClusterMap {
    }
    
    private ClusterInfo getCluster(String clusterId) {
-      return getCluster(clusterId, null);
+      return _clusters.get(clusterId);
    }
 
-   private ClusterInfo getCluster(String clusterId, SerengetiClusterConstantData constantData) {
-      ClusterInfo cluster = _clusters.get(clusterId);
-      if ((cluster == null) && (clusterId != null) && (constantData != null)) {
-         cluster = new ClusterInfo(clusterId, constantData);
+   private boolean createCluster(String clusterId, SerengetiClusterConstantData constantData) {
+      if (_clusters.get(clusterId) != null) {
+         return false;
+      }
+      if ((clusterId != null) && (constantData != null)) {
+         ClusterInfo cluster = new ClusterInfo(clusterId, constantData);
          _clusters.put(clusterId, cluster);
       }
-      return cluster;
-   }
-
-   private void removeCluster(ClusterInfo cluster) {
-      if (cluster != null) {
-         _log.log(Level.INFO, "Removing cluster <%C" + cluster._masterUUID);
-         _clusters.remove(cluster._masterUUID);
-      }
+      return true;
    }
 
    private String removeVM(String vmMoRef) {
       VMInfo vmInfo = _vms.get(vmMoRef);
       String clusterId = null;
       if (vmInfo != null) {
-         if (vmInfo._cluster != null) {
-            clusterId = vmInfo._cluster._masterUUID;
-         }
+         clusterId = vmInfo._clusterId;
          if (vmInfo._constantData._vmType.equals(VmType.MASTER)) {
-            removeCluster(vmInfo._cluster);
+            _log.log(Level.INFO, "Removing Cluster <%C" + clusterId);
+            _clusters.remove(clusterId);
          }
          _log.log(Level.INFO, "Removing VM <%V" + vmMoRef);
          _vms.remove(vmMoRef);
@@ -164,40 +158,31 @@ public class ClusterMapImpl implements ClusterMap {
          return null;
       }
       
-      ClusterInfo clusterForVM = null;
-
       if (event instanceof NewMasterVMEvent) {
          SerengetiClusterConstantData clusterConstantData = ((NewMasterVMEvent)event).getClusterConstantData();      /* Should not be null */
          SerengetiClusterVariableData clusterVariableData = ((NewMasterVMEvent)event).getClusterVariableData();      /* Should not be null */
-         clusterForVM = getCluster(clusterId, clusterConstantData);
+         if (!createCluster(clusterId, clusterConstantData)) {
+            _log.severe("Cluster <%C"+clusterId+"%C> already exists!");
+            return null;
+         }
          updateClusterVariableData(clusterId, clusterVariableData, impliedScaleEventsResultSet, true);
-      } else {
-         clusterForVM = getCluster(clusterId);
       }
 
-      VMInfo vi = _vms.get(vmId);
-      if (vi != null) {
-         if ((vi._constantData._myUUID != constantData._myUUID) || (vi._constantData._vmType != constantData._vmType)) {
-            _log.severe("Data constants for interim VM are inconsistent!");
-            return null;
-         }
-      } else {
-         vi = createNewVM(vmId, constantData, variableData, clusterForVM);
-         if (vi == null) {
-            _log.severe("VMInfo already exists for new event data!");
-            return null;
-         }
+      VMInfo vi = createNewVM(vmId, constantData, variableData, clusterId);
+      if (vi == null) {
+         _log.severe("VMInfo already exists for new event data!");
+         return null;
       }
       
       updateVMVariableData(vmId, variableData);
       return clusterId;
    }
 
-   private VMInfo createNewVM(String vmId, VMConstantData constantData, VMVariableData variableData, ClusterInfo cluster) {
+   private VMInfo createNewVM(String vmId, VMConstantData constantData, VMVariableData variableData, String clusterId) {
       if (_vms.get(vmId) != null) {
          return null;
       }
-      VMInfo vi = new VMInfo(vmId, constantData, variableData, cluster);
+      VMInfo vi = new VMInfo(vmId, constantData, variableData, clusterId);
       _vms.put(vmId, vi);
       return vi;
    }
@@ -252,8 +237,8 @@ public class ClusterMapImpl implements ClusterMap {
             toSet._vCPUs = vCPUs;
             _log.fine("Updating vCPUs for <%V"+vmId+"%V> to "+vCPUs);
          }
-         if (vi._cluster != null) {
-            clusterId = vi._cluster._masterUUID;
+         if (vi._clusterId != null) {
+            clusterId = vi._clusterId;
          }
       }
       return clusterId;
@@ -338,19 +323,20 @@ public class ClusterMapImpl implements ClusterMap {
       for (VMInfo vminfo : _vms.values()) {
          try {
             boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._variableData._hostMoRef));
-            boolean clusterTest = (clusterId == null) ? true : (vminfo._cluster._masterUUID.equals(clusterId));
+            boolean clusterTest = (clusterId == null) ? true : (vminfo._clusterId.equals(clusterId));
             boolean powerStateTest = (vminfo._variableData._powerState == powerState);
+            _log.info("Testing "+vminfo._variableData._myName+" h="+hostTest+", c="+clusterTest+", p="+powerStateTest);
             if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
                result.add(vminfo._moRef);
             }
          } catch (NullPointerException e) {
           //vminfo.xxx could be null for VMs where we only have partial data from VC
             VMVariableData variableInfo = vminfo._variableData;
-          _log.fine("Null pointer checking for matching vm (name: "+variableInfo._myName+
+            _log.fine("Null pointer checking for matching vm (name: "+variableInfo._myName+
                                                           ", uuid: "+vminfo._constantData._myUUID+
                                                           ", host: "+variableInfo._hostMoRef+
-                                                          ", cluster: "+vminfo._cluster+
-                                                          ", moRef: "+vminfo._moRef+")");
+                                                          ", cluster: <%C"+vminfo._clusterId+
+                                                       "%C>, moRef: "+vminfo._moRef+")");
          }
       }
       return (result.size() == 0) ? null : result;
@@ -374,7 +360,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_vms)) {
          Set<String> result = new HashSet<String>();
          for (VMInfo vminfo : _vms.values()) {
-            if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && vminfo._cluster._masterUUID.equals(clusterId)) {
+            if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && vminfo._clusterId.equals(clusterId)) {
                result.add(vminfo._variableData._hostMoRef);
             }
          }
@@ -394,7 +380,7 @@ public class ClusterMapImpl implements ClusterMap {
          String powerState = variableData._powerState ? " ON" : " OFF";
          String vCPUs = " vCPUs=" + ((variableData._vCPUs == null) ? "N/A" : variableData._vCPUs);
          String host = (variableData._hostMoRef == null) ? "N/A" : variableData._hostMoRef;
-         String masterUUID = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterUUID;
+         String masterUUID = (vmInfo._clusterId == null) ? "N/A" : vmInfo._clusterId;
          String role = vmInfo._constantData._vmType.name();
          String ipAddr = (variableData._ipAddr == null) ? "N/A" : variableData._ipAddr;
          String dnsName = (variableData._dnsName == null) ? "N/A" : variableData._dnsName;
@@ -414,7 +400,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (vms != null) {
          for (String moRef : vms) {
             try {
-               clusterId = _vms.get(moRef)._cluster._masterUUID;
+               clusterId = _vms.get(moRef)._clusterId;
                break;
             } catch (NullPointerException e) {}
          }
@@ -448,7 +434,7 @@ public class ClusterMapImpl implements ClusterMap {
    public String getClusterIdForVm(String vmId) {
       VMInfo vmInfo = _vms.get(vmId);
       if (vmInfo != null) {
-         return vmInfo._cluster._masterUUID;
+         return vmInfo._clusterId;
       }
       return null;
    }

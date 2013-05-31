@@ -24,7 +24,7 @@ abstract public class ModelTestBase extends AbstractClusterMapReader implements 
 
    static int TEST_WARM_UP_TIME = 20000;
    static int TEST_COOLDOWN_TIME = 10000;
-   static int LIMIT_CYCLE_TIME = 10000;
+   static int LIMIT_CYCLE_TIME = 1000000;
 
    public ModelTestBase() throws IOException, ClassNotFoundException {
       /* force this to load so that the springframework binding is done before we invoke tests */
