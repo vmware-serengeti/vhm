@@ -325,7 +325,7 @@ public class ClusterMapImpl implements ClusterMap {
             boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._variableData._hostMoRef));
             boolean clusterTest = (clusterId == null) ? true : (vminfo._clusterId.equals(clusterId));
             boolean powerStateTest = (vminfo._variableData._powerState == powerState);
-            _log.info("Testing "+vminfo._variableData._myName+" h="+hostTest+", c="+clusterTest+", p="+powerStateTest);
+            _log.finest("Testing "+vminfo._variableData._myName+" h="+hostTest+", c="+clusterTest+", p="+powerStateTest);
             if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
                result.add(vminfo._moRef);
             }
