@@ -10,7 +10,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.BootstrapMain;
@@ -44,17 +44,17 @@ public class PopulateClusterMap {
 
       ExtraInfoToClusterMapper strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
-         public String getStrategyKey(VMEventData vmd, String clusterId) {
+         public String getStrategyKey(SerengetiClusterVariableData vmd, String clusterId) {
             return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId) {
+         public Map<String, String> parseExtraInfo(SerengetiClusterVariableData vmd, String clusterId) {
             return null;
          }
 
          @Override
-         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId, boolean isNewCluster) {
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData vmd, String clusterId, boolean isNewCluster) {
             return null;
          }
       };

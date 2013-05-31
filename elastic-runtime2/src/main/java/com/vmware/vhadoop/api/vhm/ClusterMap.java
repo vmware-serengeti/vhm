@@ -6,7 +6,7 @@ import java.util.Set;
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 
 /* Represents read-only and idempotent methods for ClusterMap
  * Everything returned by this interface should be a deep copy of the ClusterMap data
@@ -16,13 +16,13 @@ public interface ClusterMap {
    public interface ExtraInfoToClusterMapper {
 
       /* Returns the key which indicates the scale strategy singleton to use for this cluster */
-      String getStrategyKey(VMEventData vmd, String clusterId);
+      String getStrategyKey(SerengetiClusterVariableData clusterData, String clusterId);
       
       /* Allows for the addition of contextual data to be added to a cluster and retrieved through ClusterMap */
-      Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId);
+      Map<String, String> parseExtraInfo(SerengetiClusterVariableData clusterData, String clusterId);
 
       /* Allows for the creation of new scale events based on cluster state change */
-      Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId, boolean isNewCluster);
+      Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData clusterData, String clusterId, boolean isNewCluster);
    }
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);

@@ -27,8 +27,8 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLException;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.MasterVmEventData;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
+import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
@@ -82,6 +82,8 @@ import com.vmware.vim.vmomi.core.types.VmodlContext;
 public class VcVlsi {
 
    private static final int SESSION_TIME_OUT = 120000;
+
+   public static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master-";
 
    private static final Logger _log = Logger.getLogger("VcVlsi");
    private static final VmodlContext vmodlContext = VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
@@ -516,6 +518,7 @@ public class VcVlsi {
                   vmData._vCPUs = (Integer)pcValue;
                } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
+                  vmData._isMaster = vmData._myName.contains(SERENGETI_MASTERVM_NAME_POSTFIX);
                   /* Update this as early as possible. Doesn't matter if the key already exists */
                   LogFormatter._vmIdToNameMapper.put(vmData._vmMoRef, vmData._myName);
                } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {

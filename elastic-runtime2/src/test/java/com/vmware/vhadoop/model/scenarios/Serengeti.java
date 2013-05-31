@@ -53,22 +53,30 @@ public class Serengeti extends ResourceContainer
     */
    public class Master extends VM implements EventProducer
    {
+      String clusterName;
       String clusterId;
       int computeNodesId = 0;
       List<Compute> computeNodes;
       ResourcePool computePool;
       EventConsumer eventConsumer;
+      
+      public String getClusterId() {
+         return clusterId;
+      }
 
       Master(String id, String cluster, Orchestrator orchestrator) {
          super(id, 2 * orchestrator.getCpuSpeed(), 4 * 1024, orchestrator);
-         clusterId = cluster;
+         clusterName = cluster;
+         clusterId = id;
          computeNodes = new LinkedList<Compute>();
+         setExtraInfo("vhmInfo.elastic", "false");
          setExtraInfo("vhmInfo.masterVM.uuid", clusterId);
          setExtraInfo("vhmInfo.masterVM.moid", id);
-         setExtraInfo("vhmInfo.serengeti.uuid", clusterId);
+         setExtraInfo("vhmInfo.serengeti.uuid", Serengeti.this.getId());
+         setExtraInfo("vhmInfo.jobtracker.port", "8080");
          setMinInstances(UNLIMITED);
          enableAuto(false);
-         computePool = new ResourcePool(clusterId, orchestrator);
+         computePool = new ResourcePool(clusterName, orchestrator);
          this.add(computePool);
       }
 
@@ -81,7 +89,7 @@ public class Serengeti extends ResourceContainer
          if (!isAuto() && eventConsumer != null) {
             int min = Integer.valueOf(getExtraInfo().get("vhmInfo.min.computeNodeNum"));
             /* TODO: decide whether we want to support a callback mechanism */
-            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId,
+            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterName,
                   SerengetiLimitInstruction.actionSetTarget, min, null));
          }
       }
@@ -131,8 +139,8 @@ public class Serengeti extends ResourceContainer
 
       public void createComputeNodes(int num, Host host) {
          for (int i = 0; i < num; i++) {
-            Compute compute = new Compute(clusterId+"-compute"+(computeNodesId++), this, orchestrator);
-            compute.setExtraInfo("vhmInfo.serengeti.uuid", clusterId);
+            Compute compute = new Compute(clusterName+"-compute"+(computeNodesId++), this, orchestrator);
+            compute.setExtraInfo("vhmInfo.serengeti.uuid", Serengeti.this.getId());
             /* assign it to a host */
             host.add(compute);
             /* keep it handy for future operations */

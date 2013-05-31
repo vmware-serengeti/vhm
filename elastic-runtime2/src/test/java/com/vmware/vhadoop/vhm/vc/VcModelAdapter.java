@@ -8,7 +8,6 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.model.Orchestrator;
 import com.vmware.vhadoop.model.ResourceContainer;
 import com.vmware.vhadoop.model.VM;
@@ -66,6 +65,7 @@ public class VcModelAdapter implements VCActions {
          vmData._myUUID = vm.getId();
          vmData._powerState = vm.getPowerState();
          vmData._vCPUs = (int) (vm.getCpuLimit() / _orchestrator.getCpuSpeed());
+         vmData._isMaster = vmData._myName.contains("-master");
 
          /* parse out the extraInfo fields into the event */
          Map<String,String> extraInfo = vm.getExtraInfo();

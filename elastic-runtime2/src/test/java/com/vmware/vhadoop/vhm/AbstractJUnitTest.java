@@ -5,9 +5,9 @@ import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
+import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
+import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.MasterVmEventData;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 
 public abstract class AbstractJUnitTest {
@@ -44,8 +44,11 @@ public abstract class AbstractJUnitTest {
    
    VMEventData createEventData(String clusterName, String vmName, boolean isMaster, 
          Boolean powerState, String hostName, String masterVmName,
-         boolean autoCluster, Integer minClusterInstances) {
+         boolean autoCluster, Integer minClusterInstances, boolean isNewVM) {
       VMEventData result = new VMEventData();
+      if (isNewVM) {
+         result._myUUID = UUID_PREFIX+vmName;
+      }
       result._dnsName = getDnsNameFromVmName(vmName);
       result._hostMoRef = MOREF_PREFIX+hostName;
       result._ipAddr = IPADDR_PREFIX+vmName;
@@ -56,13 +59,13 @@ public abstract class AbstractJUnitTest {
       result._serengetiFolder = getFolderNameForClusterName(clusterName);
       result._vmMoRef = MOREF_PREFIX+vmName;
       result._vCPUs = DEFAULT_VCPUS;
+      result._isElastic = !isMaster;
+      result._isMaster = isMaster;
       if (isMaster) {
          result._masterVmData = new MasterVmEventData();
          result._masterVmData._enableAutomation = autoCluster;
          result._masterVmData._minInstances = minClusterInstances;
          result._masterVmData._jobTrackerPort = DEFAULT_PORT;
-      } else {
-         result._isElastic = true;
       }
       result._powerState = powerState;
       result._isLeaving = false;
@@ -79,7 +82,7 @@ public abstract class AbstractJUnitTest {
             masterVmName = vmName;
             _masterVmNames.add(masterVmName);
          }
-         VMEventData eventData = createEventData(clusterName, vmName, i==0, defaultPowerState, hostName, masterVmName, autoCluster, minInstances);
+         VMEventData eventData = createEventData(clusterName, vmName, i==0, defaultPowerState, hostName, masterVmName, autoCluster, minInstances, true);
          processNewEventData(eventData, deriveClusterIdFromClusterName(clusterName), impliedScaleEvents);
       }
       registerScaleStrategy(new TrivialScaleStrategy(DEFAULT_SCALE_STRATEGY_KEY));
@@ -96,7 +99,7 @@ public abstract class AbstractJUnitTest {
       for (int i=0; i<numClusters; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
-         Integer minInstances = (i==0) ? null : i;
+         Integer minInstances = i;
          /* Default automation value is true, so that if it's false, we can assert that VHM defaults to the real ManualScaleStrategy */
          populateClusterSameHost(clusterName, "DEFAULT_HOST", vmsPerCluster, defaultPowerState, true, minInstances, impliedScaleEvents);
       }
@@ -110,7 +113,7 @@ public abstract class AbstractJUnitTest {
       for (int i=0; i<numClusters; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
          _clusterNames.add(clusterName);
-         Integer minInstances = (i==0) ? (null) : i;
+         Integer minInstances = i;
          /* Default automation value is true, so that if it's false, we can assert that VHM defaults to the real ManualScaleStrategy */
          populateClusterSameHost(clusterName, HOST_PREFIX+i, vmsPerCluster, defaultPowerState, true, minInstances, impliedScaleEvents);
       }

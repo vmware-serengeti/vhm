@@ -10,16 +10,16 @@ import static org.junit.Assert.*;
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
+import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.TrivialClusterScaleEvent.ChannelReporter;
 import com.vmware.vhadoop.vhm.TrivialScaleStrategy.TrivialClusterScaleOperation;
-import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor.RabbitConnectionCallback;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
@@ -86,26 +86,26 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _clusterStateChangeListener = new ClusterStateChangeListenerImpl(_vcActions, "myFolder");
       _strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
-         public String getStrategyKey(VMEventData vmd, String clusterId) {
-            return vmd._masterVmData._enableAutomation ? STRATEGY_KEY : ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
+         public String getStrategyKey(SerengetiClusterVariableData cvd, String clusterId) {
+            return cvd._enableAutomation ? STRATEGY_KEY : ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(VMEventData vmd, String clusterId) {
+         public Map<String, String> parseExtraInfo(SerengetiClusterVariableData cvd, String clusterId) {
             return null;
          }
 
          @Override
-         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(VMEventData vmd, String clusterId, boolean isNewCluster) {
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData cvd, String clusterId, boolean isNewCluster) {
             _isNewClusterResult.add(isNewCluster);
             Set<ClusterScaleEvent> newEvents = new HashSet<ClusterScaleEvent>();
-            if ((vmd._masterVmData != null) && (vmd._masterVmData._enableAutomation != null)) {
-               if (vmd._masterVmData._enableAutomation) {
+            if ((cvd != null) && (cvd._enableAutomation != null)) {
+               if (cvd._enableAutomation) {
                   newEvents.add(new ClusterScaleStrategyNotManualEvent(clusterId, isNewCluster));
                }
             }
-            if (!isNewCluster && (vmd._masterVmData != null) && (vmd._masterVmData._minInstances != null)) {
-               int newMinInstances = vmd._masterVmData._minInstances;
+            if (!isNewCluster && (cvd != null) && (cvd._minInstances != null)) {
+               int newMinInstances = cvd._minInstances;
                if (newMinInstances >= 0) {
                   newEvents.add(new ClusterDataChangedEvent(clusterId, newMinInstances));
                }
@@ -408,7 +408,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    private void simulateVcExtraInfoChange(String clusterName, Boolean isAuto, Integer minInstances) {
       String masterVmName1 = getMasterVmNameForCluster(clusterName);
       VMEventData switchEvent = createEventData(clusterName, 
-            masterVmName1, true, null, null, masterVmName1, isAuto, minInstances);
+            masterVmName1, true, null, null, masterVmName1, isAuto, minInstances, false);
       processNewEventData(switchEvent);
    }
    

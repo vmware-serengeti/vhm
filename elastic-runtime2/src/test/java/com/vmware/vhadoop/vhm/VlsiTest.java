@@ -6,7 +6,7 @@ import java.util.Properties;
 import org.junit.Test;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 
 public class VlsiTest {
 

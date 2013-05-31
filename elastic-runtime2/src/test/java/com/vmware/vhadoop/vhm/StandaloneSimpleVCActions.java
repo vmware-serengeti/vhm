@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vim.vmomi.client.Client;
 
 public class StandaloneSimpleVCActions implements VCActions {

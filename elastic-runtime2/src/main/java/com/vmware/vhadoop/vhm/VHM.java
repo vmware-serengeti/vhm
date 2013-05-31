@@ -285,13 +285,15 @@ public class VHM implements EventConsumer {
                for (ClusterStateChangeEvent event : clusterStateChangeEvents) {
                   _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
                   String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEvents);
-                  if (impliedScaleEvents.size() > 0) {
-                     if (clusterScaleEvents.get(clusterId) == null) {
-                        clusterScaleEvents.put(clusterId, impliedScaleEvents);
-                        impliedScaleEvents = new HashSet<ClusterScaleEvent>();
-                     } else {
-                        clusterScaleEvents.get(clusterId).addAll(impliedScaleEvents);
-                        impliedScaleEvents.clear();
+                  if (clusterId != null) {
+                     if (impliedScaleEvents.size() > 0) {
+                        if (clusterScaleEvents.get(clusterId) == null) {
+                           clusterScaleEvents.put(clusterId, impliedScaleEvents);
+                           impliedScaleEvents = new HashSet<ClusterScaleEvent>();
+                        } else {
+                           clusterScaleEvents.get(clusterId).addAll(impliedScaleEvents);
+                           impliedScaleEvents.clear();
+                        }
                      }
                   }
                }
@@ -320,7 +322,7 @@ public class VHM implements EventConsumer {
                      boolean extraInfoChanged = _clusterMap.getScaleStrategyKey(clusterId).equals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY);
                      boolean scalingCompleted = !_executionStrategy.isClusterScaleInProgress(clusterId);
                      if (extraInfoChanged && scalingCompleted) {
-                        _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"C%> is now complete. Reporting back to Serengeti");
+                        _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"%C> is now complete. Reporting back to Serengeti");
                         switchToManualEvent.reportCompletion();
                      } else {
                         /* Continue to block Serengeti CLI by putting the event back on the queue */

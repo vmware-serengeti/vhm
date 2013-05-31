@@ -14,12 +14,18 @@ import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterConstantData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMConstantData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
-import com.vmware.vhadoop.util.LogFormatter;
-import com.vmware.vhadoop.vhm.events.ScaleStrategyChangeEvent;
-import com.vmware.vhadoop.vhm.events.VMRemovedFromClusterEvent;
-import com.vmware.vhadoop.vhm.events.VMUpdatedEvent;
+import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
+import com.vmware.vhadoop.vhm.events.MasterVmUpdateEvent;
+import com.vmware.vhadoop.vhm.events.NewMasterVMEvent;
+import com.vmware.vhadoop.vhm.events.NewVmEvent;
+import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
+import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 
 /* Note that this class allows multiple readers and a single writer
  * All of the methods in ClusterMap can be accessed by multiple threads, but should only ever read and are idempotent
@@ -34,8 +40,6 @@ public class ClusterMapImpl implements ClusterMap {
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
    Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
    
-   private static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master";
-
    final ExtraInfoToClusterMapper _extraInfoMapper;
 
    public ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
@@ -57,8 +61,7 @@ public class ClusterMapImpl implements ClusterMap {
       Integer _vCPUs;
       HostInfo _host;
       ClusterInfo _cluster;
-      boolean _isMaster;
-      boolean _isElastic;
+      VmType _vmType;
       boolean _powerState;
       public String _myUUID;
       public String _name;
@@ -107,106 +110,9 @@ public class ClusterMapImpl implements ClusterMap {
       return cluster;
    }
 
-   private String updateVMState(VMEventData vmd, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
-      VMInfo vmInfo = _vms.get(vmd._vmMoRef);
-      ClusterInfo ci = null;
-      String clusterId = null;
-      boolean isNewVm = false;
-      
-      if (vmInfo == null) {
-         vmInfo = new VMInfo(vmd._vmMoRef);
-         _vms.put(vmd._vmMoRef, vmInfo);
-         isNewVm = true;
-         _log.log(Level.INFO, "New VM <%V" + vmInfo._moRef);
-      }
-
-      /* When a new VM is added, we expect a complete vmd with masterUUID and everything */
-      /* If the state of a VM is updated, we only get partial info - almost certainly no masterUUID */
-      if (vmd._masterUUID != null) {
-         clusterId = vmd._masterUUID;
-         ci = vmInfo._cluster = getCluster(vmd._masterUUID);
-      }
-      
-      /* If we didn't get a masterUUID, we may be able to find the cluster from the VMInfo */
-      if (ci == null) {
-         ci = vmInfo._cluster;
-         clusterId = ci._masterUUID;
-      }
-
-      if (vmd._hostMoRef != null) {
-         vmInfo._host = getHost(vmd._hostMoRef);
-      }
-
-      if (vmd._powerState != null) {
-         vmInfo._powerState = vmd._powerState;
-         if (vmInfo._powerState) {
-            vmInfo._powerOnTime = System.currentTimeMillis();
-         }
-      }
-      if (vmd._myName != null) {
-         vmInfo._name = vmd._myName;
-      }
-      if (vmd._vCPUs != null) {
-         vmInfo._vCPUs = vmd._vCPUs;
-      }
-      if (vmd._ipAddr != null) {
-         vmInfo._ipAddr = vmd._ipAddr;
-      }
-      if (vmd._dnsName != null) {
-         vmInfo._dnsName = vmd._dnsName;
-      }
-      if (vmd._myUUID != null) {
-         vmInfo._myUUID = vmd._myUUID;
-      }
-      if (vmd._isElastic != null) {
-         vmInfo._isElastic = vmd._isElastic;
-      }
-      if (vmd._masterVmData != null) {
-         if (ci != null) {
-            if (ci._masterVM == null) {
-               ci._masterVM = vmInfo;
-               if (vmInfo._moRef != null) {
-                  String masterVmName = ci._masterVM._name;
-                  int masterIndex = masterVmName.indexOf(SERENGETI_MASTERVM_NAME_POSTFIX);
-                  String clusterName = (masterIndex >= 0) ? masterVmName.substring(0, masterIndex) : masterVmName;
-                  LogFormatter._clusterIdToNameMapper.put(ci._masterUUID, clusterName);
-               }
-            }
-            if (vmd._masterVmData._enableAutomation != null) {
-               vmInfo._isMaster = true;
-               String scaleStrategyKey = _extraInfoMapper.getStrategyKey(vmd, clusterId);
-               String logVerb = (ci._scaleStrategyKey == null) ? "Setting" : "Switching";
-               _log.info(logVerb+" scale strategy in ClusterMap to "+scaleStrategyKey+" for cluster <%C"+clusterId);
-               ci._scaleStrategyKey = scaleStrategyKey;
-            }
-            if (ci._extraInfo == null) {
-               ci._extraInfo = _extraInfoMapper.parseExtraInfo(vmd, clusterId);
-            } else {
-               Map<String, String> toAdd = _extraInfoMapper.parseExtraInfo(vmd, clusterId);
-               if (toAdd != null) {
-                  ci._extraInfo.putAll(toAdd);
-               }
-            }
-            /* isNewVM implies isNewCluster in this context, as only the master VM will get to this point */
-            Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(vmd, clusterId, isNewVm);
-            if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
-               impliedScaleEventsResultSet.addAll(impliedScaleEvents);
-            }
-            if (vmd._serengetiFolder != null) {
-               ci._folderName = vmd._serengetiFolder;
-            }
-            if (vmd._masterVmData._jobTrackerPort != null) {
-               ci._jobTrackerPort = vmd._masterVmData._jobTrackerPort;
-            }
-         }
-      }
-      dumpState(Level.FINE);
-      return clusterId;
-   }
-
    private void removeCluster(ClusterInfo cluster) {
       if (cluster != null) {
-         _log.log(Level.INFO, "Remove cluster " + cluster._masterUUID + " uuid=" + cluster._masterUUID);
+         _log.log(Level.INFO, "Removing cluster <%C" + cluster._masterUUID);
          _clusters.remove(cluster._masterUUID);
       }
    }
@@ -218,37 +124,178 @@ public class ClusterMapImpl implements ClusterMap {
          if (vmInfo._cluster != null) {
             clusterId = vmInfo._cluster._masterUUID;
          }
-         if (vmInfo._isMaster) {
+         if (vmInfo._vmType.equals(VmType.MASTER)) {
             removeCluster(vmInfo._cluster);
          }
-         _log.log(Level.INFO, "Remove VM " + vmInfo._name);
+         _log.log(Level.INFO, "Removing VM <%V" + vmMoRef);
          _vms.remove(vmMoRef);
       }
-      dumpState(Level.FINE);
+      dumpState(Level.FINEST);
       return clusterId;
-   }
-
-   private void changeScaleStrategy(String clusterId, String newStrategyKey) {
-      ClusterInfo cluster = _clusters.get(clusterId);
-      cluster._scaleStrategyKey = newStrategyKey;
    }
 
    /* Returns clusterId of the cluster affected */
    /* May also return any implied scale events of the cluster state change */
    public String handleClusterEvent(ClusterStateChangeEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
       String clusterId = null;
-      if (event instanceof VMUpdatedEvent) {
-         VMUpdatedEvent ace = (VMUpdatedEvent)event;
-         clusterId = updateVMState(ace.getVm(), impliedScaleEventsResultSet);
-      } else if (event instanceof VMRemovedFromClusterEvent) {
-         VMRemovedFromClusterEvent rce = (VMRemovedFromClusterEvent)event;
-         clusterId = removeVM(rce.getVmMoRef());
-      } else if (event instanceof ScaleStrategyChangeEvent) {
-         ScaleStrategyChangeEvent sce = (ScaleStrategyChangeEvent)event;
-         clusterId = sce.getClusterId();
-         changeScaleStrategy(clusterId, sce.getNewStrategyKey());
+      if (event instanceof NewVmEvent) {
+         return addNewVM((NewVmEvent)event, impliedScaleEventsResultSet);
+      } else if (event instanceof VmUpdateEvent) {
+         return updateVMState((VmUpdateEvent)event, impliedScaleEventsResultSet);
+      } else if (event instanceof ClusterUpdateEvent) {
+         return updateClusterState((ClusterUpdateEvent)event, impliedScaleEventsResultSet, false);
+      } else if (event instanceof VmRemovedFromClusterEvent) {
+         return removeVMFromCluster((VmRemovedFromClusterEvent)event);
       }
       return clusterId;
+   }
+   
+   private String addNewVM(NewVmEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
+      VMConstantData constantData = event.getConstantData();
+      if (constantData == null) {
+         _log.severe("VMConstantData cannot be null!");
+         return null;
+      }
+      
+      VMVariableData variableData = event.getVariableData();      /* Can be null */
+      String vmId = event.getVmId();
+      String clusterId = event.getClusterId();
+      
+      if (clusterId == null) {
+         _log.severe("ClusterId should not be null!");
+         return null;
+      }
+      
+      VMInfo vi = _vms.get(vmId);
+      if (vi != null) {
+         if ((vi._myUUID != constantData._myUUID) || (vi._vmType != constantData._vmType)) {
+            _log.severe("Data constants for interim VM are inconsistent!");
+            return null;
+         }
+      } else {
+         vi = createNewVM(vmId, constantData);
+         if (vi == null) {
+            _log.severe("VMInfo already exists for new event data!");
+            return null;
+         }
+      }
+      
+      if (event instanceof NewMasterVMEvent) {
+         SerengetiClusterConstantData clusterConstantData = ((NewMasterVMEvent)event).getClusterConstantData();      /* Should not be null */
+         SerengetiClusterVariableData clusterVariableData = ((NewMasterVMEvent)event).getClusterVariableData();      /* Should not be null */
+         ClusterInfo ci = getCluster(clusterId);
+         ci._masterVM = vi;
+         ci._folderName = clusterConstantData._serengetiFolder;
+         vi._cluster = ci;
+         updateClusterVariableData(clusterId, clusterVariableData, impliedScaleEventsResultSet, true);
+      } else {
+         vi._cluster = getCluster(clusterId);
+      }
+      updateVMVariableData(vmId, variableData);
+      return clusterId;
+   }
+
+   private VMInfo createNewVM(String vmId, VMConstantData constantData) {
+      if (_vms.get(vmId) != null) {
+         return null;
+      }
+      VMInfo vi = new VMInfo(vmId);
+      vi._myUUID = constantData._myUUID;
+      vi._vmType = constantData._vmType;
+      _vms.put(vmId, vi);
+      return vi;
+   }
+
+   private String updateVMState(VmUpdateEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
+      VMVariableData variableData = event.getVariableData();
+      if (event instanceof MasterVmUpdateEvent) {
+         String clusterId = getClusterIdForVm(event.getVmId());
+         updateClusterVariableData(clusterId, ((MasterVmUpdateEvent)event).getClusterVariableData(), 
+               impliedScaleEventsResultSet, false);
+      }
+      return updateVMVariableData(event.getVmId(), variableData);
+   }
+   
+   private String updateVMVariableData(String vmId, VMVariableData variableData) {
+      VMInfo vi = _vms.get(vmId);
+      if (vi != null) {
+         String dnsName = variableData._dnsName;
+         String hostMoRef = variableData._hostMoRef;
+         String ipAddr = variableData._ipAddr;
+         String myName = variableData._myName;
+         Boolean powerState = variableData._powerState;
+         Integer vCPUs = variableData._vCPUs;
+         if (dnsName != null) {
+            vi._dnsName = dnsName;
+            _log.fine("Updating dnsName for <%V"+vmId+"%V> to "+dnsName);
+         }
+         if (hostMoRef != null) {
+            vi._host = getHost(hostMoRef);
+            _log.fine("Updating host for <%V"+vmId+"%V> to "+hostMoRef);
+         }
+         if (ipAddr != null) {
+            vi._ipAddr = ipAddr;
+            _log.fine("Updating ipAddr for <%V"+vmId+"%V> to "+ipAddr);
+         }
+         if (myName != null) {
+            vi._name = myName;
+            _log.fine("Updating myName for <%V"+vmId+"%V> to "+myName);
+         }
+         if (powerState != null) {
+            vi._powerState = powerState;
+            _log.fine("Updating powerState for <%V"+vmId+"%V> to "+powerState);
+         }
+         if (vCPUs != null) {
+            vi._vCPUs = vCPUs;
+            _log.fine("Updating vCPUs for <%V"+vmId+"%V> to "+vCPUs);
+         }
+         return vi._cluster._masterUUID;
+      }
+      return null;
+   }
+
+   private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData, 
+         Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
+      ClusterInfo ci = _clusters.get(clusterId);
+      if (ci != null) {
+         Boolean enableAutomation = variableData._enableAutomation;
+         Integer jobTrackerPort = variableData._jobTrackerPort;
+         if (enableAutomation != null) {
+            String scaleStrategyKey = _extraInfoMapper.getStrategyKey(variableData, clusterId);
+            String logVerb = (ci._scaleStrategyKey == null) ? "Setting" : "Switching";
+            _log.info(logVerb+" scale strategy in ClusterMap to "+scaleStrategyKey+" for cluster <%C"+clusterId);
+            ci._scaleStrategyKey = scaleStrategyKey;
+         }
+         if (jobTrackerPort != null) {
+            ci._jobTrackerPort = jobTrackerPort;
+            _log.fine("Updating jobTrackerPort for <%C"+clusterId+"%C> to "+jobTrackerPort);
+         }
+         if (ci._extraInfo == null) {
+            ci._extraInfo = _extraInfoMapper.parseExtraInfo(variableData, clusterId);
+            _log.fine("Setting extraInfo in <%C"+clusterId+"%C> to "+ci._extraInfo);
+         } else {
+            Map<String, String> toAdd = _extraInfoMapper.parseExtraInfo(variableData, clusterId);
+            _log.fine("Changing extraInfo in <%C"+clusterId+"%C> to "+toAdd);
+            if (toAdd != null) {
+               ci._extraInfo.putAll(toAdd);
+            }
+         }
+         Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(variableData, clusterId, isNewVm);
+         if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
+            impliedScaleEventsResultSet.addAll(impliedScaleEvents);
+         }
+      }
+   }
+   
+   private String updateClusterState(ClusterUpdateEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
+      SerengetiClusterVariableData variableData = event.getClusterVariableData();
+      String clusterId = getClusterIdForVm(event.getVmId());
+      updateClusterVariableData(clusterId, variableData, impliedScaleEventsResultSet, isNewVm);
+      return clusterId;
+   }
+
+   private String removeVMFromCluster(VmRemovedFromClusterEvent event) {
+      return removeVM(event.getVmId());
    }
 
    public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
@@ -288,7 +335,7 @@ public class ClusterMapImpl implements ClusterMap {
             boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._host._moRef));
             boolean clusterTest = (clusterId == null) ? true : (vminfo._cluster._masterUUID.equals(clusterId));
             boolean powerStateTest = (vminfo._powerState == powerState);
-            if ((vminfo._isElastic) && hostTest && clusterTest && powerStateTest) {
+            if ((vminfo._vmType.equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
                result.add(vminfo._moRef);
             }
          } catch (NullPointerException e) {
@@ -321,7 +368,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_vms)) {
          Set<String> result = new HashSet<String>();
          for (VMInfo vminfo : _vms.values()) {
-            if ((vminfo._isElastic) && vminfo._cluster._masterUUID.equals(clusterId)) {
+            if ((vminfo._vmType.equals(VmType.COMPUTE)) && vminfo._cluster._masterUUID.equals(clusterId)) {
                result.add(vminfo._host._moRef);
             }
          }
@@ -341,13 +388,10 @@ public class ClusterMapImpl implements ClusterMap {
          String vCPUs = " vCPUs=" + ((vmInfo._vCPUs == null) ? "N/A" : vmInfo._vCPUs);
          String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
          String masterUUID = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterUUID;
-         String role = vmInfo._isElastic ? "compute" : "other";
+         String role = vmInfo._vmType.name();
          String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
          String dnsName = (vmInfo._dnsName == null) ? "N/A" : vmInfo._dnsName;
          String jtPort = "";
-         if (vmInfo._isMaster) {
-            role = "master";
-         }
          _log.log(logLevel, "VM <%V" + vmInfo._moRef + "%V> " + role + powerState + vCPUs +
                " host=" + host + " cluster=<%C" + masterUUID + "%C> IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
