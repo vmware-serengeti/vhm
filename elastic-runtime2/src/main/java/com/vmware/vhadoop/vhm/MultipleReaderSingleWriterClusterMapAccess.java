@@ -75,7 +75,9 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
                      _readerThreads.clear();
                      break;
                   }
-               } catch (InterruptedException e) {}
+               } catch (InterruptedException e) {
+                  _log.warning("Unexpected interruption to sleep in writeLock");
+               }
             }
             return callable.call();
          } catch (Exception e) {

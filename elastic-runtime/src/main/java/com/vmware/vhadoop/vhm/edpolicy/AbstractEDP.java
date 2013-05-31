@@ -187,7 +187,7 @@ public abstract class AbstractEDP implements EnableDisableTTPolicy {
 		  try {
 			  Thread.sleep(shutdownGuestTimeOutMs);
 		  } catch (InterruptedException e) {
-			  e.printStackTrace();
+			  _log.log(Level.WARNING, "Unexpected interruption waiting for guest shutdown ", e);
 		  }
 		  for (VMDTO vm : shutDownNoTask) {
 		      try {

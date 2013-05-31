@@ -195,7 +195,6 @@ public class EmbeddedVHM extends VHMProcess implements ProgressReporter {
 
       } catch (Exception e) {
          _log.log(Level.SEVERE, "Unexpected error in core VHM: "+e);
-         //e.printStackTrace();
          thisStatus.registerTaskFailed(true, e.getMessage());
       }
 

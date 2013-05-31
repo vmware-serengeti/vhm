@@ -85,8 +85,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
                   try {
                      Thread.sleep(backoffPeriodMS);
                   } catch (InterruptedException e) {
-                     // TODO Auto-generated catch block
-                     e.printStackTrace();
+                     _log.warning("Unexpectedly interrupted waiting for VC");
                   }
 
                } else {

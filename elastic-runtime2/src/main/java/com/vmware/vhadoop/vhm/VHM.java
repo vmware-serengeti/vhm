@@ -353,8 +353,7 @@ public class VHM implements EventConsumer {
                   Thread.sleep(500);
                }
             } catch (Throwable e) {
-               _log.warning("VHM stopping due to exception "+e);
-               e.printStackTrace();
+               _log.log(Level.WARNING, "VHM stopping due to exception ", e);
             }
             _log.info("VHM stopping...");
          }}, "VHM_Main_Thread");

@@ -123,8 +123,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                            } catch (InterruptedException e) {
                               _log.warning("Cluster thread interrupted");
                            } catch (ExecutionException e) {
-                              _log.warning("ExecutionException in cluster thread: "+e.getMessage());
-                              e.printStackTrace();
+                              _log.log(Level.WARNING, "ExecutionException in cluster thread ", e);
                            }
                            ctc._completionEventPending = null;
                         }
@@ -137,7 +136,9 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                   }
                   try {
                      _clusterTaskContexts.wait(500);
-                  } catch (InterruptedException e) {}
+                  } catch (InterruptedException e) {
+                     _log.warning("Cluster thread wait interrupted");
+                  }
                }
                _log.info("ThreadPoolExecutionStrategy stopping...");
             }

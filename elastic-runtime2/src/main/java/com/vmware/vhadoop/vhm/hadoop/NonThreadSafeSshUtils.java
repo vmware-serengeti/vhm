@@ -123,7 +123,7 @@ public class NonThreadSafeSshUtils implements SshUtils
             try {
                Thread.sleep(1000);
             } catch (InterruptedException e) {
-               logger.log(Level.SEVERE, "Excpetion while sleeping in exec");
+               logger.log(Level.WARNING, "Unexpected interruption to sleep");
             }
 
             if (System.currentTimeMillis() - startTime >= TimeUnit.MILLISECONDS.convert(INPUTSTREAM_TIMEOUT, TimeUnit.SECONDS)) {

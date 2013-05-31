@@ -81,7 +81,7 @@ public class RabbitAdaptor implements MQClient {
                   try {
                      Thread.sleep(20000);
                   } catch (InterruptedException e) {
-                     /* squash */
+                     _log.warning("Unexpected interruption to sleep");
                   }
                }
 
