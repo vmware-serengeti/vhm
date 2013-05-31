@@ -23,10 +23,6 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
       public String _dnsName;
       public Boolean _powerState;
       public String _hostMoRef;
-
-      public boolean isComplete() {
-         return ((_myName != null) && (_vCPUs != null) && (_ipAddr != null) && (_dnsName != null) && (_powerState != null) && (_hostMoRef != null));
-      }
    }
 
    public class SerengetiClusterConstantData {

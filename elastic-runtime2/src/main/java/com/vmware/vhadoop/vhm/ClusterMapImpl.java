@@ -1,6 +1,5 @@
 package com.vmware.vhadoop.vhm;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -55,43 +54,37 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    class VMInfo {
-      public VMInfo(String moRef) {
-         this._moRef = moRef;
-      }
       final String _moRef;
-      Integer _vCPUs;
-      HostInfo _host;
-      ClusterInfo _cluster;
-      VmType _vmType;
-      boolean _powerState;
-      public String _myUUID;
-      public String _name;
-      String _ipAddr;
-      String _dnsName;
-      public long _powerOnTime; // most recent timestamp when VHM learned VM is on
+      final VMConstantData _constantData;
+      final VMVariableData _variableData;
+      final ClusterInfo _cluster;
+
+      VMInfo(String moRef, VMConstantData constantData, 
+            VMVariableData variableData, ClusterInfo cluster) {
+         this._moRef = moRef;
+         this._constantData = constantData;
+         this._variableData = variableData;
+         this._cluster = cluster;
+      }
+
+      long _powerOnTime; // most recent timestamp when VHM learned VM is on
    }
 
    class ClusterInfo {
-      public ClusterInfo(String masterUUID) {
-         this._masterUUID = masterUUID;
+      final String _masterUUID;
+      final SerengetiClusterConstantData _constantData;
+      
+      public ClusterInfo(String clusterId, SerengetiClusterConstantData constantData) {
+         this._masterUUID = clusterId;
+         this._constantData = constantData;
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
       }
-      final String _masterUUID;
+      
       Integer _jobTrackerPort;
-      String _folderName;        /* Note this field is only set by SerengetiLimitEvents */
-      VMInfo _masterVM;
+      String _discoveredFolderName;        /* Note this field is only set by SerengetiLimitEvents */
       String _scaleStrategyKey;
       LinkedList<ClusterScaleCompletionEvent> _completionEvents;
       Map<String, String> _extraInfo;
-   }
-
-   private HostInfo getHost(String hostMoRef) {
-      HostInfo host = _hosts.get(hostMoRef);
-      if ((host == null) && (hostMoRef != null)) {
-         host = new HostInfo(hostMoRef);
-         _hosts.put(hostMoRef, host);
-      }
-      return host;
    }
 
    private boolean assertHasData(Set<? extends Object> toTest) {
@@ -101,12 +94,16 @@ public class ClusterMapImpl implements ClusterMap {
    private boolean assertHasData(Map<? extends Object, ? extends Object> toTest) {
       return (toTest != null && (toTest.keySet().size() > 0));
    }
+   
+   private ClusterInfo getCluster(String clusterId) {
+      return getCluster(clusterId, null);
+   }
 
-   private ClusterInfo getCluster(String masterUUID) {
-      ClusterInfo cluster = _clusters.get(masterUUID);
-      if ((cluster == null) && (masterUUID != null)) {
-         cluster = new ClusterInfo(masterUUID);
-         _clusters.put(masterUUID, cluster);
+   private ClusterInfo getCluster(String clusterId, SerengetiClusterConstantData constantData) {
+      ClusterInfo cluster = _clusters.get(clusterId);
+      if ((cluster == null) && (clusterId != null) && (constantData != null)) {
+         cluster = new ClusterInfo(clusterId, constantData);
+         _clusters.put(clusterId, cluster);
       }
       return cluster;
    }
@@ -125,7 +122,7 @@ public class ClusterMapImpl implements ClusterMap {
          if (vmInfo._cluster != null) {
             clusterId = vmInfo._cluster._masterUUID;
          }
-         if (vmInfo._vmType.equals(VmType.MASTER)) {
+         if (vmInfo._constantData._vmType.equals(VmType.MASTER)) {
             removeCluster(vmInfo._cluster);
          }
          _log.log(Level.INFO, "Removing VM <%V" + vmMoRef);
@@ -167,42 +164,40 @@ public class ClusterMapImpl implements ClusterMap {
          return null;
       }
       
+      ClusterInfo clusterForVM = null;
+
+      if (event instanceof NewMasterVMEvent) {
+         SerengetiClusterConstantData clusterConstantData = ((NewMasterVMEvent)event).getClusterConstantData();      /* Should not be null */
+         SerengetiClusterVariableData clusterVariableData = ((NewMasterVMEvent)event).getClusterVariableData();      /* Should not be null */
+         clusterForVM = getCluster(clusterId, clusterConstantData);
+         updateClusterVariableData(clusterId, clusterVariableData, impliedScaleEventsResultSet, true);
+      } else {
+         clusterForVM = getCluster(clusterId);
+      }
+
       VMInfo vi = _vms.get(vmId);
       if (vi != null) {
-         if ((vi._myUUID != constantData._myUUID) || (vi._vmType != constantData._vmType)) {
+         if ((vi._constantData._myUUID != constantData._myUUID) || (vi._constantData._vmType != constantData._vmType)) {
             _log.severe("Data constants for interim VM are inconsistent!");
             return null;
          }
       } else {
-         vi = createNewVM(vmId, constantData);
+         vi = createNewVM(vmId, constantData, variableData, clusterForVM);
          if (vi == null) {
             _log.severe("VMInfo already exists for new event data!");
             return null;
          }
       }
       
-      if (event instanceof NewMasterVMEvent) {
-         SerengetiClusterConstantData clusterConstantData = ((NewMasterVMEvent)event).getClusterConstantData();      /* Should not be null */
-         SerengetiClusterVariableData clusterVariableData = ((NewMasterVMEvent)event).getClusterVariableData();      /* Should not be null */
-         ClusterInfo ci = getCluster(clusterId);
-         ci._masterVM = vi;
-         ci._folderName = clusterConstantData._serengetiFolder;
-         vi._cluster = ci;
-         updateClusterVariableData(clusterId, clusterVariableData, impliedScaleEventsResultSet, true);
-      } else {
-         vi._cluster = getCluster(clusterId);
-      }
       updateVMVariableData(vmId, variableData);
       return clusterId;
    }
 
-   private VMInfo createNewVM(String vmId, VMConstantData constantData) {
+   private VMInfo createNewVM(String vmId, VMConstantData constantData, VMVariableData variableData, ClusterInfo cluster) {
       if (_vms.get(vmId) != null) {
          return null;
       }
-      VMInfo vi = new VMInfo(vmId);
-      vi._myUUID = constantData._myUUID;
-      vi._vmType = constantData._vmType;
+      VMInfo vi = new VMInfo(vmId, constantData, variableData, cluster);
       _vms.put(vmId, vi);
       return vi;
    }
@@ -219,6 +214,7 @@ public class ClusterMapImpl implements ClusterMap {
    
    private String updateVMVariableData(String vmId, VMVariableData variableData) {
       VMInfo vi = _vms.get(vmId);
+      String clusterId = null;
       if (vi != null) {
          String dnsName = variableData._dnsName;
          String hostMoRef = variableData._hostMoRef;
@@ -226,33 +222,41 @@ public class ClusterMapImpl implements ClusterMap {
          String myName = variableData._myName;
          Boolean powerState = variableData._powerState;
          Integer vCPUs = variableData._vCPUs;
+         VMVariableData toSet = vi._variableData;
          if (dnsName != null) {
-            vi._dnsName = dnsName;
+            toSet._dnsName = dnsName;
             _log.fine("Updating dnsName for <%V"+vmId+"%V> to "+dnsName);
          }
          if (hostMoRef != null) {
-            vi._host = getHost(hostMoRef);
+            toSet._hostMoRef = hostMoRef;
             _log.fine("Updating host for <%V"+vmId+"%V> to "+hostMoRef);
          }
          if (ipAddr != null) {
-            vi._ipAddr = ipAddr;
+            toSet._ipAddr = ipAddr;
             _log.fine("Updating ipAddr for <%V"+vmId+"%V> to "+ipAddr);
          }
          if (myName != null) {
-            vi._name = myName;
+            toSet._myName = myName;
             _log.fine("Updating myName for <%V"+vmId+"%V> to "+myName);
          }
          if (powerState != null) {
-            vi._powerState = powerState;
+            toSet._powerState = powerState;
+            if (powerState) {
+               vi._powerOnTime = System.currentTimeMillis();
+            } else {
+               vi._powerOnTime = 0;
+            }
             _log.fine("Updating powerState for <%V"+vmId+"%V> to "+powerState);
          }
          if (vCPUs != null) {
-            vi._vCPUs = vCPUs;
+            toSet._vCPUs = vCPUs;
             _log.fine("Updating vCPUs for <%V"+vmId+"%V> to "+vCPUs);
          }
-         return vi._cluster._masterUUID;
+         if (vi._cluster != null) {
+            clusterId = vi._cluster._masterUUID;
+         }
       }
-      return null;
+      return clusterId;
    }
 
    private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData, 
@@ -333,17 +337,18 @@ public class ClusterMapImpl implements ClusterMap {
       Set<String> result = new HashSet<String>();
       for (VMInfo vminfo : _vms.values()) {
          try {
-            boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._host._moRef));
+            boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo._variableData._hostMoRef));
             boolean clusterTest = (clusterId == null) ? true : (vminfo._cluster._masterUUID.equals(clusterId));
-            boolean powerStateTest = (vminfo._powerState == powerState);
-            if ((vminfo._vmType.equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
+            boolean powerStateTest = (vminfo._variableData._powerState == powerState);
+            if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
                result.add(vminfo._moRef);
             }
          } catch (NullPointerException e) {
           //vminfo.xxx could be null for VMs where we only have partial data from VC
-          _log.fine("Null pointer checking for matching vm (name: "+vminfo._name+
-                                                          ", uuid: "+vminfo._myUUID+
-                                                          ", host: "+vminfo._host+
+            VMVariableData variableInfo = vminfo._variableData;
+          _log.fine("Null pointer checking for matching vm (name: "+variableInfo._myName+
+                                                          ", uuid: "+vminfo._constantData._myUUID+
+                                                          ", host: "+variableInfo._hostMoRef+
                                                           ", cluster: "+vminfo._cluster+
                                                           ", moRef: "+vminfo._moRef+")");
          }
@@ -369,8 +374,8 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_vms)) {
          Set<String> result = new HashSet<String>();
          for (VMInfo vminfo : _vms.values()) {
-            if ((vminfo._vmType.equals(VmType.COMPUTE)) && vminfo._cluster._masterUUID.equals(clusterId)) {
-               result.add(vminfo._host._moRef);
+            if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && vminfo._cluster._masterUUID.equals(clusterId)) {
+               result.add(vminfo._variableData._hostMoRef);
             }
          }
          return (result.size() == 0) ? null : result;
@@ -385,13 +390,14 @@ public class ClusterMapImpl implements ClusterMap {
       }
 
       for (VMInfo vmInfo : _vms.values()) {
-         String powerState = vmInfo._powerState ? " ON" : " OFF";
-         String vCPUs = " vCPUs=" + ((vmInfo._vCPUs == null) ? "N/A" : vmInfo._vCPUs);
-         String host = (vmInfo._host == null) ? "N/A" : vmInfo._host._moRef;
+         VMVariableData variableData = vmInfo._variableData;
+         String powerState = variableData._powerState ? " ON" : " OFF";
+         String vCPUs = " vCPUs=" + ((variableData._vCPUs == null) ? "N/A" : variableData._vCPUs);
+         String host = (variableData._hostMoRef == null) ? "N/A" : variableData._hostMoRef;
          String masterUUID = (vmInfo._cluster == null) ? null : vmInfo._cluster._masterUUID;
-         String role = vmInfo._vmType.name();
-         String ipAddr = (vmInfo._ipAddr == null) ? "N/A" : vmInfo._ipAddr;
-         String dnsName = (vmInfo._dnsName == null) ? "N/A" : vmInfo._dnsName;
+         String role = vmInfo._constantData._vmType.name();
+         String ipAddr = (variableData._ipAddr == null) ? "N/A" : variableData._ipAddr;
+         String dnsName = (variableData._dnsName == null) ? "N/A" : variableData._dnsName;
          String jtPort = "";
          _log.log(logLevel, "VM <%V" + vmInfo._moRef + "%V> " + role + powerState + vCPUs +
                " host=" + host + " cluster=<%C" + masterUUID + "%C> IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
@@ -400,7 +406,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    void associateFolderWithCluster(String clusterId, String folderName) {
       ClusterInfo ci = _clusters.get(clusterId);
-      ci._folderName = folderName;
+      ci._discoveredFolderName = folderName;
    }
 
    String getClusterIdFromVMs(List<String> vms) {
@@ -419,9 +425,10 @@ public class ClusterMapImpl implements ClusterMap {
    @Override
    public String getClusterIdForFolder(String clusterFolderName) {
       for (ClusterInfo ci : _clusters.values()) {
-         //JG: Note that since foldername is only set by Serengeti Limit commands, foldername
-         //    for other clusters will be null, which needs to be ignored...
-         if (ci._folderName != null && ci._folderName.equals(clusterFolderName)) {
+         String constantFolder = ci._constantData._serengetiFolder;     /* Set when cluster is created by Serengeti */
+         String discoveredFolder = ci._discoveredFolderName;            /* Discovered from SerengetiLimitInstruction */
+         if (((constantFolder != null) && (constantFolder.equals(clusterFolderName))) ||
+               ((discoveredFolder != null) && (discoveredFolder.equals(clusterFolderName)))) {
             return ci._masterUUID;
          }
       }
@@ -432,7 +439,7 @@ public class ClusterMapImpl implements ClusterMap {
    public String getHostIdForVm(String vmId) {
       VMInfo vmInfo = _vms.get(vmId);
       if (vmInfo != null) {
-         return vmInfo._host._moRef;
+         return vmInfo._variableData._hostMoRef;
       }
       return null;
    }
@@ -448,7 +455,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
-      ClusterInfo info =  getCluster(clusterId);
+      ClusterInfo info = getCluster(clusterId);
       if (info != null) {
          if (info._completionEvents.size() > 0) {
             return info._completionEvents.getFirst();
@@ -463,7 +470,7 @@ public class ClusterMapImpl implements ClusterMap {
          for (String vmId : vmIds) {
             VMInfo vm = _vms.get(vmId);
             if (vm != null) {
-               if (vm._powerState != expectedPowerState) {
+               if (vm._variableData._powerState != expectedPowerState) {
                   return false;
                }
             } else {
@@ -483,7 +490,7 @@ public class ClusterMapImpl implements ClusterMap {
          for (String vmId : vmIds) {
             VMInfo vm = _vms.get(vmId);
             if (vm != null) {
-               results.put(vmId, vm._host._moRef);
+               results.put(vmId, vm._variableData._hostMoRef);
             }
          }
          if (results.size() > 0) {
@@ -506,8 +513,11 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_clusters)) {
          ClusterInfo ci = _clusters.get(clusterId);
          HadoopClusterInfo result = null;
-         if ((ci != null) && (ci._masterVM != null)) {
-            result = new HadoopClusterInfo(ci._masterUUID, ci._masterVM._ipAddr, ci._jobTrackerPort);
+         if (ci != null) {
+            VMInfo vi = _vms.get(ci._constantData._masterMoRef);
+            if (vi != null) {
+               result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._ipAddr, ci._jobTrackerPort);
+            }
          }
          return result;
       }
@@ -521,7 +531,7 @@ public class ClusterMapImpl implements ClusterMap {
          for (String vm : vmIds) {
             VMInfo vminfo = _vms.get(vm);
             if (vminfo != null) {
-               results.add(vminfo._dnsName);
+               results.add(vminfo._variableData._dnsName);
             }
          }
          if (results.size() > 0) {
@@ -536,7 +546,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_vms)) {
          VMInfo vm = _vms.get(vmId);
          if (vm != null) {
-            return vm._vCPUs;
+            return vm._variableData._vCPUs;
          }
       }
       return null;

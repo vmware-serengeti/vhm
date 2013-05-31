@@ -679,7 +679,7 @@ public class VcVlsi {
          Folder f = getFolderForName(null, baseFolderName);
          if (f == null) {
             // This is normal state when user hasn't created any hadoop clusters yet
-            _log.log(Level.INFO, "Couldn't find folder " + baseFolderName);
+            _log.log(Level.INFO, "No found clusters for hadoop UUID " + baseFolderName);
          } else {
             result = pcVMsInFolder(vcClient, f, version, vmDataList);
          }
