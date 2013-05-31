@@ -42,6 +42,8 @@ public interface ClusterMap {
    Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 
    String[] getAllKnownClusterIds();
+   
+   String[] getAllClusterIdsForScaleStrategyKey(String key);
 
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
 

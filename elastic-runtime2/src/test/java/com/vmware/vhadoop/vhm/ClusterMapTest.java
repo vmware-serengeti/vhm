@@ -23,6 +23,7 @@ import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
+import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class ClusterMapTest extends AbstractJUnitTest {
    ClusterMapImpl _clusterMap;
@@ -368,6 +369,11 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getExtraInfo(null, null));
       assertNull(_clusterMap.getExtraInfo(null, "bogus"));
       assertNull(_clusterMap.getExtraInfo("bogus", "bogus"));
+      
+      assertEquals(1, _clusterMap.getAllClusterIdsForScaleStrategyKey(OTHER_SCALE_STRATEGY_KEY).length);
+      assertEquals(2, _clusterMap.getAllClusterIdsForScaleStrategyKey(DEFAULT_SCALE_STRATEGY_KEY).length);
+      assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey(null));
+      assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey("bogus"));
    }
    
    @Test
@@ -474,5 +480,6 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getNumVCPUsForVm("foo"));
       assertNull(_clusterMap.getPowerOnTimeForVm("foo"));
       assertNull(_clusterMap.getExtraInfo("foo", "bar"));
+      assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey("foo"));
    }
 }

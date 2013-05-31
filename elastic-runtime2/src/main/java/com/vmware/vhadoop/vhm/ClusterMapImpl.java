@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -558,6 +559,23 @@ public class ClusterMapImpl implements ClusterMap {
       if (info != null) {
          if (info._extraInfo != null) {
             return info._extraInfo.get(key);
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public String[] getAllClusterIdsForScaleStrategyKey(String key) {
+      if (assertHasData(_clusters) && (key != null)) {
+         Set<String> result = new HashSet<String>();
+         for (String clusterId : _clusters.keySet()) {
+            ClusterInfo ci = _clusters.get(clusterId);
+            if ((ci._scaleStrategyKey != null) && (ci._scaleStrategyKey.equals(key))) {
+               result.add(clusterId);
+            }
+         }
+         if (result.size() > 0) {
+            return result.toArray(new String[]{});
          }
       }
       return null;

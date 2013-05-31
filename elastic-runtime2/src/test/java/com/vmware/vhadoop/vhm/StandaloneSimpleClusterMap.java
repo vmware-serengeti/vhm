@@ -241,4 +241,10 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public String[] getAllClusterIdsForScaleStrategyKey(String key) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }
