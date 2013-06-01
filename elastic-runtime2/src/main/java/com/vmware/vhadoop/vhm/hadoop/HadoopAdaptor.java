@@ -297,7 +297,7 @@ public class HadoopAdaptor implements HadoopActions {
       int iterations = 0;
       do {
     	   if (iterations > 0) {
-    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again ({0})", iterations);
+    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
          }
 
          OutputStream out = new ByteArrayOutputStream();

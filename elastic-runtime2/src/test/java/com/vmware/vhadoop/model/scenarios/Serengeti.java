@@ -84,13 +84,12 @@ public class Serengeti extends ResourceContainer
        * If we're in manual mode, this ensure that we're meeting our minimum obligation for
        * compute nodes
        */
-      private void applyMinInstances() {
+      protected void applyMinInstances() {
          /* if we're setting to manual, then generate a serengeti limit instruction */
          if (!isAuto() && eventConsumer != null) {
             int min = Integer.valueOf(getExtraInfo().get("vhmInfo.min.computeNodeNum"));
             /* TODO: decide whether we want to support a callback mechanism */
-            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterName,
-                  SerengetiLimitInstruction.actionSetTarget, min, null));
+            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterName, SerengetiLimitInstruction.actionSetTarget, min, null));
          }
       }
 
@@ -100,7 +99,7 @@ public class Serengeti extends ResourceContainer
        * @param enabled - true for auto, false for manual
        */
       public void enableAuto(boolean enabled) {
-         setExtraInfo("vhmInfo.vhm.enable", Boolean.toString(enabled));
+         setExtraInfo("vhmInfo.vhm.enable", Boolean.toString(enabled));         
          applyMinInstances();
       }
 
