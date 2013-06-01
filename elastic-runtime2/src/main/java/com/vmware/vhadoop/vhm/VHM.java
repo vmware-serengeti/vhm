@@ -146,9 +146,14 @@ public class VHM implements EventConsumer {
    }
 
    private String getClusterIdForVCFolder(String folderName) {
+      String clusterId = null;
       List<String> vms = _vcActions.listVMsInFolder(folderName);
-      String clusterId = _clusterMap.getClusterIdFromVMs(vms);
-      _clusterMap.associateFolderWithCluster(clusterId, folderName);
+      if (vms != null) {
+         clusterId = _clusterMap.getClusterIdFromVMs(vms);
+         if (clusterId != null) {
+            _clusterMap.associateFolderWithCluster(clusterId, folderName);
+         }
+      }
       return clusterId;
    }
 
@@ -157,11 +162,10 @@ public class VHM implements EventConsumer {
    private String completeClusterScaleEventDetails(AbstractClusterScaleEvent event) {
       String clusterId = event.getClusterId();
 
-      if (event instanceof SerengetiLimitInstruction) {
-         try {
-            clusterId = getClusterIdForVCFolder(((SerengetiLimitInstruction)event).getClusterFolderName());
-         } catch (NullPointerException e) {
-            clusterId = null;
+      if ((clusterId == null) && (event instanceof SerengetiLimitInstruction)) {
+         String clusterFolderName = ((SerengetiLimitInstruction)event).getClusterFolderName();
+         if (clusterFolderName != null) {
+            clusterId = getClusterIdForVCFolder(clusterFolderName);
          }
       }
 

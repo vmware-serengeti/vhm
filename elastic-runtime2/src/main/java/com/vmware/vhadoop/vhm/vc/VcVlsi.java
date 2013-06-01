@@ -380,6 +380,10 @@ public class VcVlsi {
    }
 
    private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName) throws InvalidProperty {
+      if (baseFolder == null) {
+         return null;
+      }
+      
       List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
 
