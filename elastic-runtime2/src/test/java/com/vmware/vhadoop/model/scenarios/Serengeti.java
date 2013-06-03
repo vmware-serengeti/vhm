@@ -23,6 +23,8 @@ import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
 public class Serengeti extends Folder
 {
+   public static final int UNSET = -1;
+
    private static Logger _log = Logger.getLogger(Serengeti.class.getName());
 
    /** default number of standard cpus for compute nodes */
@@ -56,7 +58,11 @@ public class Serengeti extends Folder
       capacity.set(MEMORY, defaultMem * 2);
 
       Master master = (Master) vCenter.createVM(name, capacity, masterOva);
-      add(master);
+      Folder folder = new Folder(name+"-folder");
+      add(folder);
+      folder.add(master);
+      vCenter.add(folder);
+      master.folder = folder;
       return master;
    }
 
@@ -82,7 +88,7 @@ public class Serengeti extends Folder
       Compute(VirtualCenter vCenter, Master master, String id, Allocation capacity) {
          super(vCenter, id, capacity);
          setExtraInfo("vhmInfo.elastic", "true");
-         setExtraInfo("vhmInfo.masterVM.uuid", master.clusterId);
+         setExtraInfo("vhmInfo.masterVM.uuid", master.getClusterId());
          setExtraInfo("vhmInfo.masterVM.moid", master.getId());
 
          _log.info(master.clusterId+": created cluster compute node ("+id+")");
@@ -115,32 +121,36 @@ public class Serengeti extends Folder
     */
    public class Master extends VM implements EventProducer
    {
+      public Folder folder;
       String clusterName;
       String clusterId;
       int computeNodesId = 0;
       List<Compute> computeNodes;
       ResourcePool computePool;
       EventConsumer eventConsumer;
-      int targetComputeNodeNum = 0;
+      int targetComputeNodeNum = UNSET;
       ComputeTemplate computeOVA = new ComputeTemplate(this);
+
+      public String getClusterId() {
+         return clusterId;
+      }
 
       Master(VirtualCenter vCenter, String cluster, Allocation capacity) {
          super(vCenter, cluster+"-master", capacity);
-         clusterId = cluster;
+         clusterName = cluster;
+         clusterId = getId();
          computeNodes = new LinkedList<Compute>();
          setExtraInfo("vhmInfo.elastic", "false");
          setExtraInfo("vhmInfo.masterVM.uuid", clusterId);
-         setExtraInfo("vhmInfo.masterVM.moid", getId());
-         setExtraInfo("vhmInfo.serengeti.uuid", clusterId);
-         setMinInstances(0);
+         setExtraInfo("vhmInfo.masterVM.moid", clusterId);
+         setExtraInfo("vhmInfo.serengeti.uuid", Serengeti.this.getId());
+         setExtraInfo("vhmInfo.jobtracker.port", "8080");
+         setMinInstances(UNSET);
          setTargetComputeNodeNum(targetComputeNodeNum);
          enableAuto(false);
          _log.info(clusterId+": created cluster master ("+getId()+")");
       }
 
-      public String getClusterId() {
-         return clusterId;
-      }
 
       /**
        * If we're in manual mode, this ensure that we're meeting our minimum obligation for
@@ -158,15 +168,15 @@ public class Serengeti extends Folder
             target = targetComputeNodeNum;
          }
 
+         if (target == UNSET) {
+            return;
+         }
+
          /* if we're setting to manual, then generate a serengeti limit instruction */
          if (!isAuto()) {
             /* TODO: decide whether we want to support a callback mechanism */
             _log.info(clusterId+": dispatching SerengetiLimitInstruction ("+target+")");
-            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId, target, null));
-         } else {
-
-            _log.severe(clusterId+": GENERATION OF INSTRUCTION NOTIFYING OF MININSTANCES CHANGE NOT YET IMPLEMENTED ("+target+")");
-            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId, target, null));
+            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(folder.name(), SerengetiLimitInstruction.actionSetTarget, target, null));
          }
       }
 
@@ -228,7 +238,7 @@ public class Serengeti extends Folder
 
       public void createComputeNodes(int num, Host host) {
          if (computePool == null) {
-            computePool = new ResourcePool(vCenter, clusterId);
+            computePool = new ResourcePool(vCenter, clusterName+"-computeRP");
          }
 
          for (int i = 0; i < num; i++) {
@@ -236,13 +246,14 @@ public class Serengeti extends Folder
             capacity.set(CPU, defaultCpus * vCenter.getCpuSpeed());
             capacity.set(MEMORY, defaultMem);
 
-            Compute compute = (Compute) vCenter.createVM(clusterId+"-compute"+(computeNodesId++), capacity, computeOVA);
-            compute.setExtraInfo("vhmInfo.serengeti.uuid", clusterId);
+            Compute compute = (Compute) vCenter.createVM(clusterName+"-compute"+(computeNodesId++), capacity, computeOVA);
+            compute.setExtraInfo("vhmInfo.serengeti.uuid", Serengeti.this.getId());
             /* assign it to a host */
             host.add(compute);
             /* keep it handy for future operations */
             computeNodes.add(compute);
-            /* add it to the "cluster folder", the compute node resource pool in this case */
+            /* add it to the "cluster folder" and the compute node resource pool */
+            folder.add(compute);
             computePool.add(compute);
             /* add this to the vApp so that we've a solid accounting for everything */
             Serengeti.this.add(compute);
@@ -271,11 +282,6 @@ public class Serengeti extends Folder
       @Override
       public void stop() {
          /* no-op */
-      }
-
-      @Override
-      public boolean isStopped() {
-         return false;
       }
    }
    /***************** Master Node end *****************************************************/

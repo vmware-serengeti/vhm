@@ -55,11 +55,11 @@ public class SerengetiLimitTest extends ModelTestBase {
       /* start the system */
       startVHM();
 
-      /* register the cluster as an event producer. This will cause us to generate the limit instruction */
-      _vhm.registerEventProducer(clusterA);
-
       /* wait for VHM to register the VMs */
       assertClusterMapVMsInPowerState("register VMs in cluster map", clusterId, numberOfComputeNodes, false, timeout());
+
+      /* register the cluster as an event producer */
+      _vhm.registerEventProducer(clusterA);
 
       /* power on the compute nodes */
       clusterA.setTargetComputeNodeNum(numberOfComputeNodes);
