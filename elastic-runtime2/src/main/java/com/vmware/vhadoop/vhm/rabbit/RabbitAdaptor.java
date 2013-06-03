@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.vmware.vhadoop.api.vhm.MQClient;
+import com.vmware.vhadoop.api.vhm.QueueClient;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
@@ -48,8 +49,8 @@ public class RabbitAdaptor implements MQClient {
          throw new RuntimeException("Deliberate failure!!");
       }
    }
-   
-   public static class RabbitConnectionCallback {
+
+   public static class RabbitConnectionCallback implements QueueClient {
       private String _routeKey;
       private RabbitConnection _innerConnection;
 

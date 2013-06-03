@@ -83,6 +83,18 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	   return false;
 	}
 
+	  @Override
+	   public Set<String> listComputeVMsForCluster(final String clusterId) {
+	      Set<String> selected = new HashSet<String>();
+	      for (VM vm : vms) {
+	         if (vm.cluster.equals(clusterId)) {
+	            selected.add(vm.id);
+	         }
+	      }
+
+	      return selected;
+	   }
+
 	@Override
 	public Set<String> listComputeVMsForClusterAndPowerState(final String clusterId, final boolean powerState) {
 		Set<String> selected = new HashSet<String>();
