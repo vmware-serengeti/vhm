@@ -8,20 +8,23 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.model.Orchestrator;
-import com.vmware.vhadoop.model.ResourceContainer;
-import com.vmware.vhadoop.model.VM;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMEventData;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.vhm.model.api.ResourceType;
+import com.vmware.vhadoop.vhm.model.api.Workload;
+import com.vmware.vhadoop.vhm.model.vcenter.Folder;
+import com.vmware.vhadoop.vhm.model.vcenter.VM;
+import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VcModelAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger("VcModelAdapter");
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
-   private Orchestrator _orchestrator;
+   private VirtualCenter _vCenter;
 
-   public VcModelAdapter(Orchestrator orchestrator) {
-      _orchestrator = orchestrator;
+   public VcModelAdapter(VirtualCenter vCenter) {
+      _vCenter = vCenter;
    }
 
    public void setThreadLocalCompoundStatus(ThreadLocalCompoundStatus tlcs) {
@@ -32,9 +35,9 @@ public class VcModelAdapter implements VCActions {
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean powerOn) {
       Map<String, Future<Boolean>> taskList = null;
       if (powerOn) {
-         taskList = _orchestrator.powerOnVMs(vmMoRefs);
+         taskList = _vCenter.powerOnVMs(vmMoRefs);
       } else {
-         taskList = _orchestrator.powerOffVMs(vmMoRefs);
+         taskList = _vCenter.powerOffVMs(vmMoRefs);
       }
 
       return taskList;
@@ -52,7 +55,7 @@ public class VcModelAdapter implements VCActions {
          return "";
       }
 
-      List<VM> vms = _orchestrator.getUpdatedVMs();
+      List<VM> vms = _vCenter.getUpdatedVMs();
       for (VM vm : vms) {
          /* build the VMEventData list */
          VMEventData vmData = new VMEventData();
@@ -63,8 +66,13 @@ public class VcModelAdapter implements VCActions {
          vmData._isLeaving = false;
          vmData._myName = vm.getId();
          vmData._myUUID = vm.getId();
-         vmData._powerState = vm.getPowerState();
-         vmData._vCPUs = (int) (vm.getCpuLimit() / _orchestrator.getCpuSpeed());
+         vmData._powerState = vm.powerState();
+         if (vm.getMaximum() != null) {
+            vmData._vCPUs = (int) (vm.getMaximum().get(ResourceType.CPU) / _vCenter.getCpuSpeed());
+         } else {
+            /* assume 1 if unset - could be because this VM's not assigned a host yet */
+            vmData._vCPUs = 1;
+         }
 
          /* parse out the extraInfo fields into the event */
          Map<String,String> extraInfo = vm.getExtraInfo();
@@ -86,14 +94,16 @@ public class VcModelAdapter implements VCActions {
 
    @Override
    public List<String> listVMsInFolder(String folderName) {
-      ResourceContainer container = _orchestrator.get(folderName);
+      Folder container = (Folder)_vCenter.get(folderName);
       List<String> ids = null;
       if (container != null) {
          ids = new LinkedList<String>();
-         List<? extends ResourceContainer> vms = container.get(VM.class);
-         if (vms != null) {
-            for (ResourceContainer c : vms) {
-               ids.add(c.getId());
+         List<? extends Workload> workloads = container.get(VM.class);
+         if (workloads != null) {
+            @SuppressWarnings("unchecked")
+            List<VM> vms = (List<VM>)workloads;
+            for (VM vm : vms) {
+               ids.add(vm.getId());
             }
          }
       }

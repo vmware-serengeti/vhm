@@ -1,52 +1,110 @@
 package com.vmware.vhadoop.model.scenarios;
 
+import static com.vmware.vhadoop.vhm.model.api.ResourceType.CPU;
+import static com.vmware.vhadoop.vhm.model.api.ResourceType.MEMORY;
+
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
-import com.vmware.vhadoop.model.Host;
-import com.vmware.vhadoop.model.Orchestrator;
-import com.vmware.vhadoop.model.ResourceContainer;
-import com.vmware.vhadoop.model.ResourcePool;
-import com.vmware.vhadoop.model.VM;
-import com.vmware.vhadoop.model.Workload;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.model.api.Allocation;
+import com.vmware.vhadoop.vhm.model.os.Linux;
+import com.vmware.vhadoop.vhm.model.os.Process;
+import com.vmware.vhadoop.vhm.model.vcenter.Folder;
+import com.vmware.vhadoop.vhm.model.vcenter.Host;
+import com.vmware.vhadoop.vhm.model.vcenter.OVA;
+import com.vmware.vhadoop.vhm.model.vcenter.ResourcePool;
+import com.vmware.vhadoop.vhm.model.vcenter.VM;
+import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
-public class Serengeti extends ResourceContainer
+
+public class Serengeti extends Folder
 {
+   private static Logger _log = Logger.getLogger(Serengeti.class.getName());
+
    /** default number of standard cpus for compute nodes */
    long defaultCpus = 2;
    /** default memory for compute nodes in Mb */
    long defaultMem = 2 * 1024;
 
-   Orchestrator orchestrator;
+   VirtualCenter vCenter;
+   MasterTemplate masterOva;
 
    /**
     * Creates a "Serengeti" and adds it to the specified Orchestrator
     * @param id
     * @param orchestrator
     */
-   public Serengeti(String id, Orchestrator orchestrator) {
+   public Serengeti(String id, VirtualCenter vCenter) {
       super(id);
 
-      this.orchestrator = orchestrator;
-      orchestrator.add(this);
+      this.vCenter = vCenter;
+      vCenter.add(this);
+      masterOva = new MasterTemplate();
+   }
+
+   public VirtualCenter getVCenter() {
+      return vCenter;
    }
 
    public Master createCluster(String name) {
-      Master master = new Master(name+"-master", name, orchestrator);
+      Allocation capacity = com.vmware.vhadoop.vhm.model.Allocation.zeroed();
+      capacity.set(CPU, defaultCpus * vCenter.getCpuSpeed());
+      capacity.set(MEMORY, defaultMem * 2);
+
+      Master master = (Master) vCenter.createVM(name, capacity, masterOva);
       add(master);
       return master;
    }
 
+
+   /***************** Compute Node start *****************************************************/
+   class ComputeTemplate implements OVA<Compute> {
+      Master master;
+
+      ComputeTemplate(Master master) {
+         this.master = master;
+      }
+
+      @Override
+      public Compute create(VirtualCenter vCenter, String id, Allocation capacity) {
+         Compute compute = new Compute(vCenter, master, id, capacity);
+         compute.install(new Linux("Linux"));
+         return compute;
+      }
+   }
+
    class Compute extends VM
    {
-      Compute(String id, Master master, Orchestrator orchestrator) {
-         super(id, defaultCpus * orchestrator.getCpuSpeed(), defaultMem, orchestrator);
+      Compute(VirtualCenter vCenter, Master master, String id, Allocation capacity) {
+         super(vCenter, id, capacity);
          setExtraInfo("vhmInfo.elastic", "true");
          setExtraInfo("vhmInfo.masterVM.uuid", master.clusterId);
          setExtraInfo("vhmInfo.masterVM.moid", master.getId());
+
+         _log.info(master.clusterId+": created cluster compute node ("+id+")");
+      }
+
+      public void execute(Process process) {
+         getOS().exec(process);
+      }
+   }
+   /***************** Compute Node end *****************************************************/
+
+
+
+
+   /***************** Master Node start *****************************************************/
+   class MasterTemplate implements OVA<Master> {
+      @Override
+      public Master create(VirtualCenter vCenter, String id, Allocation capacity) {
+         Master master = new Master(vCenter, id, capacity);
+         master.install(new Linux("Linux"));
+
+         return master;
       }
    }
 
@@ -63,37 +121,52 @@ public class Serengeti extends ResourceContainer
       List<Compute> computeNodes;
       ResourcePool computePool;
       EventConsumer eventConsumer;
-      
-      public String getClusterId() {
-         return clusterId;
-      }
+      int targetComputeNodeNum = 0;
+      ComputeTemplate computeOVA = new ComputeTemplate(this);
 
-      Master(String id, String cluster, Orchestrator orchestrator) {
-         super(id, 2 * orchestrator.getCpuSpeed(), 4 * 1024, orchestrator);
-         clusterName = cluster;
-         clusterId = id;
+      Master(VirtualCenter vCenter, String cluster, Allocation capacity) {
+         super(vCenter, cluster+"-master", capacity);
+         clusterId = cluster;
          computeNodes = new LinkedList<Compute>();
          setExtraInfo("vhmInfo.elastic", "false");
          setExtraInfo("vhmInfo.masterVM.uuid", clusterId);
-         setExtraInfo("vhmInfo.masterVM.moid", id);
-         setExtraInfo("vhmInfo.serengeti.uuid", Serengeti.this.getId());
-         setExtraInfo("vhmInfo.jobtracker.port", "8080");
-         setMinInstances(UNLIMITED);
+         setExtraInfo("vhmInfo.masterVM.moid", getId());
+         setExtraInfo("vhmInfo.serengeti.uuid", clusterId);
+         setMinInstances(0);
+         setTargetComputeNodeNum(targetComputeNodeNum);
          enableAuto(false);
-         computePool = new ResourcePool(clusterName, orchestrator);
-         this.add(computePool);
+         _log.info(clusterId+": created cluster master ("+getId()+")");
+      }
+
+      public String getClusterId() {
+         return clusterId;
       }
 
       /**
        * If we're in manual mode, this ensure that we're meeting our minimum obligation for
        * compute nodes
        */
-      protected void applyMinInstances() {
+      private void applyTarget() {
+         if (eventConsumer == null) {
+            return;
+         }
+
+         int target;
+         if (isAuto()) {
+            target = getMinInstances();
+         } else {
+            target = targetComputeNodeNum;
+         }
+
          /* if we're setting to manual, then generate a serengeti limit instruction */
-         if (!isAuto() && eventConsumer != null) {
-            int min = Integer.valueOf(getExtraInfo().get("vhmInfo.min.computeNodeNum"));
+         if (!isAuto()) {
             /* TODO: decide whether we want to support a callback mechanism */
-            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterName, SerengetiLimitInstruction.actionSetTarget, min, null));
+            _log.info(clusterId+": dispatching SerengetiLimitInstruction ("+target+")");
+            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId, target, null));
+         } else {
+
+            _log.severe(clusterId+": GENERATION OF INSTRUCTION NOTIFYING OF MININSTANCES CHANGE NOT YET IMPLEMENTED ("+target+")");
+            eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(clusterId, target, null));
          }
       }
 
@@ -103,8 +176,8 @@ public class Serengeti extends ResourceContainer
        * @param enabled - true for auto, false for manual
        */
       public void enableAuto(boolean enabled) {
-         setExtraInfo("vhmInfo.vhm.enable", Boolean.toString(enabled));         
-         applyMinInstances();
+         setExtraInfo("vhmInfo.vhm.enable", Boolean.toString(enabled));
+         applyTarget();
       }
 
       /**
@@ -114,36 +187,57 @@ public class Serengeti extends ResourceContainer
          return Boolean.valueOf(getExtraInfo().get("vhmInfo.vhm.enable"));
       }
 
-      public void setMinInstances(long min) {
-         setExtraInfo("vhmInfo.min.computeNodeNum", Long.toString(min));
-         applyMinInstances();
-      }
-
-      public long getMinInstances() {
-         long l = UNLIMITED;
+      public int getMinInstances() {
+         int l = 0;
          String val = getExtraInfo().get("vhmInfo.min.computeNodeNum");
          if (val != null) {
-            l = Long.valueOf(val);
+            l = Integer.valueOf(val);
          }
 
          return l;
       }
 
-      public int getCurrentInstances() {
-         int poweredOn = 0;
+      public void setMinInstances(int min) {
+         String old = setExtraInfo("vhmInfo.min.computeNodeNum", Integer.toString(min));
+         if (old != null && Integer.valueOf(old) != min) {
+            applyTarget();
+         }
+      }
+
+      public void setTargetComputeNodeNum(int target) {
+         if (targetComputeNodeNum != target) {
+            targetComputeNodeNum = target;
+            applyTarget();
+         }
+      }
+
+      public int getComputeNodesInPowerState(boolean power) {
+         int nodes = 0;
          for (Compute compute : computeNodes) {
-            if (compute.getPowerState()) {
-               poweredOn++;
+            if (compute.powerState() == power) {
+               nodes++;
             }
          }
 
-         return poweredOn;
+         return nodes;
+      }
+
+      public int availableComputeNodes() {
+         return computeNodes.size();
       }
 
       public void createComputeNodes(int num, Host host) {
+         if (computePool == null) {
+            computePool = new ResourcePool(vCenter, clusterId);
+         }
+
          for (int i = 0; i < num; i++) {
-            Compute compute = new Compute(clusterName+"-compute"+(computeNodesId++), this, orchestrator);
-            compute.setExtraInfo("vhmInfo.serengeti.uuid", Serengeti.this.getId());
+            Allocation capacity = com.vmware.vhadoop.vhm.model.Allocation.zeroed();
+            capacity.set(CPU, defaultCpus * vCenter.getCpuSpeed());
+            capacity.set(MEMORY, defaultMem);
+
+            Compute compute = (Compute) vCenter.createVM(clusterId+"-compute"+(computeNodesId++), capacity, computeOVA);
+            compute.setExtraInfo("vhmInfo.serengeti.uuid", clusterId);
             /* assign it to a host */
             host.add(compute);
             /* keep it handy for future operations */
@@ -155,10 +249,9 @@ public class Serengeti extends ResourceContainer
          }
       }
 
-      @Override
-      public void execute(Workload workload) {
+      public void execute(Process process) {
          for (Compute node : computeNodes) {
-            node.execute(workload);
+            node.execute(process);
          }
       }
 
@@ -167,17 +260,17 @@ public class Serengeti extends ResourceContainer
          eventConsumer = vhm;
 
          /* ensure that we're meeting our minimums */
-         applyMinInstances();
+         applyTarget();
+      }
+
+      @Override
+      public void start() {
+         /* no-op */
       }
 
       @Override
       public void stop() {
-         /* noop */
-      }
-
-      @Override
-      public void start(EventProducerStoppingCallback callback) {
-         /* noop */
+         /* no-op */
       }
 
       @Override
@@ -185,4 +278,5 @@ public class Serengeti extends ResourceContainer
          return false;
       }
    }
+   /***************** Master Node end *****************************************************/
 }

@@ -1,10 +1,11 @@
 package com.vmware.vhadoop.model.scenarios;
 
-import java.util.List;
-
-import com.vmware.vhadoop.model.Host;
-import com.vmware.vhadoop.model.Orchestrator;
-import com.vmware.vhadoop.model.VM;
+import com.vmware.vhadoop.vhm.model.Allocation;
+import com.vmware.vhadoop.vhm.model.api.ResourceType;
+import com.vmware.vhadoop.vhm.model.os.Linux;
+import com.vmware.vhadoop.vhm.model.vcenter.Host;
+import com.vmware.vhadoop.vhm.model.vcenter.VM;
+import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
 public class BasicScenario
 {
@@ -14,34 +15,33 @@ public class BasicScenario
     * @param hosts - number of hosts
     * @param vms - vms per host
     */
-   public static Orchestrator getOrchestrator(int hosts, int vms) {
-      Orchestrator orchestrator = new Orchestrator("BasicScenario");
+   public static VirtualCenter getVCenter(int hosts, int vms) {
+      VirtualCenter vCenter = new VirtualCenter("BasicScenario");
 
       for (int i = 0; i < hosts; i++) {
          /* 8x2Ghz cpus, 24Gb memory */
-         Host host = new Host("host"+i, 16000, 24*1024, null);
-         orchestrator.add(host);
+         Allocation capacity = Allocation.zeroed();
+         capacity.set(ResourceType.CPU, 16000);
+         capacity.set(ResourceType.MEMORY, 24 * 1024);
+
+         Host host = vCenter.createHost("host"+i, capacity);
+         host.powerOn();
 
          /* 2x2Ghz cpus, 6Gb Memory */
          for (int j = 0; j < vms; j++) {
-            VM vm = new ConstantWorkloadVM("vm"+((i*vms)+j), 4000, 6*1024, null);
-            vm.powerOn();
+            capacity = Allocation.zeroed();
+            capacity.set(ResourceType.CPU, 4000);
+            capacity.set(ResourceType.MEMORY, 6 * 1024);
+
+            VM vm = vCenter.createVM("vm"+((i*vms)+j), capacity);
+            Linux linux = new Linux("linux");
+            vm.install(linux);
             host.add(vm);
+
+            linux.exec(new ConstantWorkload("cpu burner", 3000, 3 * 1024));
          }
       }
 
-      return orchestrator;
-   }
-
-   public static void main(String args[]) {
-      Orchestrator orchestrator = BasicScenario.getOrchestrator(4, 4);
-      @SuppressWarnings("unchecked")
-      List<VM> vms = (List<VM>)orchestrator.get(VM.class);
-      for (VM vm : vms) {
-         vm.powerOn();
-      }
-
-      /* report usage */
-      System.out.println(orchestrator.report());
+      return vCenter;
    }
 }

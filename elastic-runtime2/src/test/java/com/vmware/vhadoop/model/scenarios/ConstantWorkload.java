@@ -1,38 +1,28 @@
 package com.vmware.vhadoop.model.scenarios;
 
-import static com.vmware.vhadoop.model.Resource.CPU;
-import static com.vmware.vhadoop.model.Resource.MEMORY;
+import com.vmware.vhadoop.vhm.model.Allocation;
+import com.vmware.vhadoop.vhm.model.api.ResourceType;
+import com.vmware.vhadoop.vhm.model.os.Process;
 
-import com.vmware.vhadoop.model.Workload;
-import com.vmware.vhadoop.model.allocation.Allocation;
-import com.vmware.vhadoop.model.allocation.CpuAllocator;
-import com.vmware.vhadoop.model.allocation.MemoryAllocator;
-
-public class ConstantWorkload extends Workload
+public class ConstantWorkload extends Process
 {
-   /** Default proportion of active/committed memory */
-   private final static float DEFAULT_ACTIVE_PROPORTION = 0.7f;
-
    long cpu;
-   long memory;
+   long mem;
 
-   /**
-    * Creates a constant workload with the specified cpu and memory characteristics
-    * @param cpu
-    * @param memory
-    */
-   public ConstantWorkload(long cpu, long memory) {
-      super("Constant workload");
+   protected ConstantWorkload(String name, long cpu, long mem) {
+      super(name);
       this.cpu = cpu;
-      this.memory = memory;
+      this.mem = mem;
    }
 
    @Override
-   public Allocation load(Allocation available) {
-      allocation = new Allocation("ConstantWorkload");
-      allocation.setResourceUsage(MEMORY, MemoryAllocator.TOTAL, memory);
-      allocation.setResourceUsage(CPU, CpuAllocator.TOTAL, cpu);
+   protected Allocation getDesiredAllocation() {
+      Allocation desired = Allocation.zeroed();
 
-      return allocation;
+      desired.set(ResourceType.MEMORY, mem);
+      desired.set(ResourceType.CPU, cpu);
+      desired.setDuration(Long.MAX_VALUE);
+
+      return desired;
    }
 }
