@@ -27,7 +27,9 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.AbstractNotificationEvent;
+import com.vmware.vhadoop.vhm.events.NewVmEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHM implements EventConsumer {
@@ -255,10 +257,20 @@ public class VHM implements EventConsumer {
       }
    }
 
-   private Set<ClusterStateChangeEvent> getClusterStateChangeEvents(Set<NotificationEvent> events) {
+   private Set<ClusterStateChangeEvent> getNewVMEvents(Set<NotificationEvent> events) {
       Set<ClusterStateChangeEvent> results = new HashSet<ClusterStateChangeEvent>();
       for (NotificationEvent event : events) {
-         if (event instanceof ClusterStateChangeEvent) {
+         if (event instanceof NewVmEvent) {
+            results.add((ClusterStateChangeEvent)event);
+         }
+      }
+      return results;
+   }
+
+   private Set<ClusterStateChangeEvent> getVMUpdateEvents(Set<NotificationEvent> events) {
+      Set<ClusterStateChangeEvent> results = new HashSet<ClusterStateChangeEvent>();
+      for (NotificationEvent event : events) {
+         if (event instanceof VmUpdateEvent) {
             results.add((ClusterStateChangeEvent)event);
          }
       }
@@ -313,34 +325,40 @@ public class VHM implements EventConsumer {
       }
       return null;
    }
+   
+   private void handleClusterStateChangeEvents(Set<ClusterStateChangeEvent> eventsToProcess, Map<String, Set<ClusterScaleEvent>> clusterScaleEvents) {
+      Set<ClusterScaleEvent> impliedScaleEvents = new HashSet<ClusterScaleEvent>();
+      for (ClusterStateChangeEvent event : eventsToProcess) {
+         _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
+         String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEvents);
+         if (clusterId != null) {
+            if (impliedScaleEvents.size() > 0) {
+               if (clusterScaleEvents.get(clusterId) == null) {
+                  clusterScaleEvents.put(clusterId, impliedScaleEvents);
+                  impliedScaleEvents = new HashSet<ClusterScaleEvent>();
+               } else {
+                  clusterScaleEvents.get(clusterId).addAll(impliedScaleEvents);
+                  impliedScaleEvents.clear();
+               }
+            }
+         }
+      }
+   }
 
    private void handleEvents(Set<NotificationEvent> events) {
-      final Set<ClusterStateChangeEvent> clusterStateChangeEvents = getClusterStateChangeEvents(events);
+      final Set<ClusterStateChangeEvent> newVMEvents = getNewVMEvents(events);
+      final Set<ClusterStateChangeEvent> vmUpdateEvents = getVMUpdateEvents(events);
       final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
       final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
 
       /* Update ClusterMap first */
-      if ((clusterStateChangeEvents.size() + completionEvents.size()) > 0) {
+      if ((newVMEvents.size() + vmUpdateEvents.size() + completionEvents.size()) > 0) {
          _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-               Set<ClusterScaleEvent> impliedScaleEvents = new HashSet<ClusterScaleEvent>();
-               for (ClusterStateChangeEvent event : clusterStateChangeEvents) {
-                  _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
-                  String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEvents);
-                  if (clusterId != null) {
-                     if (impliedScaleEvents.size() > 0) {
-                        if (clusterScaleEvents.get(clusterId) == null) {
-                           clusterScaleEvents.put(clusterId, impliedScaleEvents);
-                           impliedScaleEvents = new HashSet<ClusterScaleEvent>();
-                        } else {
-                           clusterScaleEvents.get(clusterId).addAll(impliedScaleEvents);
-                           impliedScaleEvents.clear();
-                        }
-                     }
-                  }
-               }
+               handleClusterStateChangeEvents(newVMEvents, clusterScaleEvents);
+               handleClusterStateChangeEvents(vmUpdateEvents, clusterScaleEvents);
                for (ClusterScaleCompletionEvent event : completionEvents) {
                   _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
                   _clusterMap.handleCompletionEvent(event);
