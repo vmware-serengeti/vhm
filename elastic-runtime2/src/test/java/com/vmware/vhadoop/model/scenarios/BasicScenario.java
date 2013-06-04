@@ -37,8 +37,6 @@ public class BasicScenario
             Linux linux = new Linux("linux");
             vm.install(linux);
             host.add(vm);
-
-            linux.exec(new ConstantWorkload("cpu burner", 3000, 3 * 1024));
          }
       }
 
