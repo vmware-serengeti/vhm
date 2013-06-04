@@ -37,9 +37,12 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          String[] hostNameArray = hostNames.toArray(new String[0]);
          status.addStatus(_hadoopActions.recommissionTTs(hostNameArray, hadoopCluster));
-         _vcActions.changeVMPowerState(toEnable, true);
-         if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-            status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+         if (_vcActions.changeVMPowerState(toEnable, true) == null) {
+            status.registerTaskFailed(false, "Failed to change VM power state in VC");
+         } else {
+            if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
+               status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+            }
          }
       }
    }
@@ -65,7 +68,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
             status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNameArray, totalTargetEnabled, hadoopCluster));
          }
-         _vcActions.changeVMPowerState(toDisable, false);
+         if (_vcActions.changeVMPowerState(toDisable, false) == null) {
+            status.registerTaskFailed(false, "Failed to change VM power state in VC");
+         }
       }
    }
 

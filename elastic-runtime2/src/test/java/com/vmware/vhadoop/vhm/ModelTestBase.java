@@ -67,12 +67,18 @@ abstract public class ModelTestBase extends AbstractClusterMapReader implements 
    }
 
    @Override
-   public void start() {
+   public void start(EventProducerStoppingCallback callback) {
       /* noop */
    }
 
    @Override
    public void stop() {
       /* noop */
+   }
+
+   @Override
+   public boolean isStopped() {
+      // TODO Auto-generated method stub
+      return false;
    }
 }

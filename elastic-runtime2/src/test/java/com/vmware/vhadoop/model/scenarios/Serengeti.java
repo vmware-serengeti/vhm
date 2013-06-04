@@ -167,13 +167,18 @@ public class Serengeti extends ResourceContainer
       }
 
       @Override
-      public void start() {
+      public void stop() {
          /* noop */
       }
 
       @Override
-      public void stop() {
+      public void start(EventProducerStoppingCallback callback) {
          /* noop */
+      }
+
+      @Override
+      public boolean isStopped() {
+         return false;
       }
    }
 }

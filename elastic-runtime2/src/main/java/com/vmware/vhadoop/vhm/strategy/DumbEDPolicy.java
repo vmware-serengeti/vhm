@@ -20,7 +20,9 @@ public class DumbEDPolicy extends AbstractClusterMapReader implements EDPolicy {
    public void enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId)
          throws Exception {
       _log.info("About to enable "+toEnable.size()+" TTs to get to target of "+totalTargetEnabled+" for cluster "+clusterId+"...");
-      _vcActions.changeVMPowerState(toEnable, true);
+      if (_vcActions.changeVMPowerState(toEnable, true) == null) {
+         getCompoundStatus().registerTaskFailed(false, "Failed to change VM power state");
+      }
    }
    
 
@@ -28,7 +30,9 @@ public class DumbEDPolicy extends AbstractClusterMapReader implements EDPolicy {
    public void disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId)
          throws Exception {
       _log.info("About to disable "+toDisable.size()+" TTs to get to target of "+totalTargetEnabled+" for cluster "+clusterId+"...");
-      _vcActions.changeVMPowerState(toDisable, false);
+      if (_vcActions.changeVMPowerState(toDisable, false) == null) {
+         getCompoundStatus().registerTaskFailed(false, "Failed to change VM power state");
+      }
    }
 
 }

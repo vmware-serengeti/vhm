@@ -34,9 +34,20 @@ public class RabbitAdaptor implements MQClient {
    private RabbitConnection _connection;
    private EventConsumer _eventConsumer;
    private boolean _started;
+   private Thread _mainThread;
+
+   long _startTime = System.currentTimeMillis();
+   boolean _deliberateFailureTriggered = false;
 
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
+   private void deliberatelyFail(long afterTimeMillis) {
+      if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
+         _deliberateFailureTriggered = true;
+         throw new RuntimeException("Deliberate failure!!");
+      }
+   }
+   
    public static class RabbitConnectionCallback {
       private String _routeKey;
       private RabbitConnection _innerConnection;
@@ -70,11 +81,12 @@ public class RabbitAdaptor implements MQClient {
    }
 
    @Override
-   public void start() {
+   public void start(final EventProducerStoppingCallback stoppingCallback) {
       _started = true;
-      new Thread(new Runnable() {
+      _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
+            boolean fatalError = false;
             while (_started) {
                /* wait for a rabbit instance to talk to */
                while (!_connection.connect()) {
@@ -103,13 +115,18 @@ public class RabbitAdaptor implements MQClient {
                   /* Almost certainly stop() was invoked */
                } catch (ShutdownSignalException e) {
                   _log.info("Rabbit queue shutting down");
+                  /* This is not fatal, this is an expected expection when shutting down */
                } catch (Throwable t) {
-                  stop();
-                  _log.log(Level.WARNING, "Unexpected exception from Rabbit queue ", t);
+                  _log.log(Level.SEVERE, "Unexpected exception from Rabbit queue ", t);
+                  fatalError = true;
                }
             }
             _log.info("RabbitAdaptor stopping...");
-         }}, "MQClientImpl").start();
+            if (stoppingCallback != null) {
+               stoppingCallback.notifyStopping(RabbitAdaptor.this, fatalError);
+            }
+         }}, "MQClientImpl");
+      _mainThread.start();
    }
 
    @Override
@@ -121,5 +138,13 @@ public class RabbitAdaptor implements MQClient {
       } catch (Exception e) {
          _log.log(Level.INFO, "Unexpected exception stopping MQClient", e);
       }
+   }
+
+   @Override
+   public boolean isStopped() {
+      if ((_mainThread == null) || (!_mainThread.isAlive())) {
+         return true;
+      }
+      return false;
    }
 }

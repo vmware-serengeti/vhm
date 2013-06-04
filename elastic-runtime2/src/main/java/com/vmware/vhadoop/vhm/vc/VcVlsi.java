@@ -764,8 +764,10 @@ public class VcVlsi {
    }
 
    public void cancelWaitForUpdates() {
-      synchronized(_waitingOnPc) {
-         _waitingOnPc.cancelWaitForUpdates();
+      if (_waitingOnPc != null) {
+         synchronized(_waitingOnPc) {
+            _waitingOnPc.cancelWaitForUpdates();
+         }
       }
    }
 

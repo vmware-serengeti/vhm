@@ -59,7 +59,7 @@ public class VcAdapter implements VCActions {
       }
    }
 
-   private void connect() {
+   private boolean connect() {
       _vcVlsi = new VcVlsi();
 
       boolean useCert = false;
@@ -72,27 +72,35 @@ public class VcAdapter implements VCActions {
          success = initClients(false);
       }
       if (!success) {
-         throw new RuntimeException("VC connection failed");
+         _log.warning("Could not obtain VC connection through any protocol");
+         return false;
       }
+      return true;
    }
 
    // Reconnect to VC if connection timed out
-   private void validateConnection() {
-      if (!_vcVlsi.testConnection()) {
+   private boolean validateConnection() {
+      boolean success = _vcVlsi.testConnection();
+      if (!success) {
          _log.log(Level.WARNING, "Found VC connection dropped; reconnecting");
-         connect();
+         return connect();
       }
+      return success;
    }
 
    public VcAdapter(VcCredentials vcCreds, String rootFolderName) {
       _rootFolderName = rootFolderName;
       _vcCreds = vcCreds;
-      connect();
+      if (!connect()) {
+         _log.warning("Could not initialize connection to VC");
+      }
    }
 
    @Override
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean powerOn) {
-      validateConnection();
+      if (!validateConnection()) {
+         return null;
+      }
       Map<String, Task> taskList = null;
       if (powerOn) {
          taskList = _vcVlsi.powerOnVMs(vmMoRefs);
@@ -137,7 +145,9 @@ public class VcAdapter implements VCActions {
 
    @Override
    public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) throws InterruptedException {
-      validateConnection();
+      if (!validateConnection()) {
+         return null;
+      }
       String result = _vcVlsi.waitForUpdates(_cloneClient, folderName, version, vmDataList);
       if (result.equals("Some special value")) {         /* TODO: Figure out */
          throw new InterruptedException();
@@ -152,7 +162,9 @@ public class VcAdapter implements VCActions {
 
    @Override
    public List<String> listVMsInFolder(String folderName) {
-      validateConnection();
+      if (!validateConnection()) {
+         return null;
+      }
       return _vcVlsi.getVMsInFolder(_rootFolderName, folderName);
    }
 

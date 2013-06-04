@@ -4,9 +4,15 @@ package com.vmware.vhadoop.api.vhm.events;
  * Most of the main components that plug into VHM are EventProducers. The events produced then trigger responses in the VHM */
 public interface EventProducer {
 
+   public interface EventProducerStoppingCallback {
+      public void notifyStopping(EventProducer thisProducer, boolean fatalError);
+   }
+   
    public void registerEventConsumer(EventConsumer vhm);
 
-   public void start();
+   public void start(EventProducerStoppingCallback callback);
 
    public void stop();
+   
+   public boolean isStopped();
 }

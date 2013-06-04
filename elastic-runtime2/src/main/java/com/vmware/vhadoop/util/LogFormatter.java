@@ -91,7 +91,7 @@ public class LogFormatter extends Formatter {
       } catch (Exception e) {
          result.insert(0, "FOUND BADLY FORMATTED LOG MSG: ");
       }
-      return swapIdsForNames(result).toString();
+      return result.toString();
    }
 
    private static class IntWrapper {

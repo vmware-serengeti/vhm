@@ -635,11 +635,6 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    }
 
    @Override
-   public void start() {
-      /* No-op */
-   }
-
-   @Override
    public void stop() {
       /* No-op */
    }
@@ -653,5 +648,15 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    @Override
    public void unlockClusterMap(final ClusterMap clusterMap) {
       _clusterMapAccess.unlockClusterMap(clusterMap);
+   }
+
+   @Override
+   public void start(EventProducerStoppingCallback callback) {
+      /* No-op */
+   }
+
+   @Override
+   public boolean isStopped() {
+      return false;
    }
 }

@@ -23,7 +23,6 @@ import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
-import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class ClusterMapTest extends AbstractJUnitTest {
    ClusterMapImpl _clusterMap;

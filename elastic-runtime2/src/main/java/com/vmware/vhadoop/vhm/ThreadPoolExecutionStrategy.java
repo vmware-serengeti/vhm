@@ -36,6 +36,16 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
    private Thread _mainThread;
    private boolean _started;
 
+   long _startTime = System.currentTimeMillis();
+   boolean _deliberateFailureTriggered = false;
+
+   private void deliberatelyFail(long afterTimeMillis) {
+      if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
+         _deliberateFailureTriggered = true;
+         throw new RuntimeException("Deliberate failure!!");
+      }
+   }
+   
    private static final Logger _log = Logger.getLogger(ThreadPoolExecutionStrategy.class.getName());
 
    public ThreadPoolExecutionStrategy() {
@@ -101,46 +111,56 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
    }
 
    @Override
-   public void start() {
+   public void start(final EventProducerStoppingCallback stoppingCallback) {
       _started = true;
       _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
             List<ClusterScaleCompletionEvent> completedTasks = new ArrayList<ClusterScaleCompletionEvent>();
             synchronized(_clusterTaskContexts) {
-               while (_started) {
-                  for (String clusterId : _clusterTaskContexts.keySet()) {
-                     ClusterTaskContext ctc = _clusterTaskContexts.get(clusterId);
-                     if (ctc._completionEventPending != null) {
-                        Future<ClusterScaleCompletionEvent> task = ctc._completionEventPending;
-                        if (task.isDone()) {
-                           try {
-                              ClusterScaleCompletionEvent completionEvent = task.get();
-                              if (completionEvent != null) {
-                                 _log.info("Found completed task for cluster <%C"+completionEvent.getClusterId());
-                                 completedTasks.add(completionEvent);
+               boolean fatalError = false;
+               try {
+                  _log.info("ThreadPoolExecutionStrategy starting...");
+                  while (_started) {
+                     for (String clusterId : _clusterTaskContexts.keySet()) {
+                        ClusterTaskContext ctc = _clusterTaskContexts.get(clusterId);
+                        if (ctc._completionEventPending != null) {
+                           Future<ClusterScaleCompletionEvent> task = ctc._completionEventPending;
+                           if (task.isDone()) {
+                              try {
+                                 ClusterScaleCompletionEvent completionEvent = task.get();
+                                 if (completionEvent != null) {
+                                    _log.info("Found completed task for cluster <%C"+completionEvent.getClusterId());
+                                    completedTasks.add(completionEvent);
+                                 }
+                              } catch (InterruptedException e) {
+                                 _log.warning("Cluster thread interrupted");
+                              } catch (ExecutionException e) {
+                                 _log.log(Level.WARNING, "ExecutionException in cluster thread ", e);
                               }
-                           } catch (InterruptedException e) {
-                              _log.warning("Cluster thread interrupted");
-                           } catch (ExecutionException e) {
-                              _log.log(Level.WARNING, "ExecutionException in cluster thread ", e);
+                              ctc._completionEventPending = null;
                            }
-                           ctc._completionEventPending = null;
                         }
                      }
+                     /* Add the completed tasks in one block, ensuring a single ClusterMap update */
+                     if (completedTasks.size() > 0) {
+                        _consumer.placeEventCollectionOnQueue(completedTasks);
+                        completedTasks.clear();
+                     }
+                     try {
+                        _clusterTaskContexts.wait(500);
+                     } catch (InterruptedException e) {
+                        _log.warning("Cluster thread wait interrupted");
+                     }
                   }
-                  /* Add the completed tasks in one block, ensuring a single ClusterMap update */
-                  if (completedTasks.size() > 0) {
-                     _consumer.placeEventCollectionOnQueue(completedTasks);
-                     completedTasks.clear();
-                  }
-                  try {
-                     _clusterTaskContexts.wait(500);
-                  } catch (InterruptedException e) {
-                     _log.warning("Cluster thread wait interrupted");
-                  }
+               } catch (Throwable t) {
+                  _log.log(Level.SEVERE, "Unexpected exception in ThreadPoolExecutionStrategy", t);
+                  fatalError = true;
                }
                _log.info("ThreadPoolExecutionStrategy stopping...");
+               if (stoppingCallback != null) {
+                  stoppingCallback.notifyStopping(ThreadPoolExecutionStrategy.this, fatalError);
+               }
             }
          }
       }, "ScaleStrategyCompletionListener");
@@ -165,4 +185,11 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       return false;
    }
 
+   @Override
+   public boolean isStopped() {
+      if ((_mainThread == null) || (!_mainThread.isAlive())) {
+         return true;
+      }
+      return false;
+   }
 }

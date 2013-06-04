@@ -26,13 +26,17 @@ import java.util.logging.Logger;
 
 public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer {
    private static final Logger _log = Logger.getLogger("ChangeListener");
-   private static final int backoffPeriodMS = 60000; // 1 minute in milliseconds
+   private final int backoffPeriodMS = 5000;
 
    EventConsumer _eventConsumer;
    VCActions _vcActions;
    String _serengetiFolderName;
    boolean _started;
    HashMap<String, VmCreatedData> _interimVMData;
+   Thread _mainThread;
+   
+   long _startTime = System.currentTimeMillis();
+   boolean _deliberateFailureTriggered = false;
    
    /* Place-holder that indicates that a VM has been created, so any further data about it will be an update */
    class VmCreatedData {
@@ -51,6 +55,13 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       SerengetiClusterVariableData _clusterVariableData;
    }
    
+   private void deliberatelyFail(long afterTimeMillis) {
+      if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
+         _deliberateFailureTriggered = true;
+         throw new RuntimeException("Deliberate failure!!");
+      }
+   }
+   
    public ClusterStateChangeListenerImpl(VCActions vcActions, String serengetiFolderName) {
       _vcActions = vcActions;
       _serengetiFolderName = serengetiFolderName;
@@ -63,44 +74,58 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    }
    
    @Override
-   public void start() {
+   public void start(final EventProducerStoppingCallback stoppingCallback) {
       _started = true;
-      new Thread(new Runnable() {
+      _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
             String version = "";
-            while (_started) {
-               ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
-               try {
-                  version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
-               } catch (InterruptedException e) {
-                  /* Almost certainly means that stop has been called */
-                  continue;
-               }
-               if (vmDataList.isEmpty() && (version.equals(""))) {
-                  /*
-                   *  No data received from VC so far -- can happen if user hasn't created any VMs yet
-                   *  Adding a sleep to reduce spam.
-                   */
+            ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
+            boolean fatalError = false;
+            try {
+               _log.info("ClusterStateChangeListener starting...");
+               while (_started) {
                   try {
-                     Thread.sleep(backoffPeriodMS);
+                     /* If version == null, this usually indicates a VC connection failure */
+                     version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
                   } catch (InterruptedException e) {
-                     _log.warning("Unexpectedly interrupted waiting for VC");
+                     /* Almost certainly means that stop has been called */
+                     continue;
                   }
-
-               } else {
-                  for (VMEventData vmData : vmDataList) {
-                     _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
-                     ClusterStateChangeEvent csce = translateVMEventData(vmData);
-                     if (csce != null) {
-                        _log.info("Created new "+csce+" for vm <%V" + vmData._vmMoRef);
-                        _eventConsumer.placeEventOnQueue(csce);
-                     }
-                  }
+                  processRawVCUpdates(vmDataList, version);
+                  vmDataList.clear();
                }
+            } catch (Throwable t) {
+               _log.log(Level.SEVERE, "Unexpected exception in ClusterStateChangeListener", t);
+               fatalError = true;
             }
             _log.info("ClusterStateChangeListener stopping...");
-         }}, "ClusterSCL_Poll_Thread").start();
+            if (stoppingCallback != null) {
+               stoppingCallback.notifyStopping(ClusterStateChangeListenerImpl.this, fatalError);
+            }
+         }}, "ClusterSCL_Poll_Thread");
+      _mainThread.start();
+   }
+
+   protected void processRawVCUpdates(ArrayList<VMEventData> vmDataList, String version) {
+      if (vmDataList.isEmpty() && ((version == null) || version.equals(""))) {
+         try {
+            _log.info("Temporarily lost connection to VC... ");
+            Thread.sleep(backoffPeriodMS);
+         } catch (InterruptedException e) {
+            _log.warning("Unexpectedly interrupted waiting for VC");
+         }
+
+      } else {
+         for (VMEventData vmData : vmDataList) {
+            _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
+            ClusterStateChangeEvent csce = translateVMEventData(vmData);
+            if (csce != null) {
+               _log.info("Created new "+csce+" for vm <%V" + vmData._vmMoRef);
+               _eventConsumer.placeEventOnQueue(csce);
+            }
+         }
+      }
    }
 
    /* Map this as early as possible to help our log messages */
@@ -290,5 +315,13 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    public void stop() {
       _started = false;
       _vcActions.interruptWait();
+   }
+
+   @Override
+   public boolean isStopped() {
+      if ((_mainThread == null) || (!_mainThread.isAlive())) {
+         return true;
+      }
+      return false;
    }
 }

@@ -40,6 +40,7 @@ public class VHM implements EventConsumer {
    private MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
    private ClusterMapReader _parentClusterMapReader;
    private boolean _started = false;
+   private EventProducer.EventProducerStoppingCallback _fatalStoppingHandler;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
@@ -54,6 +55,7 @@ public class VHM implements EventConsumer {
       _parentClusterMapReader = new AbstractClusterMapReader(_clusterMapAccess, threadLocalStatus) {};
       initScaleStrategies(scaleStrategies);
       _executionStrategy = new ThreadPoolExecutionStrategy();
+      _fatalStoppingHandler = new EventProducerFatalStoppingHandler();
       registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy);
    }
 
@@ -63,14 +65,51 @@ public class VHM implements EventConsumer {
          strategy.initialize(_parentClusterMapReader);
       }
    }
+   
+   private class EventProducerResetEvent extends AbstractNotificationEvent {
+      EventProducerResetEvent() {
+         super(false, false);
+      }
+   }
+   
+   /* THREADING: Can be called by multiple threads, so access to _eventProducers is synchronized */
+   private class EventProducerFatalStoppingHandler implements EventProducer.EventProducerStoppingCallback {
+      @Override
+      public void notifyStopping(EventProducer thisProducer, boolean fatalError) {
+         if (fatalError) {
+            _log.severe("EventProducer "+thisProducer.getClass().getName()+" has stopped unexpectedly, so resetting EventProducers");
+            placeEventOnQueue(new EventProducerResetEvent());
+         }
+      }
+   }
+
+   private boolean checkForProducerReset(Set<NotificationEvent> events) {
+      List<NotificationEvent> toRemove = null;
+      for (NotificationEvent notificationEvent : events) {
+         if (notificationEvent instanceof EventProducerResetEvent) {
+            if (toRemove == null) {
+               toRemove = new ArrayList<NotificationEvent>();
+            }
+            toRemove.add(notificationEvent);
+         }
+      }
+      if (toRemove != null) {
+         _log.info("Event Producer reset requested...");
+         events.remove(toRemove);
+         return true;
+      }
+      return false;
+   }
 
    public void registerEventProducer(EventProducer eventProducer) {
-      _eventProducers.add(eventProducer);
-      eventProducer.registerEventConsumer(this);
-      if (eventProducer instanceof ClusterMapReader) {
-         ((ClusterMapReader)eventProducer).initialize(_parentClusterMapReader);
+      synchronized(_eventProducers) {
+         _eventProducers.add(eventProducer);
+         eventProducer.registerEventConsumer(this);
+         if (eventProducer instanceof ClusterMapReader) {
+            ((ClusterMapReader)eventProducer).initialize(_parentClusterMapReader);
+         }
+         eventProducer.start(_fatalStoppingHandler);
       }
-      eventProducer.start();
    }
 
    private void addEventToQueue(NotificationEvent event) {
@@ -148,6 +187,7 @@ public class VHM implements EventConsumer {
    private String getClusterIdForVCFolder(String folderName) {
       String clusterId = null;
       List<String> vms = _vcActions.listVMsInFolder(folderName);
+      /* Returning null may indicate a VC connection failure */
       if (vms != null) {
          clusterId = _clusterMap.getClusterIdFromVMs(vms);
          if (clusterId != null) {
@@ -314,8 +354,16 @@ public class VHM implements EventConsumer {
 
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
-            ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
             Set<ClusterScaleEvent> unconsolidatedEvents = clusterScaleEvents.get(clusterId);
+            /* If ClusterMap has not yet been fully updated with information about a cluster, defer this operation */
+            if (!_clusterMap.validateClusterCompleteness(clusterId)) {
+               if ((unconsolidatedEvents != null) && (unconsolidatedEvents.size() > 0)) {
+                  _log.info("ClusterInfo not yet complete. Putting event collection back on queue for cluster <%C"+clusterId);
+                  placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+               }
+               continue;
+            }
+            ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
                if (scaleStrategy != null) {
@@ -353,6 +401,12 @@ public class VHM implements EventConsumer {
             try {
                while (_started) {
                   Set<NotificationEvent> events = pollForEvents();
+                  if (checkForProducerReset(events)) {
+                     if (!resetEventProducers()) {
+                        _log.severe("Unable to reset Event Producers. Terminating VHM");
+                        break;
+                     }
+                  }
                   handleEvents(events);
                   Thread.sleep(500);
                }
@@ -365,11 +419,54 @@ public class VHM implements EventConsumer {
       return t;
    }
 
+   private void startEventProducers() {
+      synchronized(_eventProducers) {
+         for (EventProducer eventProducer : _eventProducers) {
+            eventProducer.start(_fatalStoppingHandler);
+         }
+      }
+   }
+
+   private void stopEventProducers() {
+      synchronized(_eventProducers) {
+         for (EventProducer eventProducer : _eventProducers) {
+            eventProducer.stop();
+         }
+      }
+   }
+   
+   private boolean resetEventProducers() {
+      long graceTimeMillis = 10000;
+      long waitTimeMillis = 100;
+      synchronized(_eventProducers) {
+         _log.info("Stopping Event Producers...");
+         stopEventProducers();
+         boolean anyRunning = false;
+         do {
+            anyRunning = false;
+            for (EventProducer eventProducer : _eventProducers) {
+               if (!eventProducer.isStopped()) {
+                  anyRunning = true;
+                  try {
+                     _eventProducers.wait(waitTimeMillis);
+                  } catch (InterruptedException e) {
+                  }
+                  graceTimeMillis -= waitTimeMillis;
+                  break;
+               }
+            }
+         } while (anyRunning && (graceTimeMillis > 0));
+      }
+      if (graceTimeMillis > 0) {
+         _log.info("Event producers stopped. Restarting producers...");
+         startEventProducers();
+      }
+      return (graceTimeMillis > 0);
+   }
+
    public void stop(boolean hardStop) {
       _started = false;
-      for (EventProducer eventProducer : _eventProducers) {
-         eventProducer.stop();
-      }
+      stopEventProducers();
       placeEventOnQueue(new AbstractNotificationEvent(hardStop, false) {});
    }
 

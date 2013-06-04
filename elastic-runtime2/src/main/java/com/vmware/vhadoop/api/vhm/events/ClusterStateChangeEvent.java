@@ -14,6 +14,11 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
       public boolean isComplete() {
          return ((_vmType != null) && (_myUUID != null));
       }
+      
+      @Override
+      public String toString() {
+         return "VMConstantData{type="+_vmType.name()+", UUID="+_myUUID+"}";
+      }
    }
 
    public class VMVariableData {
@@ -23,6 +28,11 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
       public String _dnsName;
       public Boolean _powerState;
       public String _hostMoRef;
+
+      @Override
+      public String toString() {
+         return "VMVariableData{name="+_myName+", vCPUs="+_vCPUs+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", powerState="+_powerState+", hostMoRef="+_hostMoRef+"}";
+      }
    }
 
    public class SerengetiClusterConstantData {
@@ -31,6 +41,11 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
 
       public boolean isComplete() {
          return ((_masterMoRef != null) && (_serengetiFolder != null));
+      }
+
+      @Override
+      public String toString() {
+         return "SerengetiClusterConstantData{masterMoRef="+_masterMoRef+", folder="+_serengetiFolder+"}";
       }
    }
 
@@ -41,6 +56,11 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
 
       public boolean isComplete() {
          return ((_enableAutomation != null) && (_minInstances != null) && (_jobTrackerPort != null));
+      }
+
+      @Override
+      public String toString() {
+         return "SerengetiClusterVariableData{auto="+_enableAutomation+", minInstances="+_minInstances+", jobTrackerPort="+_jobTrackerPort+"}";
       }
    }
 
