@@ -91,8 +91,13 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
          }
 
          @Override
-         public Map<String, String> parseExtraInfo(SerengetiClusterVariableData cvd, String clusterId) {
-            return null;
+         public Map<String, String> parseExtraInfo(SerengetiClusterVariableData scvd, String clusterId) {
+            Map<String, String> result = null;
+            if (scvd._minInstances != null) {
+               result = new HashMap<String, String>();
+               result.put("key", scvd._minInstances.toString());
+            }
+            return result;
          }
 
          @Override
@@ -597,12 +602,21 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       latestEvent = waitForClusterScaleCompletionEvent(clusterId1, scaleDelayMillis, completionEventsFromInit1);
       assertNotNull(latestEvent);
    }
+   
+   private Set<ClusterScaleCompletionEvent> getCompletionEventsFromInit() {
+      Set<ClusterScaleCompletionEvent> result = new HashSet<ClusterScaleCompletionEvent>();
+      for (String clusterName : _clusterNames) {
+         result.addAll(waitForClusterScaleCompletionEvents(deriveClusterIdFromClusterName(clusterName), 1, 2000));
+      }
+      return result;
+   }
 
    @Test
    public void testImpliedScaleEvent() {
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
+      Set<ClusterScaleCompletionEvent> completionEventsFromInit = getCompletionEventsFromInit();
       
       /* Check that getImpliedScaleEventsForUpdate has been invoked for the cluster creation */
       assertEquals(3, _isNewClusterResult.size());
@@ -620,10 +634,10 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Simulate a CSCL update event that produces a subsequent implied scale event */
       /* It's important that the scale strategy isn't switched, so enableAutomation=true */
-      simulateVcExtraInfoChange(clusterName, true, 1);
+      simulateVcExtraInfoChange(clusterName, true, 2);
 
       /* Wait for VHM to respond, having invoked the ScaleStrategy */
-      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
+      assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 2000, completionEventsFromInit));
       assertEquals(clusterId, tcso.getClusterId());
       assertEquals(1, _isNewClusterResult.size());
       assertEquals(false, _isNewClusterResult.get(0));
