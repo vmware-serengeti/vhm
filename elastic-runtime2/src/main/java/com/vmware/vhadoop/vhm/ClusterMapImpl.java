@@ -260,6 +260,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData, 
          Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
+      boolean variableDataChanged = false;
       ClusterInfo ci = getCluster(clusterId);
       if (ci != null) {
          Boolean enableAutomation = variableData._enableAutomation;
@@ -268,15 +269,18 @@ public class ClusterMapImpl implements ClusterMap {
             String scaleStrategyKey = _extraInfoMapper.getStrategyKey(variableData, clusterId);
             if (testForClusterUpdate(ci._scaleStrategyKey, scaleStrategyKey, clusterId, "scaleStrategyKey")) {
                ci._scaleStrategyKey = scaleStrategyKey;
+               variableDataChanged = true;
             }
          }
          if (testForClusterUpdate(ci._jobTrackerPort, jobTrackerPort, clusterId, "jobTrackerPort")) {
             ci._jobTrackerPort = jobTrackerPort;
+            variableDataChanged = true;
          }
          if (ci._extraInfo == null) {
             ci._extraInfo = _extraInfoMapper.parseExtraInfo(variableData, clusterId);
             if (ci._extraInfo != null) {
                _log.fine("Setting extraInfo in <%C"+clusterId+"%C> to "+ci._extraInfo);
+               variableDataChanged = true;
             }
          } else {
             Map<String, String> toAdd = _extraInfoMapper.parseExtraInfo(variableData, clusterId);
@@ -287,14 +291,17 @@ public class ClusterMapImpl implements ClusterMap {
                      String origValue = ci._extraInfo.get(key);
                      if (testForClusterUpdate(origValue, newValue, clusterId, "extraInfo."+key)) {
                         ci._extraInfo.put(key, newValue);
+                        variableDataChanged = true;
                      }
                   }
                }
             }
          }
-         Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(variableData, clusterId, isNewVm);
-         if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
-            impliedScaleEventsResultSet.addAll(impliedScaleEvents);
+         if (variableDataChanged) {
+            Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(variableData, clusterId, isNewVm);
+            if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
+               impliedScaleEventsResultSet.addAll(impliedScaleEvents);
+            }
          }
       }
    }

@@ -469,6 +469,7 @@ public class VcVlsi {
       return updateSet;
    }
 
+   /* TODO: Why is this not called anywhere? */
    private void cleanupWaitForUpdates(PropertyFilter propFilter) {
       propFilter.cleanup();
    }

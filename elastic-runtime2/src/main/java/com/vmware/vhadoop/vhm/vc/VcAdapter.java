@@ -168,6 +168,7 @@ public class VcAdapter implements VCActions {
       return _vcVlsi.getVMsInFolder(_rootFolderName, folderName);
    }
 
+   /* TODO: Test and make sure this works */
    @Override
    public void interruptWait() {
       _vcVlsi.cancelWaitForUpdates();
