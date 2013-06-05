@@ -44,7 +44,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
    class CachedVMConstantData extends VMConstantData {
       Boolean _isElastic;
-      Boolean _isMaster;
+      String _masterUUID;
    }
    
    class InterimVmData extends VmCreatedData {
@@ -154,11 +154,15 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if (rawData._isElastic != null) {
          result._isElastic = rawData._isElastic;
       }
-      if (rawData._isMaster != null) {
-         result._isMaster = rawData._isMaster;
+      if (rawData._masterUUID != null) {
+         result._masterUUID = rawData._masterUUID;
       }
-      if ((result._isElastic != null) && (result._isMaster != null)) {
-         result._vmType = result._isElastic ? VmType.COMPUTE : (result._isMaster ? VmType.MASTER : VmType.OTHER);
+      Boolean isMaster = null;
+      if ((result._masterUUID != null) && (result._myUUID != null)) {
+         isMaster = result._masterUUID.equals(result._myUUID);
+      }
+      if ((result._isElastic != null) && (isMaster != null)) {
+         result._vmType = result._isElastic ? VmType.COMPUTE : (isMaster ? VmType.MASTER : VmType.OTHER);
       }
       return result;
    }

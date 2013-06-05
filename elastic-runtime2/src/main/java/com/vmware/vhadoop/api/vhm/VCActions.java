@@ -27,7 +27,6 @@ public interface VCActions {
       // these fields can be left as null if there is no new information
       /* TODO: Split into fields which are constant and variable and check that constants are not being changed */
       public Boolean _isElastic;
-      public Boolean _isMaster;
       public String _myName;
       public String _myUUID;
       public String _hostMoRef;
@@ -44,7 +43,7 @@ public interface VCActions {
       
       @Override
       public String toString() {
-         return "<%V"+_vmMoRef+"%V>, isLeaving="+_isLeaving+", isElastic="+_isElastic+", isMaster="+_isMaster+", myName="+_myName+", myUUID="+_myUUID+", hostMoRef="+_hostMoRef+", serengetiFolder="+
+         return "<%V"+_vmMoRef+"%V>, isLeaving="+_isLeaving+", isElastic="+_isElastic+", myName="+_myName+", myUUID="+_myUUID+", hostMoRef="+_hostMoRef+", serengetiFolder="+
                      _serengetiFolder+", masterUUID="+_masterUUID+", powerState="+_powerState+", masterMoRef="+_masterMoRef+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", vCPUs="+_vCPUs+
                      ", masterVMData="+_masterVmData;
       }

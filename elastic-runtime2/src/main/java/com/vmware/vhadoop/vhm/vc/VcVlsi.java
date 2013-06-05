@@ -522,7 +522,6 @@ public class VcVlsi {
                   vmData._vCPUs = (Integer)pcValue;
                } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
-                  vmData._isMaster = vmData._myName.contains(SERENGETI_MASTERVM_NAME_POSTFIX);
                   /* Update this as early as possible. Doesn't matter if the key already exists */
                   LogFormatter._vmIdToNameMapper.put(vmData._vmMoRef, vmData._myName);
                } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {

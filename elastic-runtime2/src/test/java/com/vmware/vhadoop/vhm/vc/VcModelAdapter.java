@@ -65,7 +65,6 @@ public class VcModelAdapter implements VCActions {
          vmData._myUUID = vm.getId();
          vmData._powerState = vm.getPowerState();
          vmData._vCPUs = (int) (vm.getCpuLimit() / _orchestrator.getCpuSpeed());
-         vmData._isMaster = vmData._myName.contains("-master");
 
          /* parse out the extraInfo fields into the event */
          Map<String,String> extraInfo = vm.getExtraInfo();

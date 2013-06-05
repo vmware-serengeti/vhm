@@ -60,7 +60,6 @@ public abstract class AbstractJUnitTest {
       result._vmMoRef = MOREF_PREFIX+vmName;
       result._vCPUs = DEFAULT_VCPUS;
       result._isElastic = !isMaster;
-      result._isMaster = isMaster;
       if (isMaster) {
          result._masterVmData = new MasterVmEventData();
          result._masterVmData._enableAutomation = autoCluster;
