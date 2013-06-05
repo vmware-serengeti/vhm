@@ -169,6 +169,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
 
    @Override
    public void stop() {
+      /* TODO: Although this stops the TPES, the scaling threads its managing are possibly still running - should we block? */
       _started = false;
       _mainThread.interrupt();
    }
@@ -179,6 +180,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
          ClusterTaskContext ctc = _clusterTaskContexts.get(clusterId);
          /* It's ok for there to be no ClusterTaskContext yet as they are created lazily */
          if (ctc != null) {
+            /* TODO: Add isAlive() check for the thread - if it has crashed, this isn't enough */
             return ctc._completionEventPending != null;
          }
       }

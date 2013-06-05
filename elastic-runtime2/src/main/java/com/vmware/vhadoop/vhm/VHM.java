@@ -27,8 +27,10 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.AbstractNotificationEvent;
+import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.NewVmEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
@@ -257,20 +259,20 @@ public class VHM implements EventConsumer {
       }
    }
 
-   private Set<ClusterStateChangeEvent> getNewVMEvents(Set<NotificationEvent> events) {
+   private Set<ClusterStateChangeEvent> getClusterAddRemoveEvents(Set<NotificationEvent> events) {
       Set<ClusterStateChangeEvent> results = new HashSet<ClusterStateChangeEvent>();
       for (NotificationEvent event : events) {
-         if (event instanceof NewVmEvent) {
+         if ((event instanceof NewVmEvent) || (event instanceof VmRemovedFromClusterEvent)) {
             results.add((ClusterStateChangeEvent)event);
          }
       }
       return results;
    }
 
-   private Set<ClusterStateChangeEvent> getVMUpdateEvents(Set<NotificationEvent> events) {
+   private Set<ClusterStateChangeEvent> getClusterUpdateEvents(Set<NotificationEvent> events) {
       Set<ClusterStateChangeEvent> results = new HashSet<ClusterStateChangeEvent>();
       for (NotificationEvent event : events) {
-         if (event instanceof VmUpdateEvent) {
+         if ((event instanceof VmUpdateEvent) || (event instanceof ClusterUpdateEvent)) {
             results.add((ClusterStateChangeEvent)event);
          }
       }
@@ -346,19 +348,19 @@ public class VHM implements EventConsumer {
    }
 
    private void handleEvents(Set<NotificationEvent> events) {
-      final Set<ClusterStateChangeEvent> newVMEvents = getNewVMEvents(events);
-      final Set<ClusterStateChangeEvent> vmUpdateEvents = getVMUpdateEvents(events);
+      final Set<ClusterStateChangeEvent> addRemoveEvents = getClusterAddRemoveEvents(events);
+      final Set<ClusterStateChangeEvent> updateEvents = getClusterUpdateEvents(events);
       final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
       final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
 
       /* Update ClusterMap first */
-      if ((newVMEvents.size() + vmUpdateEvents.size() + completionEvents.size()) > 0) {
+      if ((addRemoveEvents.size() + updateEvents.size() + completionEvents.size()) > 0) {
          _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-               handleClusterStateChangeEvents(newVMEvents, clusterScaleEvents);
-               handleClusterStateChangeEvents(vmUpdateEvents, clusterScaleEvents);
+               handleClusterStateChangeEvents(addRemoveEvents, clusterScaleEvents);
+               handleClusterStateChangeEvents(updateEvents, clusterScaleEvents);
                for (ClusterScaleCompletionEvent event : completionEvents) {
                   _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
                   _clusterMap.handleCompletionEvent(event);
