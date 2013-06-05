@@ -1,4 +1,4 @@
-package com.vmware.vhadoop.model.scenarios;
+package com.vmware.vhadoop.vhm.model.scenarios;
 
 import static com.vmware.vhadoop.vhm.model.api.ResourceType.CPU;
 import static com.vmware.vhadoop.vhm.model.api.ResourceType.MEMORY;
@@ -285,15 +285,6 @@ public class Serengeti extends Folder
          applyTarget();
       }
 
-      @Override
-      public void start() {
-         /* no-op */
-      }
-
-      @Override
-      public void stop() {
-         /* no-op */
-      }
 
       public synchronized void execute(HadoopJob job) {
          jobs.add(job);
@@ -346,6 +337,24 @@ public class Serengeti extends Folder
 
          /* we don't want to allocate anything on our own behalf based on tasks */
          return super.getDesiredAllocation();
+      }
+
+      @Override
+      public void start(EventProducerStoppingCallback callback) {
+         /* noop */
+      }
+
+      /**
+       * Implements EventConsumer.stop()
+       */
+      @Override
+      public void stop() {
+         /* noop */
+      }
+
+      @Override
+      public boolean isStopped() {
+         return false;
       }
    }
 

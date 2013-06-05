@@ -4,8 +4,8 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
-import com.vmware.vhadoop.model.scenarios.Serengeti;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.strategy.BalancedVMChooser;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;

@@ -13,17 +13,15 @@ import org.junit.Before;
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
-import com.vmware.vhadoop.model.scenarios.BasicScenario;
-import com.vmware.vhadoop.model.scenarios.Serengeti;
-import com.vmware.vhadoop.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.vhm.model.scenarios.BasicScenario;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.Host;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 
 abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Master> extends AbstractClusterMapReader implements EventProducer {
-   /* front load the cost of the springframework initialization */
-   static final VcVlsi _VCVLSI = new VcVlsi();
 
    /** Set this to "true" to disable the test timeouts */
    public final static String DISABLE_TIMEOUT = "disable.timeout";

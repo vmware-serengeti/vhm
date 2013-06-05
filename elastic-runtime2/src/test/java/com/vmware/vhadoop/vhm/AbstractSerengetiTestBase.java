@@ -1,6 +1,6 @@
 package com.vmware.vhadoop.vhm;
 
-import com.vmware.vhadoop.model.scenarios.Serengeti;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
 abstract public class AbstractSerengetiTestBase extends ModelTestBase<Serengeti,Serengeti.Master>

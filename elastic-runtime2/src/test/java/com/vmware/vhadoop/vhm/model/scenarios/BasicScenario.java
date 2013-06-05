@@ -1,4 +1,4 @@
-package com.vmware.vhadoop.model.scenarios;
+package com.vmware.vhadoop.vhm.model.scenarios;
 
 import com.vmware.vhadoop.vhm.model.Allocation;
 import com.vmware.vhadoop.vhm.model.api.ResourceType;
