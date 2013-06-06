@@ -65,6 +65,9 @@ public class ClusterMapImpl implements ClusterMap {
          this._constantData = constantData;
          this._variableData = variableData;
          this._clusterId = clusterId;
+         if ((this._variableData._powerState != null) && (this._variableData._powerState)) {
+            this._powerOnTime = System.currentTimeMillis();
+         }
          _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s", 
                new String[]{moRef, moRef, clusterId, constantData.toString(), variableData.toString()});
       }
