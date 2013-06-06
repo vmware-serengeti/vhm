@@ -43,22 +43,6 @@ public class ModelVcAdapter implements VCActions {
    }
 
 
-   private static final String VHM_EXTRA_CONFIG_PREFIX = "vhmInfo.";
-   private static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";
-   private static final String VHM_EXTRA_CONFIG_MASTER_UUID = "vhmInfo.masterVM.uuid";
-   private static final String VHM_EXTRA_CONFIG_MASTER_MOREF = "vhmInfo.masterVM.moid";
-   private static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
-   private static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
-   private static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
-   private static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
-
-   static private MasterVmEventData getMasterVmData(VMEventData vmData) {
-      if (vmData._masterVmData == null) {
-         vmData._masterVmData = new MasterVmEventData();
-      }
-      return vmData._masterVmData;
-   }
-
    /**
     * This method is expected to block until there are applicable updates
     */
@@ -95,26 +79,7 @@ public class ModelVcAdapter implements VCActions {
          Map<String,String> extraInfo = vm.getExtraInfo();
          for (String key : extraInfo.keySet()) {
             String value = extraInfo.get(key);
-//            VcVlsi.parseExtraConfig(vmData, key, value);
-
-            if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX) && value != null) {
-               //_log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
-               if (key.equals(VHM_EXTRA_CONFIG_UUID)) {
-                  vmData._serengetiFolder = value;
-               } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_UUID)) {
-                  vmData._masterUUID = value;
-               } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_MOREF)) {
-                  vmData._masterMoRef = value;
-               } else if (key.equals(VHM_EXTRA_CONFIG_ELASTIC)) {
-                  vmData._isElastic = value.equalsIgnoreCase("true");
-               } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_ENABLE)) {
-                  getMasterVmData(vmData)._enableAutomation = value.equalsIgnoreCase("true");
-               } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
-                  getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
-               } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
-                  getMasterVmData(vmData)._jobTrackerPort = Integer.valueOf(value);
-               }
-            }
+            VcVlsiHelper.parseExtraConfig(vmData, key, value);
          }
 
          vmDataList.add(vmData);

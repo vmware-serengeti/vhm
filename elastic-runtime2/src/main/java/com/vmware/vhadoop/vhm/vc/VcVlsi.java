@@ -27,7 +27,6 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLException;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.LogFormatter;
@@ -110,14 +109,14 @@ public class VcVlsi {
 
    private static final int propertyCollectorTimeout = 300;
 
-   private static final String VHM_EXTRA_CONFIG_PREFIX = "vhmInfo.";
-   private static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";
-   private static final String VHM_EXTRA_CONFIG_MASTER_UUID = "vhmInfo.masterVM.uuid";
-   private static final String VHM_EXTRA_CONFIG_MASTER_MOREF = "vhmInfo.masterVM.moid";
-   private static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
-   private static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
-   private static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
-   private static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
+   static final String VHM_EXTRA_CONFIG_PREFIX = "vhmInfo.";
+   static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";
+   static final String VHM_EXTRA_CONFIG_MASTER_UUID = "vhmInfo.masterVM.uuid";
+   static final String VHM_EXTRA_CONFIG_MASTER_MOREF = "vhmInfo.masterVM.moid";
+   static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
+   static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
+   static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
+   static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";
 
@@ -383,7 +382,7 @@ public class VcVlsi {
       if (baseFolder == null) {
          return null;
       }
-      
+
       List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
 
@@ -489,36 +488,36 @@ public class VcVlsi {
             Object pcValue = pc.getVal();
             logger.log(Level.FINE, "Pobj prop= " + pcName + " val= " + pcValue);
             if (pcValue != null) {
-               if (pcName.equals(VcVlsi.VC_PROP_VM_UUID)) {
+               if (pcName.equals(VC_PROP_VM_UUID)) {
                   vmData._myUUID = (String)pcValue;
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_NUM_CPU)) {
+               } else if (pcName.equals(VC_PROP_VM_NUM_CPU)) {
                   vmData._vCPUs = (Integer)pcValue;
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_NAME)) {
+               } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
                   /* Update this as early as possible. Doesn't matter if the key already exists */
                   LogFormatter._vmIdToNameMapper.put(vmData._vmMoRef, vmData._myName);
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_POWER_STATE)) {
+               } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
                   PowerState ps = (PowerState)pcValue;
                   if (ps == PowerState.poweredOn) {
                      vmData._powerState = true;
                   } else {
                      vmData._powerState = false;
                   }
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_HOST)) {
+               } else if (pcName.equals(VC_PROP_VM_HOST)) {
                   vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_GUEST_IP)) {
+               } else if (pcName.equals(VC_PROP_VM_GUEST_IP)) {
                   vmData._ipAddr = (String)pcValue;
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_GUEST_HOSTNAME)) {
+               } else if (pcName.equals(VC_PROP_VM_GUEST_HOSTNAME)) {
                   vmData._dnsName = (String)pcValue;
-               } else if (pcName.equals(VcVlsi.VC_PROP_VM_EXTRA_CONFIG)) {
+               } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
                   // extraConfig updates can be returned as an array (pcName == config.extraConfig), or individual key (below)
                   OptionValue[] ecl = (OptionValue[]) pcValue;
                   for (OptionValue ec : ecl) {
                      if (ec.getKey().startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
-                        parseExtraConfig(vmData, ec.getKey(), (String)ec.getValue());
+                        VcVlsiHelper.parseExtraConfig(vmData, ec.getKey(), (String)ec.getValue());
                      }
                   }
-               } else if (pcName.lastIndexOf(VcVlsi.VC_PROP_VM_EXTRA_CONFIG) >= 0) {
+               } else if (pcName.lastIndexOf(VC_PROP_VM_EXTRA_CONFIG) >= 0) {
                   // individual extraConfig entries (pcName = config.extraConfig["xxx"].value)
                   String [] parts = pcName.split("\"",3);
                   if (parts.length > 1) {
@@ -530,7 +529,7 @@ public class VcVlsi {
                         } else {
                            valueString = (String) ((OptionValue)pcValue).getValue();
                         }
-                        parseExtraConfig(vmData, parts[1], valueString);
+                        VcVlsiHelper.parseExtraConfig(vmData, parts[1], valueString);
                      }
                   }
                } else {
