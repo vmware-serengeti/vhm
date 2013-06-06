@@ -18,15 +18,15 @@ package com.vmware.vhadoop.vhm.rabbit;
 import com.google.gson.Gson;
 
 public class VHMJsonReturnMessage {
-  
-   // Serengeti status update interface JSON packet definition  
-   Boolean finished;
-   Boolean succeed;
-   int progress;
-   int error_code;
-   String error_msg;
-   String progress_msg;
-   
+
+   // Serengeti status update interface JSON packet definition
+   public final Boolean finished;
+   public final Boolean succeed;
+   public final int progress;
+   public final int error_code;
+   public final String error_msg;
+   public final String progress_msg;
+
    public VHMJsonReturnMessage(
           Boolean param_finished,
           Boolean param_succeed,
@@ -41,7 +41,7 @@ public class VHMJsonReturnMessage {
       error_msg = param_error_msg;
       progress_msg = param_progress_msg;
    }
-   
+
    public byte[] getRawPayload() {
       Gson gson = new Gson();
       return gson.toJson(this).getBytes();

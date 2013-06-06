@@ -16,13 +16,13 @@ import com.vmware.vhadoop.vhm.model.vcenter.VM;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vim.vmomi.client.Client;
 
-public class VcModelAdapter implements VCActions {
+public class ModelVcAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger("VcModelAdapter");
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private VirtualCenter _vCenter;
 
-   public VcModelAdapter(VirtualCenter vCenter) {
+   public ModelVcAdapter(VirtualCenter vCenter) {
       _vCenter = vCenter;
    }
 
@@ -76,7 +76,7 @@ public class VcModelAdapter implements VCActions {
          /* build the VMEventData list */
          VMEventData vmData = new VMEventData();
          vmData._vmMoRef = vm.getId();
-         vmData._dnsName = vm.getId()+".model";
+         vmData._dnsName = vm.getHostname();
          vmData._hostMoRef = vm.getHost() != null ? vm.getHost().getId() : null;
          vmData._ipAddr = "127.0.0.1";
          vmData._isLeaving = false;

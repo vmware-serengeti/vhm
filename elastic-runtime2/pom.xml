@@ -171,7 +171,6 @@
 					<excludes>
 						<exclude>**/VlsiTest.java</exclude>
 						<exclude>**/PopulateClusterMap.java</exclude>
-<!-- 						<exclude>**/VHMIntegrationTest.java</exclude> -->
 					</excludes>
 				</configuration>
 			</plugin>

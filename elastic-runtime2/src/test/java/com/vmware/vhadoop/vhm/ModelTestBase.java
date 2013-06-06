@@ -68,8 +68,13 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       _vhm.start();
    }
 
+   /**
+    * Sets the timeout and resets the start time so we can set timeouts for portions of tests
+    * @param millis
+    */
    protected void setTimeout(long millis) {
       timeout = millis;
+      startTime = 0;
    }
 
    protected long timeout() {
@@ -188,13 +193,13 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
    public void assertActualVMsInPowerState(String msg, Master master, int number, boolean power, long timeout) {
       long deadline = System.currentTimeMillis() + timeout;
-      _log.info(msg+" - waiting for VMs to power "+(power?"on":"off")+" in cluster "+master.getClusterId());
+      _log.info(msg+" - waiting for "+number+" VMs to power "+(power?"on":"off")+" in cluster "+master.getClusterId());
       while (master.numberComputeNodesInPowerState(power) < number && System.currentTimeMillis() < deadline) {
          _vCenter.waitForConfigurationUpdate(timeout());
       }
 
       assertEquals(msg+" - not enough powered "+(power ? "on" : "off")+" in cluster "+master.getClusterId(), number, master.numberComputeNodesInPowerState(power));
-      _log.info(msg+" - VMs powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
+      _log.info(msg+" - "+number+" VMs powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
    }
 
    public void assertActualVMsInPowerState(String msg, Master master, int number, boolean power) {
@@ -212,7 +217,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       long deadline = System.currentTimeMillis() + timeout;
       boolean firstTime = true;
 
-      _log.info("Waiting for VMs to power "+(power?"on":"off")+" in cluster map "+clusterId+", timeout "+(timeout/1000));
+      _log.info(msg+" - waiting for "+number+" VMs to show as powered "+(power?"on":"off")+" in cluster map "+clusterId+", timeout "+(timeout/1000));
       Set<String> vms;
       do {
          if (!firstTime) {
@@ -228,8 +233,8 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
          unlockClusterMap(map);
       } while ((vms == null || vms.size() < number) && System.currentTimeMillis() < deadline);
 
-      assertEquals(msg+" - not enough powered "+(power ? "on" : "off")+" in cluster "+clusterId , number, vms != null ? vms.size() : 0);
-      _log.info(msg+" - "+number+" VMs powered "+(power?"on":"off")+" in cluster map for cluster"+clusterId);
+      assertEquals(msg+" - not enough VMs show as powered "+(power ? "on" : "off")+" in cluster map for cluster"+clusterId , number, vms != null ? vms.size() : 0);
+      _log.info(msg+" - "+number+" VMs show as powered "+(power?"on":"off")+" in cluster map for cluster"+clusterId);
    }
 
    public void assertClusterMapVMsInPowerState(String msg, String clusterId, int number, boolean power) {

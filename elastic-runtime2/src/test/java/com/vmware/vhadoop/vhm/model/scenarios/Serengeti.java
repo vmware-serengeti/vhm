@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import com.google.gson.Gson;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
@@ -24,11 +25,15 @@ import com.vmware.vhadoop.vhm.model.vcenter.ResourcePool;
 import com.vmware.vhadoop.vhm.model.vcenter.VM;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.model.workloads.HadoopJob;
+import com.vmware.vhadoop.vhm.rabbit.ModelRabbitAdaptor.RabbitConnectionCallback;
+import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 
 public class Serengeti extends Folder
 {
    public static final int UNSET = -1;
+   final static String COMPUTE_SUBDOMAIN = "compute";
+   final static String ROUTEKEY_SEPARATOR = ":";
 
    private static Logger _log = Logger.getLogger(Serengeti.class.getName());
 
@@ -39,6 +44,8 @@ public class Serengeti extends Folder
 
    VirtualCenter vCenter;
    MasterTemplate masterOva;
+
+   Map<String,Master> clusters = new HashMap<String,Master>();
 
    /**
     * Creates a "Serengeti" and adds it to the specified Orchestrator
@@ -68,7 +75,85 @@ public class Serengeti extends Folder
       folder.add(master);
       vCenter.add(folder);
       master.folder = folder;
+
+      clusters.put(master.getId(), master);
       return master;
+   }
+
+   static String constructHostnameForCompute(Master master, String computeId) {
+      return computeId+"."+COMPUTE_SUBDOMAIN+"."+master.clusterName;
+   }
+
+   public static VHMJsonReturnMessage unpackRawPayload(byte[] json) {
+      Gson gson = new Gson();
+      return gson.fromJson(new String(json), VHMJsonReturnMessage.class);
+   }
+
+   static String getComputeIdFromHostname(String hostname) {
+      int index = hostname.indexOf("."+COMPUTE_SUBDOMAIN+".");
+      if (index == -1) {
+         return null;
+      }
+
+      return hostname.substring(0, index);
+   }
+
+   static String packRouteKey(String msgId, String clusterId) {
+      return msgId + ROUTEKEY_SEPARATOR + clusterId;
+   }
+
+   static String[] unpackRouteKey(String routeKey) {
+      if (routeKey == null) {
+         return null;
+      }
+
+      int index = routeKey.indexOf(ROUTEKEY_SEPARATOR);
+      if (index == -1) {
+         return null;
+      }
+
+      String id = routeKey.substring(0, index);
+      String remainder = null;
+      if (index != routeKey.length() - 1) {
+         remainder = routeKey.substring(index+1);
+      }
+
+      return new String[] {id, remainder};
+   }
+
+
+   /**
+    * Allows VHM to send 'RabbitMQ' messages to this serengeti detailing the results of actions
+    * The message is passed along to the master in question
+    * @param data
+    */
+   public void deliverMessage(byte[] data) {
+      deliverMessage(null, data);
+   }
+
+   /**
+    * Allows VHM to send 'RabbitMQ' messages to this serengeti detailing the results of actions
+    * The message is passed along to the master in question
+    * @param routeKey
+    * @param data
+    */
+   public void deliverMessage(String routeKey, byte[] data) {
+      _log.info(name()+" received message on route '"+routeKey+"': "+new String(data));
+
+      VHMJsonReturnMessage msg = unpackRawPayload(data);
+      String parts[] = unpackRouteKey(routeKey);
+      if (parts == null || parts.length < 2) {
+         _log.severe(name()+": received message reply without a destination cluster: "+routeKey);
+         return;
+      }
+
+      Master master = clusters.get(parts[1]);
+      if (master == null) {
+         _log.severe(name()+": received message with unknown destination cluster: "+routeKey);
+         return;
+      }
+
+      master.deliverMessage(routeKey, msg);
    }
 
 
@@ -99,6 +184,8 @@ public class Serengeti extends Folder
          setExtraInfo("vhmInfo.masterVM.uuid", master.getClusterId());
          setExtraInfo("vhmInfo.masterVM.moid", master.getId());
 
+         setHostname(Serengeti.constructHostnameForCompute(master, id));
+
          _log.info(master.clusterId+": created cluster compute node ("+id+")");
       }
 
@@ -122,7 +209,7 @@ public class Serengeti extends Folder
       @Override
       public void powerOn() {
          super.powerOn();
-         _log.info(name()+": powered on, hosted by "+getHost());
+         _log.info(name()+": powered on, hosted by "+getHost().name());
       }
 
 
@@ -158,7 +245,10 @@ public class Serengeti extends Folder
       String clusterName;
       String clusterId;
       int computeNodesId = 0;
-      Set<Compute> computeNodes;
+      int msgId = 0;
+      Set<Compute> computeNodes = new HashSet<Compute>();
+      Map<String,Compute> enabled = new HashMap<String,Compute>();
+      Map<String,Compute> disabled = new HashMap<String,Compute>();
       ResourcePool computePool;
       EventConsumer eventConsumer;
       int targetComputeNodeNum = UNSET;
@@ -177,7 +267,6 @@ public class Serengeti extends Folder
          super(vCenter, cluster+"-master", capacity);
          clusterName = cluster;
          clusterId = getId();
-         computeNodes = new HashSet<Compute>();
          setExtraInfo("vhmInfo.masterVM.uuid", clusterId);
          setExtraInfo("vhmInfo.masterVM.moid", clusterId); /* I don't know if uuid and moid have to be the same, but it works if they are */
          setExtraInfo("vhmInfo.elastic", "false");
@@ -200,6 +289,16 @@ public class Serengeti extends Folder
 
 
       /**
+       * Allows VHM to send 'RabbitMQ' messages to this master detailing the results of actions
+       * @param data
+       */
+      public void deliverMessage(String msgId, VHMJsonReturnMessage msg) {
+         _log.info(name()+": received message, id: "+msgId);
+         /* TODO: track inflight messages somehow */
+      }
+
+
+      /**
        * ensure that we're meeting our obligation for compute nodes
        */
       protected void applyTarget() {
@@ -213,7 +312,7 @@ public class Serengeti extends Folder
 
          /* TODO: decide whether we want to support a callback mechanism */
          _log.info(clusterId+": dispatching SerengetiLimitInstruction ("+targetComputeNodeNum+")");
-         eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(folder.name(), SerengetiLimitInstruction.actionSetTarget, targetComputeNodeNum, null));
+         eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(folder.name(), SerengetiLimitInstruction.actionSetTarget, targetComputeNodeNum, new RabbitConnectionCallback(packRouteKey(Integer.toString(msgId++), clusterId), Serengeti.this)));
       }
 
       public void setTargetComputeNodeNum(int target) {
@@ -232,6 +331,10 @@ public class Serengeti extends Folder
          }
 
          return nodes;
+      }
+
+      public int numberComputeNodesInState(boolean enabled) {
+         return this.enabled.size();
       }
 
       public Set<Compute> getComputeNodesInPowerState(boolean power) {
@@ -272,6 +375,8 @@ public class Serengeti extends Folder
             /* add it to the "cluster folder" and the compute node resource pool */
             folder.add(compute);
             computePool.add(compute);
+            /* mark it as disabled to hadoop */
+            disabled.put(compute.getId(), compute);
             /* add this to the vApp so that we've a solid accounting for everything */
             Serengeti.this.add(compute);
          }
@@ -286,7 +391,78 @@ public class Serengeti extends Folder
       }
 
 
+      /**
+       * Makes the node available for running tasks
+       * @param hostname
+       * @return null on success, error detail otherwise
+       */
+      public String enable(String hostname) {
+         String id = getComputeIdFromHostname(hostname);
+         if (id == null) {
+            return "unknown hostname for task tracker";
+         }
+
+         Compute node = disabled.remove(id);
+         if (node == null) {
+            if (enabled.containsKey(id)) {
+               return "task tracker was already enabled";
+            }
+
+            return "task tracker was neither enabled or disabled!";
+         }
+
+         _log.info(name()+" enabling compute node "+id);
+
+         enabled.put(id, node);
+
+         /* revise our job distribution if needed */
+         scheduleNewTask(node);
+
+         /* return null on success */
+         return null;
+      }
+
+      /**
+       * Stops the task running on the specified compute node
+       * and disables it from further consideration
+       * @param hostname
+       * @return null on success, error detail otherwise
+       */
+      public String disable(String hostname) {
+         String id = getComputeIdFromHostname(hostname);
+         if (id == null) {
+            return "unknown hostname for task tracker";
+         }
+
+         Compute node = enabled.remove(id);
+         if (node == null) {
+            if (disabled.containsKey(id)) {
+               return "task tracker was already disabled";
+            }
+
+            return "task tracker was neither enabled or disabled!";
+         }
+
+         Compute old = disabled.put(id, node);
+         if (old == null) {
+            Process task = tasks.get(node);
+            if (task != null) {
+               /* TODO: implement external termination of Processes */
+            }
+
+            _log.info(name()+" disabled compute node "+id);
+         }
+
+         disabled.put(id, node);
+
+         /* return null on success */
+         return null;
+      }
+
+
       public synchronized void execute(HadoopJob job) {
+         _log.info(name()+" received job for dispatch, "+job.name());
+
          jobs.add(job);
          reviseResourceUsage();
       }
@@ -305,7 +481,7 @@ public class Serengeti extends Folder
          _log.info(name()+": re-evaluating job distribution on compute nodes");
 
          /* have any tasks completed? */
-         for (Compute node : computeNodes) {
+         for (Compute node : enabled.values()) {
             if (!node.powerState()) {
                continue;
             }
@@ -324,19 +500,32 @@ public class Serengeti extends Folder
 
             if (task == null) {
                /* schedule a new task */
-               for (HadoopJob job : jobs) {
-                  task = job.getTask();
-                  if (task != null) {
-                     node.execute(task);
-                     tasks.put(node,  task);
-                     break;
-                  }
-               }
+               scheduleNewTask(node);
             }
          }
 
          /* we don't want to allocate anything on our own behalf based on tasks */
          return super.getDesiredAllocation();
+      }
+
+      /**
+       * Sees if we can schedule a task on the given node
+       * @param node
+       * @return true if a task was started, false otherwise
+       */
+      private boolean scheduleNewTask(Compute node) {
+         for (HadoopJob job : jobs) {
+            if (job.queueSize() > 0) {
+               Process task = job.getTask();
+               if (task != null) {
+                  node.execute(task);
+                  tasks.put(node,  task);
+                  return true;
+               }
+            }
+         }
+
+         return false;
       }
 
       @Override
