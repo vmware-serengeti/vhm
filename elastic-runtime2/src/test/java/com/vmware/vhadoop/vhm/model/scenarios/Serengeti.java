@@ -293,7 +293,14 @@ public class Serengeti extends Folder
        * @param data
        */
       public void deliverMessage(String msgId, VHMJsonReturnMessage msg) {
-         _log.info(name()+": received message, id: "+msgId);
+         _log.info(name()+": received message, id: "+msgId+
+                                       ", finished: "+msg.finished+
+                                       ", succeeded: "+msg.succeed+
+                                       ", progress: "+msg.progress+
+                                       ", error_code: "+msg.error_code+
+                                       ", error_msg: "+msg.error_msg+
+                                       ", progress_msg: "+msg.progress_msg);
+
          /* TODO: track inflight messages somehow */
       }
 
