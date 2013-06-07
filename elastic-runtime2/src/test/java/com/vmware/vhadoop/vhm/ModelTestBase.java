@@ -199,9 +199,15 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
    public void assertActualVMsInPowerState(String msg, Master master, int number, boolean power, long timeout) {
       long deadline = System.currentTimeMillis() + timeout;
       _log.info(msg+" - waiting for "+number+" VMs to power "+(power?"on":"off")+" in cluster "+master.getClusterId());
-      while (master.numberComputeNodesInPowerState(power) < number && System.currentTimeMillis() < deadline) {
-         _vCenter.waitForConfigurationUpdate(timeout());
-      }
+      int current;
+      do {
+         long timestamp = _vCenter.getConfigurationTimestamp();
+         current = master.numberComputeNodesInPowerState(power);
+
+         if (current != number) {
+            _vCenter.waitForConfigurationUpdate(timestamp, timeout());
+         }
+      } while (current < number && System.currentTimeMillis() < deadline);
 
       assertEquals(msg+" - not enough powered "+(power ? "on" : "off")+" in cluster "+master.getClusterId(), number, master.numberComputeNodesInPowerState(power));
       _log.info(msg+" - "+number+" VMs powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
