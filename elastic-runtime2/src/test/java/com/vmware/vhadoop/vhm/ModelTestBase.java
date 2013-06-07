@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.junit.After;
@@ -20,6 +21,7 @@ import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.Host;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
+
 abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Master> extends AbstractClusterMapReader implements EventProducer {
 
    /** Set this to "true" to disable the test timeouts */
@@ -32,6 +34,10 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
    BootstrapMain _bootstrap;
    EventConsumer _consumer;
+
+   /** This is a record of whether VHM has asked us, as an event producer, to stop */
+   boolean _stopped = false;
+   EventProducerStoppingCallback _callback;
 
    long startTime;
    /** default timeout is two decision cycles plus warm up/cool down */
@@ -98,18 +104,23 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
    @Override
    public void start(EventProducerStoppingCallback callback) {
-      /* noop */
+      _callback = callback;
+      _stopped = false;
    }
 
    @Override
    public void stop() {
-      /* noop */
+      if (_callback != null && _stopped == false) {
+         _callback.notifyStopping(this, false);
+      }
+
+      _stopped = true;
    }
 
 
    @Override
    public boolean isStopped() {
-      return false;
+      return _stopped;
    }
 
    /**
@@ -175,11 +186,21 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       return _serengeti;
    }
 
+   /**
+    * Clean up from this run in preparation for the next. Dumps cluster map for reference in case of
+    * test failure
+    */
    @After
    public void cleanup() {
       if (_vhm != null) {
          _vhm.stop(true);
+         while (!_vhm.isStopped()) {
+            try {
+               Thread.sleep(200);
+            } catch (InterruptedException e) {}
+         }
 
+         _vhm.dumpClusterMap(Level.INFO);
          _vhm = null;
       }
 
@@ -213,6 +234,25 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       _log.info(msg+" - "+number+" VMs powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
    }
 
+   /**
+    * Provides a roll up of the multiple wait/assert functions for checking VM power states
+    * @param msg
+    * @param master
+    * @param number
+    * @param power
+    */
+   public void assertVMsInPowerState(String msg, Master master, int number, boolean power) {
+      assertActualVMsInPowerState(msg, master, number, power);
+      assertClusterMapVMsInPowerState(msg, master.getClusterId(), number, power);
+   }
+
+   /**
+    * This waits for the actual VM states as reported by vCenter, NOT from the cluster map
+    * @param msg
+    * @param master
+    * @param number
+    * @param power
+    */
    public void assertActualVMsInPowerState(String msg, Master master, int number, boolean power) {
       assertActualVMsInPowerState(msg, master, number, power, timeout());
    }
@@ -248,6 +288,13 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       _log.info(msg+" - "+number+" VMs show as powered "+(power?"on":"off")+" in cluster map for cluster"+clusterId);
    }
 
+   /**
+    * This waits and asserts states of the VMs in ClusterMap, NOT the actual state in vCenter.
+    * @param msg
+    * @param clusterId
+    * @param number
+    * @param power
+    */
    public void assertClusterMapVMsInPowerState(String msg, String clusterId, int number, boolean power) {
       assertClusterMapVMsInPowerState(msg, clusterId, number, power, timeout());
    }

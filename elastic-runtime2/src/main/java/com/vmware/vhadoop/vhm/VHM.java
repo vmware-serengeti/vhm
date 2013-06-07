@@ -69,13 +69,13 @@ public class VHM implements EventConsumer {
          strategy.initialize(_parentClusterMapReader);
       }
    }
-   
+
    private class EventProducerResetEvent extends AbstractNotificationEvent {
       EventProducerResetEvent() {
          super(false, false);
       }
    }
-   
+
    /* THREADING: Can be called by multiple threads, so access to _eventProducers is synchronized */
    private class EventProducerFatalStoppingHandler implements EventProducer.EventProducerStoppingCallback {
       @Override
@@ -327,7 +327,7 @@ public class VHM implements EventConsumer {
       }
       return null;
    }
-   
+
    private void handleClusterStateChangeEvents(Set<ClusterStateChangeEvent> eventsToProcess, Map<String, Set<ClusterScaleEvent>> clusterScaleEvents) {
       Set<ClusterScaleEvent> impliedScaleEvents = new HashSet<ClusterScaleEvent>();
       for (ClusterStateChangeEvent event : eventsToProcess) {
@@ -454,7 +454,21 @@ public class VHM implements EventConsumer {
          }
       }
    }
-   
+
+   private boolean eventProducersStopped() {
+      boolean stopped = true;
+      synchronized(_eventProducers) {
+         for (EventProducer eventProducer : _eventProducers) {
+            if (!eventProducer.isStopped()) {
+               stopped = false;
+               break;
+            }
+         }
+      }
+
+      return stopped;
+   }
+
    private boolean resetEventProducers() {
       long graceTimeMillis = 10000;
       long waitTimeMillis = 100;
@@ -490,8 +504,57 @@ public class VHM implements EventConsumer {
       placeEventOnQueue(new AbstractNotificationEvent(hardStop, false) {});
    }
 
+
+   public boolean isStopped() {
+      /* TODO: see if we need to wait for the queue to empty or similar */
+      return eventProducersStopped();
+   }
+
    VCActions getVCActions() {
       return _vcActions;
    }
 
+
+   /**
+    * Returns the Json description for the named field if it exists, exception otherwise/
+    * @return
+    * @throws NoSuchFieldException
+    */
+//   public String dump(String fieldName) throws NoSuchFieldException {
+//      Field field;
+//      field = getClass().getDeclaredField(fieldName);
+//      Object target;
+//      try {
+//         target = field.get(this);
+//
+//         if (target == null) {
+//            return null;
+//         }
+//
+//         Gson gson = new Gson();
+//         return gson.toJson(target);
+//
+//      } catch (Exception e) {
+//         _log.log(Level.INFO, "Caught exception during dump", e);
+//      }
+//
+//      return null;
+//   }
+
+   /**
+    * Returns the Json description of VHM
+    * @return
+    */
+//   public String dump() {
+//      Gson gson = new Gson();
+//      return gson.toJson(this);
+//   }
+
+   /**
+    * Hack to specifically dump the cluster map instead of a more generic state of the world
+    *
+    */
+   public void dumpClusterMap(Level level) {
+      _clusterMap.dumpState(level);
+   }
 }

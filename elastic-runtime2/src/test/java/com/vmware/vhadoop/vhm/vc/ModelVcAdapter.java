@@ -21,6 +21,7 @@ public class ModelVcAdapter implements VCActions {
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private VirtualCenter _vCenter;
+   private Thread _updateThread;
 
    public ModelVcAdapter(VirtualCenter vCenter) {
       _vCenter = vCenter;
@@ -55,7 +56,15 @@ public class ModelVcAdapter implements VCActions {
          return "";
       }
 
-      List<VM> vms = _vCenter.getUpdatedVMs();
+
+      List<VM> vms;
+      try {
+         setUpdateThread(Thread.currentThread());
+         vms = _vCenter.getUpdatedVMs();
+      } finally {
+         setUpdateThread(null);
+      }
+
       for (VM vm : vms) {
          /* build the VMEventData list */
          VMEventData vmData = new VMEventData();
@@ -112,8 +121,14 @@ public class ModelVcAdapter implements VCActions {
    }
 
    @Override
-   public void interruptWait() {
-      /* noop */
+   public synchronized void interruptWait() {
+      if (_updateThread != null) {
+         _updateThread.interrupt();
+      }
+   }
+
+   private synchronized void setUpdateThread(Thread thread) {
+      _updateThread = thread;
    }
 
    @Override

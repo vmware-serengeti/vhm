@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import com.google.gson.Gson;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
+import com.vmware.vhadoop.api.vhm.events.EventProducer.EventProducerStoppingCallback;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.model.api.Allocation;
 import com.vmware.vhadoop.vhm.model.api.Workload;
@@ -46,6 +47,10 @@ public class Serengeti extends Folder
    MasterTemplate masterOva;
 
    Map<String,Master> clusters = new HashMap<String,Master>();
+
+   /** This is a record of whether VHM has asked us, as an event producer, to stop */
+   boolean _stopped = false;
+   EventProducerStoppingCallback _callback;
 
    /**
     * Creates a "Serengeti" and adds it to the specified Orchestrator
@@ -537,7 +542,8 @@ public class Serengeti extends Folder
 
       @Override
       public void start(EventProducerStoppingCallback callback) {
-         /* noop */
+         _callback = callback;
+         _stopped = false;
       }
 
       /**
@@ -545,12 +551,17 @@ public class Serengeti extends Folder
        */
       @Override
       public void stop() {
-         /* noop */
+         if (_callback != null && _stopped == false) {
+            _callback.notifyStopping(this, false);
+         }
+
+         _stopped = true;
       }
+
 
       @Override
       public boolean isStopped() {
-         return false;
+         return _stopped;
       }
    }
 

@@ -25,10 +25,10 @@ public class SerengetiLimitTest extends AbstractSerengetiTestBase {
 
       /* power on the compute nodes */
       cluster.setTargetComputeNodeNum(cluster.availableComputeNodes());
-      assertActualVMsInPowerState("power on all VMs", cluster, cluster.availableComputeNodes(), true);
+      assertVMsInPowerState("power on all VMs", cluster, cluster.availableComputeNodes(), true);
 
       /* power off the compute nodes */
       cluster.setTargetComputeNodeNum(0);
-      assertActualVMsInPowerState("power off all VMs", cluster, cluster.availableComputeNodes(), false);
+      assertVMsInPowerState("power off all VMs", cluster, cluster.availableComputeNodes(), false);
    }
 }
