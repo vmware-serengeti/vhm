@@ -67,7 +67,6 @@ public class ModelVcAdapter implements VCActions {
          vmData._myName = vm.getId();
          vmData._myUUID = vm.getId();
          vmData._powerState = vm.powerState();
-         vmData._isMaster = vmData._myName.contains("-master");
          if (vm.getMaximum() != null) {
             vmData._vCPUs = (int) (vm.getMaximum().get(ResourceType.CPU) / _vCenter.getCpuSpeed());
          } else {
