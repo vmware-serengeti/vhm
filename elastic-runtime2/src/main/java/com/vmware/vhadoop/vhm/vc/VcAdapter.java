@@ -78,9 +78,12 @@ public class VcAdapter implements VCActions {
       return true;
    }
 
-   // Reconnect to VC if connection timed out
+   /*
+    *  Reconnect to VC if connection timed out on either session
+    *  Checking both session will also have the side effect of keep both sessions active whenever validate is called. 
+    */
    private boolean validateConnection() {
-      boolean success = _vcVlsi.testConnection();
+      boolean success = _vcVlsi.testConnection(_defaultClient) && _vcVlsi.testConnection(_cloneClient);
       if (!success) {
          _log.log(Level.WARNING, "Found VC connection dropped; reconnecting");
          return connect();

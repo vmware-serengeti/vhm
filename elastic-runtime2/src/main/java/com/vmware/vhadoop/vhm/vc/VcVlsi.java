@@ -255,11 +255,11 @@ public class VcVlsi {
    }
 
    @SuppressWarnings("finally")
-   public boolean testConnection() {
+   public boolean testConnection(Client vcClient) {
       // Test the operation of the current connection using the standard simple call for this purpose.
       Calendar vcTime = null;
       try {
-         ServiceInstance si = getServiceInstance(defaultClient);
+         ServiceInstance si = getServiceInstance(vcClient);
          vcTime = si.currentTime();
       } finally {
          if (vcTime == null) {
