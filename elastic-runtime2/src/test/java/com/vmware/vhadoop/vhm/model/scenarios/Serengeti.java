@@ -173,7 +173,7 @@ public class Serengeti extends Folder
       @Override
       public Compute create(VirtualCenter vCenter, String id, Allocation capacity) {
          Compute compute = new Compute(vCenter, master, id, capacity);
-         compute.install(new Linux("Linux"));
+         compute.install(new Linux("Linux-"+id));
          return compute;
       }
    }
@@ -336,10 +336,19 @@ public class Serengeti extends Folder
 
       public int numberComputeNodesInPowerState(boolean power) {
          int nodes = 0;
-         for (Compute compute : computeNodes) {
-            if (compute.powerState() == power) {
-               nodes++;
+         long timestamp = vCenter.getConfigurationTimestamp();
+         long timestamp2 = 0;
+
+         while (timestamp != timestamp2) {
+            synchronized(computeNodes) {
+               for (Compute compute : computeNodes) {
+                  if (compute.powerState() == power) {
+                     nodes++;
+                  }
+               }
             }
+            /* check to see if state changed under our accounting */
+            timestamp2 = vCenter.getConfigurationTimestamp();
          }
 
          return nodes;
@@ -351,10 +360,19 @@ public class Serengeti extends Folder
 
       public Set<Compute> getComputeNodesInPowerState(boolean power) {
          Set<Compute> compute = new HashSet<Compute>();
-         for (Compute node : computeNodes) {
-            if (node.powerState() == power) {
-               compute.add(node);
+         long timestamp = vCenter.getConfigurationTimestamp();
+         long timestamp2 = 0;
+
+         while (timestamp != timestamp2) {
+            synchronized(computeNodes) {
+               for (Compute node : computeNodes) {
+                  if (node.powerState() == power) {
+                     compute.add(node);
+                  }
+               }
             }
+            /* check to see if state changed under our accounting */
+            timestamp2 = vCenter.getConfigurationTimestamp();
          }
 
          return compute;
@@ -368,22 +386,29 @@ public class Serengeti extends Folder
          return computeNodes.size();
       }
 
-      public void createComputeNodes(int num, Host host) {
+      public Compute[] createComputeNodes(int num, Host host) {
          if (computePool == null) {
             computePool = new ResourcePool(vCenter, clusterName+"-computeRP");
          }
 
+         Compute nodes[] = new Compute[num];
          for (int i = 0; i < num; i++) {
             Allocation capacity = com.vmware.vhadoop.vhm.model.Allocation.zeroed();
             capacity.set(CPU, defaultCpus * vCenter.getCpuSpeed());
             capacity.set(MEMORY, defaultMem);
 
             Compute compute = (Compute) vCenter.createVM(clusterName+"-compute"+(computeNodesId++), capacity, computeOVA);
+            nodes[i] = compute;
+
             compute.setExtraInfo("vhmInfo.serengeti.uuid", folder.name());
             /* assign it to a host */
             host.add(compute);
             /* keep it handy for future operations */
-            computeNodes.add(compute);
+            synchronized (computeNodes) {
+               /* we expose this external via various accessor methods that iterate over it */
+               computeNodes.add(compute);
+            }
+
             /* add it to the "cluster folder" and the compute node resource pool */
             folder.add(compute);
             computePool.add(compute);
@@ -392,6 +417,8 @@ public class Serengeti extends Folder
             /* add this to the vApp so that we've a solid accounting for everything */
             Serengeti.this.add(compute);
          }
+
+         return nodes;
       }
 
       @Override

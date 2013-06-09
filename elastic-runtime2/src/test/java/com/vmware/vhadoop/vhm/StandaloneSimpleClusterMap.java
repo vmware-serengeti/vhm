@@ -52,13 +52,13 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       vms.add(new VM("vm7", "clusterB", "hostX", ON));
       vms.add(new VM("vm8", "clusterB", "hostY", OFF));
 	}
-	
+
 	public StandaloneSimpleClusterMap(boolean prepopulate) {
 	   if (prepopulate) {
 	      populateTestData();
 	   }
 	}
-	
+
 	public List<VM> getMapContents() {
 	   return vms;
 	}
@@ -82,6 +82,18 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 
 	   return false;
 	}
+
+	  @Override
+	   public Set<String> listComputeVMsForCluster(final String clusterId) {
+	      Set<String> selected = new HashSet<String>();
+	      for (VM vm : vms) {
+	         if (vm.cluster.equals(clusterId)) {
+	            selected.add(vm.id);
+	         }
+	      }
+
+	      return selected;
+	   }
 
 	@Override
 	public Set<String> listComputeVMsForClusterAndPowerState(final String clusterId, final boolean powerState) {

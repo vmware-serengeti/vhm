@@ -160,10 +160,10 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       /* power on the master node */
       cluster.powerOn();
 
-      assertScaleStrategySet("wait for scale strategy to be determined", clusterId, timeout());
+      assertScaleStrategySet("wait for scale strategy to be determined", clusterId);
 
       /* wait for VHM to register the VMs */
-      assertClusterMapVMsInPowerState("register VMs in cluster map", clusterId, numberOfComputeNodes, false, timeout());
+      assertClusterMapVMs("register VMs in cluster map", cluster, numberOfComputeNodes);
 
       return cluster;
    }
@@ -217,18 +217,27 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       _serengeti = null;
    }
 
+   /**
+    * Asserts that precisely the specified number of VMs are in the specified power state, as reported via VC
+    * @param msg
+    * @param master
+    * @param number
+    * @param power
+    * @param timeout
+    */
    public void assertActualVMsInPowerState(String msg, Master master, int number, boolean power, long timeout) {
       long deadline = System.currentTimeMillis() + timeout;
-      _log.info(msg+" - waiting for "+number+" VMs to power "+(power?"on":"off")+" in cluster "+master.getClusterId());
+      _log.info(msg+" - waiting for "+number+" VMs to show as powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
       int current;
       do {
          long timestamp = _vCenter.getConfigurationTimestamp();
          current = master.numberComputeNodesInPowerState(power);
 
          if (current != number) {
+            _log.info(msg+" saw "+current+" in target power state. Waiting.");
             _vCenter.waitForConfigurationUpdate(timestamp, timeout());
          }
-      } while (current < number && System.currentTimeMillis() < deadline);
+      } while (current != number && System.currentTimeMillis() < deadline);
 
       assertEquals(msg+" - not enough powered "+(power ? "on" : "off")+" in cluster "+master.getClusterId(), number, master.numberComputeNodesInPowerState(power));
       _log.info(msg+" - "+number+" VMs powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
@@ -258,7 +267,54 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
    }
 
    /**
-    * This inspects the cluster map for VMs in the specified state
+    * This asserts that there are precisely the specified number of compute nodes in the given cluster, irrespective of
+    * power state
+    * @param msg
+    * @param master
+    * @param number
+    */
+   public void assertClusterMapVMs(String msg, Master master, int number) {
+      assertClusterMapVMs(msg, master, number, timeout());
+   }
+
+   /**
+    * This asserts that there are precisely the specified number of compute nodes in the given cluster, irrespective of
+    * power state
+    * @param msg
+    * @param master
+    * @param number
+    */
+   public void assertClusterMapVMs(String msg, Master master, int number, long timeout) {
+      long deadline = System.currentTimeMillis() + timeout;
+      boolean firstTime = true;
+
+      _log.info(msg+" - waiting for "+number+" VMs to show in cluster map for cluster"+master.getClusterId()+", timeout "+(timeout/1000));
+      Set<String> vms;
+      do {
+         if (!firstTime) {
+            try {
+               Thread.sleep(500);
+            } catch (InterruptedException e) {}
+            firstTime = false;
+         }
+
+         ClusterMap map = getAndReadLockClusterMap();
+         /* we really care about number of VMs in the cluster but we know that they're starting powered off at this point */
+         vms = map.listComputeVMsForCluster(master.getClusterId());
+         unlockClusterMap(map);
+      } while (
+            (vms == null && number != 0) ||
+            (vms != null && vms.size() != number) &&
+            System.currentTimeMillis() < deadline);
+
+
+      assertEquals(msg+" - not enough VMs show in cluster map for cluster"+master.getClusterId() , number, vms != null ? vms.size() : 0);
+      _log.info(msg+" - "+number+" VMs show in cluster map for cluster"+master.getClusterId());
+   }
+
+   /**
+    * Asserts that precisely the specified number of VMs are in the specified power state, as reported via ClusterMap
+    * @param msg
     * @param clusterId
     * @param number
     * @param power
@@ -282,7 +338,10 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
          /* we really care about number of VMs in the cluster but we know that they're starting powered off at this point */
          vms = map.listComputeVMsForClusterAndPowerState(clusterId, power);
          unlockClusterMap(map);
-      } while ((vms == null || vms.size() < number) && System.currentTimeMillis() < deadline);
+      } while (
+            (vms == null && number != 0) ||
+            (vms != null && vms.size() != number) &&
+            System.currentTimeMillis() < deadline);
 
       assertEquals(msg+" - not enough VMs show as powered "+(power ? "on" : "off")+" in cluster map for cluster"+clusterId , number, vms != null ? vms.size() : 0);
       _log.info(msg+" - "+number+" VMs show as powered "+(power?"on":"off")+" in cluster map for cluster"+clusterId);

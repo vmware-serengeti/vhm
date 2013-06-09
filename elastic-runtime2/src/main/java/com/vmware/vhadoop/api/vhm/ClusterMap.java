@@ -17,13 +17,15 @@ public interface ClusterMap {
 
       /* Returns the key which indicates the scale strategy singleton to use for this cluster */
       String getStrategyKey(SerengetiClusterVariableData clusterData, String clusterId);
-      
+
       /* Allows for the addition of contextual data to be added to a cluster and retrieved through ClusterMap */
       Map<String, String> parseExtraInfo(SerengetiClusterVariableData clusterData, String clusterId);
 
       /* Allows for the creation of new scale events based on cluster state change */
       Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData clusterData, String clusterId, boolean isNewCluster);
    }
+
+   Set<String> listComputeVMsForCluster(String clusterId);
 
    Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState);
 
@@ -42,7 +44,7 @@ public interface ClusterMap {
    Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
 
    String[] getAllKnownClusterIds();
-   
+
    String[] getAllClusterIdsForScaleStrategyKey(String key);
 
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
@@ -54,10 +56,10 @@ public interface ClusterMap {
    String getClusterIdForVm(String vmIds);
 
    String getScaleStrategyKey(String clusterId);
-   
+
    Integer getNumVCPUsForVm(String vmId);
-   
+
    Long getPowerOnTimeForVm(String vmId);
-   
+
    String getExtraInfo(String clusterId, String key);
 }
