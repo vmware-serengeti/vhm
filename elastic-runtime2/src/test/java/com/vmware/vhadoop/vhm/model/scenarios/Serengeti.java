@@ -36,6 +36,9 @@ public class Serengeti extends Folder
    final static String COMPUTE_SUBDOMAIN = "compute";
    final static String ROUTEKEY_SEPARATOR = ":";
 
+   /** The frequency with which we want to check the state of the world, unprompted. milliseconds */
+   long maxLatency = 5000;
+
    private static Logger _log = Logger.getLogger(Serengeti.class.getName());
 
    /** default number of standard cpus for compute nodes */
@@ -67,6 +70,19 @@ public class Serengeti extends Folder
 
    public VirtualCenter getVCenter() {
       return vCenter;
+   }
+
+   /**
+    * Specifies how frequently the cluster Master should wake up and inspect the state of the world.
+    * It may be prompted to take action by events more frequently than this limit
+    * @param millis latency in milliseconds
+    */
+   public void setMaxLatency(long millis) {
+      maxLatency = millis;
+   }
+
+   public long getMaxLatency() {
+      return maxLatency;
    }
 
    public Master createCluster(String name) {
@@ -522,6 +538,7 @@ public class Serengeti extends Folder
          /* have any tasks completed? */
          for (Compute node : enabled.values()) {
             if (!node.powerState()) {
+               /* TODO: do we want to blacklist this node as it shows as enabled and is not */
                continue;
             }
 
@@ -544,7 +561,12 @@ public class Serengeti extends Folder
          }
 
          /* we don't want to allocate anything on our own behalf based on tasks */
-         return super.getDesiredAllocation();
+         Allocation desired = super.getDesiredAllocation();
+         if (desired.getDuration() > maxLatency) {
+            desired.setDuration(maxLatency);
+         }
+
+         return desired;
       }
 
       /**
@@ -553,15 +575,22 @@ public class Serengeti extends Folder
        * @return true if a task was started, false otherwise
        */
       private boolean scheduleNewTask(Compute node) {
-         for (HadoopJob job : jobs) {
-            if (job.queueSize() > 0) {
-               Process task = job.getTask();
-               if (task != null) {
-                  node.execute(task);
-                  tasks.put(node,  task);
-                  return true;
+         try {
+            if (node.powerState()) {
+               for (HadoopJob job : jobs) {
+                  if (job.queueSize() > 0) {
+                     Process task = job.getTask();
+                     if (task != null) {
+                        node.execute(task);
+                        tasks.put(node,  task);
+                        return true;
+                     }
+                  }
                }
             }
+         } catch (IllegalStateException e) {
+            /* it's possible that we're trying to run a job on a recently powered off node */
+            _log.warning(e.getMessage());
          }
 
          return false;

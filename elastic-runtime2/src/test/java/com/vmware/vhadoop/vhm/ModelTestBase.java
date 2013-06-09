@@ -179,6 +179,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       /* perform the basic test setup that ModelTestBase depends on */
       _vCenter = BasicScenario.getVCenter(numberOfHosts + 1, 0);
       _serengeti = createSerengeti(getClass().getName()+"-vApp", _vCenter);
+      _serengeti.setMaxLatency(LIMIT_CYCLE_TIME);
 
       /* start the system */
       startVHM();
@@ -239,7 +240,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
          }
       } while (current != number && System.currentTimeMillis() < deadline);
 
-      assertEquals(msg+" - not enough powered "+(power ? "on" : "off")+" in cluster "+master.getClusterId(), number, master.numberComputeNodesInPowerState(power));
+      assertEquals(msg+" - incorrect number of VMs powered "+(power ? "on" : "off")+" in cluster "+master.getClusterId(), number, master.numberComputeNodesInPowerState(power));
       _log.info(msg+" - "+number+" VMs powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
    }
 
@@ -308,7 +309,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
             System.currentTimeMillis() < deadline);
 
 
-      assertEquals(msg+" - not enough VMs show in cluster map for cluster"+master.getClusterId() , number, vms != null ? vms.size() : 0);
+      assertEquals(msg+" - incorrect number of VMs show in cluster map for cluster"+master.getClusterId() , number, vms != null ? vms.size() : 0);
       _log.info(msg+" - "+number+" VMs show in cluster map for cluster"+master.getClusterId());
    }
 
@@ -343,7 +344,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
             (vms != null && vms.size() != number) &&
             System.currentTimeMillis() < deadline);
 
-      assertEquals(msg+" - not enough VMs show as powered "+(power ? "on" : "off")+" in cluster map for cluster"+clusterId , number, vms != null ? vms.size() : 0);
+      assertEquals(msg+" - incorrect number of VMs show as powered "+(power ? "on" : "off")+" in cluster map for cluster"+clusterId , number, vms != null ? vms.size() : 0);
       _log.info(msg+" - "+number+" VMs show as powered "+(power?"on":"off")+" in cluster map for cluster"+clusterId);
    }
 
