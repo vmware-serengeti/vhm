@@ -3,6 +3,7 @@ package com.vmware.vhadoop.vhm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -17,6 +18,7 @@ import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.model.scenarios.BasicScenario;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.Host;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
@@ -185,6 +187,16 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       startVHM();
 
       return _serengeti;
+   }
+
+   protected Set<Host> getComputeNodeHosts(Master cluster) {
+      Set<Host> hosts = new HashSet<Host>();
+      Set<Compute> nodes = cluster.getComputeNodes();
+      for (Compute node : nodes) {
+         hosts.add(node.getHost());
+      }
+
+      return hosts;
    }
 
    /**

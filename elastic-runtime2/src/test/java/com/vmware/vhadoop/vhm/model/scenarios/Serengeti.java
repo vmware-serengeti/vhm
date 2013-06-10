@@ -194,7 +194,7 @@ public class Serengeti extends Folder
       }
    }
 
-   class Compute extends VM
+   public class Compute extends VM
    {
       Master master;
 
@@ -267,15 +267,15 @@ public class Serengeti extends Folder
       String clusterId;
       int computeNodesId = 0;
       int msgId = 0;
-      Set<Compute> computeNodes = new HashSet<Compute>();
-      Map<String,Compute> enabled = new HashMap<String,Compute>();
-      Map<String,Compute> disabled = new HashMap<String,Compute>();
+      final Set<Compute> computeNodes = new HashSet<Compute>();
+      final Map<String,Compute> enabled = new HashMap<String,Compute>();
+      final Map<String,Compute> disabled = new HashMap<String,Compute>();
       ResourcePool computePool;
       EventConsumer eventConsumer;
       int targetComputeNodeNum = UNSET;
-      ComputeTemplate computeOVA = new ComputeTemplate(this);
+      final ComputeTemplate computeOVA = new ComputeTemplate(this);
       Set<HadoopJob> jobs = new HashSet<HadoopJob>();
-      Map<Compute,Process> tasks = new HashMap<Compute,Process>();
+      final Map<Compute,Process> tasks = new HashMap<Compute,Process>();
 
       public String getClusterId() {
          return clusterId;
