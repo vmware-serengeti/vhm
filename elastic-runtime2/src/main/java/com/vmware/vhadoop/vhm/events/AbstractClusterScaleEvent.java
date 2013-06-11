@@ -2,7 +2,7 @@ package com.vmware.vhadoop.vhm.events;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 
-public class AbstractClusterScaleEvent extends AbstractNotificationEvent
+public abstract class AbstractClusterScaleEvent extends AbstractNotificationEvent
       implements ClusterScaleEvent {
 
    private String _vmId;

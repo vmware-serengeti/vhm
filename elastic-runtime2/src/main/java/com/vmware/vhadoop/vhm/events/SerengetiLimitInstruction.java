@@ -62,4 +62,9 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
          _messageCallback.sendMessage(msg.getRawPayload());
       }
    }
+
+   @Override
+   public boolean isExclusive() {
+      return true;         /* We only want to know about the latest queued event */
+   }
 }

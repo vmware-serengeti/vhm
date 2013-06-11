@@ -48,6 +48,11 @@ public class ClusterMapTest extends AbstractJUnitTest {
          setClusterId(clusterId);
          _data = data;
       }
+
+      @Override
+      public boolean isExclusive() {
+         return false;
+      }
    }
    
    @Before
