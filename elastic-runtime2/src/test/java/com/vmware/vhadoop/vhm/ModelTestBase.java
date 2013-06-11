@@ -16,6 +16,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.vhm.model.api.Allocation;
 import com.vmware.vhadoop.vhm.model.scenarios.BasicScenario;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
@@ -177,16 +178,30 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
     */
    protected abstract T createSerengeti(String name, VirtualCenter vCenter);
 
-   protected T setup(int numberOfHosts) {
+   protected T setup(int numberOfHosts, Allocation hostCapacity) {
       /* perform the basic test setup that ModelTestBase depends on */
-      _vCenter = BasicScenario.getVCenter(numberOfHosts + 1, 0);
+      if (hostCapacity == null) {
+         _vCenter = BasicScenario.getVCenter(numberOfHosts + 1, 0);
+      } else {
+         _vCenter = BasicScenario.getVCenter(numberOfHosts + 1, hostCapacity);
+      }
+
       _serengeti = createSerengeti(getClass().getName()+"-vApp", _vCenter);
       _serengeti.setMaxLatency(LIMIT_CYCLE_TIME);
+
+
+      /* set this to something that relates to the stats sample interval so we've got some
+       * coupling with how fast we're expecting stats to change */
+      _vCenter.setMetricsInterval(LIMIT_CYCLE_TIME /2);
 
       /* start the system */
       startVHM();
 
       return _serengeti;
+   }
+
+   protected T setup(int numberOfHosts) {
+      return setup(numberOfHosts, null);
    }
 
    protected Set<Host> getComputeNodeHosts(Master cluster) {
@@ -198,6 +213,13 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
       return hosts;
    }
+
+   protected void waitForMetricInterval() {
+      try {
+         Thread.sleep(_vCenter.getMetricsInterval());
+      } catch (InterruptedException e) {}
+   }
+
 
    /**
     * Clean up from this run in preparation for the next. Dumps cluster map for reference in case of

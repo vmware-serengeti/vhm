@@ -1,40 +1,30 @@
 package com.vmware.vhadoop.vhm.model.scenarios;
 
+import static com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter.Metric.GRANTED;
+import static com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter.Metric.READY;
+import static com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter.Metric.USAGE;
 import static org.junit.Assert.assertEquals;
 
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.vhadoop.util.LogFormatter;
+import com.vmware.vhadoop.vhm.AbstractSerengetiTestBase;
 import com.vmware.vhadoop.vhm.model.Allocation;
 import com.vmware.vhadoop.vhm.model.api.ResourceType;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
-import com.vmware.vhadoop.vhm.model.vcenter.Host;
-import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
+import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter.Metric;
 import com.vmware.vhadoop.vhm.model.workloads.EndlessTaskGreedyJob;
 import com.vmware.vhadoop.vhm.model.workloads.HadoopJob;
 
-public class SerengetiTest
+public class SerengetiTest extends AbstractSerengetiTestBase
 {
-   private final static int VC_READY_INDEX;
-   static {
-      String names[] = VirtualCenter.getMetricNames();
-      int index = -1;
-      for (int i = 0; i < names.length; i++) {
-         if (names[i].equals(VirtualCenter.cpuReadySummation)) {
-            index = i;
-            break;
-         }
-      }
-
-      VC_READY_INDEX = index;
-   }
-
+   private static Logger _log = Logger.getLogger(SerengetiTest.class.getName());
 
    public SerengetiTest() {
       Logger.getLogger("").setLevel(Level.FINER);
@@ -43,64 +33,44 @@ public class SerengetiTest
       handler.setFormatter(new LogFormatter());
    }
 
-
-   private static Logger _log = Logger.getLogger(SerengetiTest.class.getName());
-   VirtualCenter vCenter;
-   Serengeti serengeti;
-
-
    private void logMetrics(Compute nodes[]) {
       for (Compute node : nodes) {
          if (!node.powerState()) {
             continue;
          }
 
-         long metrics[] = vCenter.getMetrics(node.name());
+         long metrics[] = _vCenter.getMetrics(node.name());
          StringBuilder sb = new StringBuilder(node.name());
-         for (int i = 0; i < 3; i++) {
-            sb.append("\t").append(VirtualCenter.getMetricNames()[i]).append(": ").append(+metrics[i]);
+         for (Metric metric : new Metric[] {USAGE, READY, GRANTED}) {
+            sb.append("\t").append(metric).append(": ").append(metrics[metric.ordinal()]);
          }
 
          _log.info(sb.toString());
       }
    }
 
-   @Before
-   public void setup() {
-      vCenter = new VirtualCenter("SerengetiTest-vcenter");
-      serengeti = new Serengeti("SerengetiTest-vApp", vCenter);
-      serengeti.setMaxLatency(500);
-   }
-
+   @Ignore
    @Test
    public void testJobDeploysAfterHardPowerCycle() {
-      Master cluster = serengeti.createCluster("cluster1");
-
-
-      Host hosts[] = new Host[2];
-      Compute nodes[] = new Compute[8];
+      final int numberOfHosts = 2;
+      final int computeNodesPerHost = 2;
+      String clusterName = "serengetiTest";
 
       Allocation hostCapacity = Allocation.zeroed();
-      hostCapacity.set(ResourceType.CPU, 8000);
+      hostCapacity.set(ResourceType.CPU, 4000);
       hostCapacity.set(ResourceType.MEMORY, 24000);
 
-      for (int i = 0; i < hosts.length; i++) {
-         int num = nodes.length/hosts.length;
-         hosts[i] = vCenter.createHost("host"+i, hostCapacity);
-         Compute c[] = cluster.createComputeNodes(num, hosts[i]);
-         System.arraycopy(c, 0, nodes, i*num, c.length);
-      }
+      /* general test setup */
+      setup(numberOfHosts, hostCapacity);
+      _vCenter.setMetricsInterval(500);
+      _serengeti.setMaxLatency(500);
 
-      Host mhost = vCenter.createHost("masterHost", hostCapacity);
-      cluster.setHost(mhost);
-      mhost.powerOn();
-      cluster.powerOn();
-
-      for (int i = 0; i < hosts.length; i++) {
-         hosts[i].powerOn();
-      }
+      /* create a cluster to work with */
+      Master cluster = createCluster(clusterName, computeNodesPerHost);
 
       /* power on all the nodes and enable them in serengeti */
+      Compute nodes[] = cluster.getComputeNodes().toArray(new Compute[0]);
+
       for (Compute node : nodes) {
          _log.info("Powering on node "+node.name());
          node.powerOn();
@@ -118,48 +88,48 @@ public class SerengetiTest
       Allocation footprint = Allocation.zeroed();
       footprint.set(ResourceType.CPU, 4000);
       footprint.set(ResourceType.MEMORY, 2000);
-      HadoopJob job = new EndlessTaskGreedyJob("greedyJob", hosts.length, footprint);
+      HadoopJob job = new EndlessTaskGreedyJob("greedyJob", numberOfHosts, footprint);
 
       /* start a job that should roll out to all of the nodes as they power on */
       cluster.execute(job);
 
-      /* wait for the serengeti max latency to expire */
+      /* wait for the serengeti max latency and stats interval to expire */
+      long delay = Math.max(_vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
       try {
-         Thread.sleep(serengeti.getMaxLatency());
+         Thread.sleep(delay);
       } catch (InterruptedException e) {}
 
       logMetrics(nodes);
       for (Compute node : nodes) {
-         assertEquals("cpu ready value is not correct", 2000, vCenter.getMetrics(node.name())[VC_READY_INDEX]);
+         assertEquals("cpu ready value is not correct for "+node.name(), 2000, _vCenter.getRawMetric(node.name(), READY).longValue());
       }
    }
 
    @Test
    public void test() {
-      Master cluster = serengeti.createCluster("cluster1");
-
-      Host hosts[] = new Host[2];
-      Compute nodes[] = new Compute[8];
+      final int numberOfHosts = 2;
+      final int computeNodesPerHost = 2;
+      String clusterName = "serengetiTest";
 
       Allocation hostCapacity = Allocation.zeroed();
-      hostCapacity.set(ResourceType.CPU, 8000);
+      hostCapacity.set(ResourceType.CPU, 4000);
       hostCapacity.set(ResourceType.MEMORY, 24000);
 
-      for (int i = 0; i < hosts.length; i++) {
-         int num = nodes.length/hosts.length;
-         hosts[i] = vCenter.createHost("host"+i, hostCapacity);
-         Compute c[] = cluster.createComputeNodes(num, hosts[i]);
-         System.arraycopy(c, 0, nodes, i*num, c.length);
-      }
+      /* general test setup */
+      setup(numberOfHosts, hostCapacity);
+      _vCenter.setMetricsInterval(500);
+      _serengeti.setMaxLatency(500);
 
-      for (int i = 0; i < hosts.length; i++) {
-         hosts[i].powerOn();
-      }
+      /* create a cluster to work with */
+      Master cluster = createCluster(clusterName, computeNodesPerHost);
+
+      /* power on all the nodes and enable them in serengeti */
+      Compute nodes[] = cluster.getComputeNodes().toArray(new Compute[0]);
 
       Allocation footprint = Allocation.zeroed();
       footprint.set(ResourceType.CPU, 4000);
       footprint.set(ResourceType.MEMORY, 2000);
-      HadoopJob job = new EndlessTaskGreedyJob("greedyJob", hosts.length, footprint);
+      HadoopJob job = new EndlessTaskGreedyJob("greedyJob", numberOfHosts, footprint);
 
       cluster.execute(job);
 
@@ -173,9 +143,15 @@ public class SerengetiTest
          logMetrics(nodes);
       }
 
+      /* wait for the serengeti max latency and stats interval to expire */
+      long delay = Math.max(_vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
+      try {
+         Thread.sleep(delay);
+      } catch (InterruptedException e) {}
+
+      logMetrics(nodes);
       for (Compute node : nodes) {
-         assertEquals("cpu ready value is not correct", 2000, vCenter.getMetrics(node.name())[VC_READY_INDEX]);
+         assertEquals("cpu ready value is not correct for "+node.name(), 2000, _vCenter.getRawMetric(node.name(), READY).longValue());
       }
    }
-
 }
