@@ -10,4 +10,6 @@ public interface EDPolicy extends ClusterMapReader {
 
    /* Caller should expect this to block */
    void disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception;
+   
+   Set<String> getActiveTTs(String clusterId) throws Exception;
 }
