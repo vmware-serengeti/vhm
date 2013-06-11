@@ -1,7 +1,7 @@
 package com.vmware.vhadoop.vhm;
 import java.util.Set;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.junit.After;
 import org.junit.Before;

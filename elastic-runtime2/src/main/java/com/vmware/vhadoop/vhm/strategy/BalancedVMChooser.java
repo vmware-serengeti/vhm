@@ -71,19 +71,22 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState) {
       Set<String> result = null;
       Set<String> hosts = null;
+      int numHosts = 0;
       
       ClusterMap clusterMap = getAndReadLockClusterMap();
       try {
          hosts = clusterMap.listHostsWithComputeVMsForCluster(clusterId);
          if ((hosts == null) || (hosts.size() == 0)) {
-            result = new TreeSet<String>();
+            result = new TreeSet<String>();     /* Return empty set, but don't return here!! */
+         } else {
+            numHosts = hosts.size();
          }
       } finally {
          unlockClusterMap(clusterMap);
       }
 
       if (result == null) {
-         PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
+         PriorityQueue<Host> targets = new PriorityQueue<Host>(numHosts, new Comparator<Host>() {
             @Override
             public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
          });

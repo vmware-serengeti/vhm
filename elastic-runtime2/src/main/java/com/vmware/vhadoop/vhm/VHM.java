@@ -375,15 +375,19 @@ public class VHM implements EventConsumer {
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
             Set<ClusterScaleEvent> unconsolidatedEvents = clusterScaleEvents.get(clusterId);
+            if (unconsolidatedEvents == null) {
+               continue;
+            }
             /* If ClusterMap has not yet been fully updated with information about a cluster, defer this operation */
             if (!_clusterMap.validateClusterCompleteness(clusterId)) {
-               if ((unconsolidatedEvents != null) && (unconsolidatedEvents.size() > 0)) {
+               if (unconsolidatedEvents.size() > 0) {
                   _log.info("ClusterInfo not yet complete. Putting event collection back on queue for cluster <%C"+clusterId);
                   placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
                }
                continue;
             }
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
+            /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
                if (scaleStrategy != null) {

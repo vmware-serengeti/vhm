@@ -39,6 +39,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
    long _startTime = System.currentTimeMillis();
    boolean _deliberateFailureTriggered = false;
 
+   @SuppressWarnings("unused")
    private void deliberatelyFail(long afterTimeMillis) {
       if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
          _deliberateFailureTriggered = true;
@@ -91,15 +92,15 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
          boolean result = false;
          try {
             ctc = getClusterTaskContext(clusterId, scaleStrategy);
+            if (ctc._completionEventPending != null) {
+               _log.finest("Cluster scale events already being handled for cluster <%C"+clusterId);
+            } else {
+               ctc._completionEventPending = 
+                     _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, ctc._scaleStrategyContext));
+               result = true;
+            }
          } catch (Exception e) {
             _log.log(Level.SEVERE, "Unexpected exception initializing ClusterTaskContext", e);
-         }
-         if (ctc._completionEventPending != null) {
-            _log.finest("Cluster scale events already being handled for cluster <%C"+clusterId);
-         } else {
-            ctc._completionEventPending = 
-                  _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, ctc._scaleStrategyContext));
-            result = true;
          }
          return result;
       }

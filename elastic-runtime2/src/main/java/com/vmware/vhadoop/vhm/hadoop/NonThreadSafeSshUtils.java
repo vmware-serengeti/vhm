@@ -133,17 +133,14 @@ public class NonThreadSafeSshUtils implements SshUtils
          }
       } catch (IOException e) {
          logger.log(Level.SEVERE, "Unexpected IOException executing over SSH", e);
-      }
-
-      try {
-         channel.disconnect();
-         out.flush();
+      } finally {
+         /* Caller is responsible for cleaning up resources passed in */
          if (in != null) {
-            in.close();
+            try {
+               in.close();
+            } catch (IOException e) {}
          }
-      } catch (IOException e) {
       }
-
       logger.log(Level.FINE, "Exit status from exec is: " + exitStatus);
       return exitStatus;
    }
@@ -152,6 +149,7 @@ public class NonThreadSafeSshUtils implements SshUtils
    public int scpBytes(Logger logger, ChannelExec channel, byte[] data, String remotePath, String remoteFileName, String perms) {
       InputStream in = null;
       OutputStream out = null;
+      int rc = SUCCESS;
       try {
          channel.setCommand(SCP_COMMAND + remotePath + remoteFileName);
 
@@ -175,34 +173,35 @@ public class NonThreadSafeSshUtils implements SshUtils
          out.flush();
 
          if (!waitForInputStream(logger, in)) {
-            cleanup(logger, out, channel);
             logger.log(Level.SEVERE, "Error before writing SCP bytes");
-            return UNKNOWN_ERROR; /* TODO: Improve */
-         }
-
-         out.write(data);
-         out.write(new byte[] { 0 }, 0, 1);
-         out.flush();
-
-         if (!waitForInputStream(logger, in)) {
-            logger.log(Level.SEVERE, "Error after writing SCP bytes");
-            cleanup(logger, out, channel);
-            return -1;
+            rc = UNKNOWN_ERROR; /* TODO: Improve */
+         } else {
+            out.write(data);
+            out.write(new byte[] { 0 }, 0, 1);
+            out.flush();
+   
+            if (!waitForInputStream(logger, in)) {
+               logger.log(Level.SEVERE, "Error after writing SCP bytes");
+               rc = UNKNOWN_ERROR;
+            }
          }
       } catch (Exception e) {
          logger.log(Level.SEVERE, "Unexpected Exception copying data to Job Tracker", e);
       } finally {
-         channel.disconnect();
-         if (in != null) {
+         /* Caller is responsible for cleaning up resources passed in */
+         if (out != null) {
             try {
                out.close();
+            } catch (IOException e) {}
+         }
+         if (in != null) {
+            try {
                in.close();
-            } catch (IOException e) {
-            }
+            } catch (IOException e) {}
          }
       }
 
-      return SUCCESS;
+      return rc;
    }
 
    private boolean waitForInputStream(Logger log, InputStream in) throws IOException {

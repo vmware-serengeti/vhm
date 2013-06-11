@@ -25,9 +25,6 @@ public class VHMJsonInputMessage {
    private static final Logger _log = Logger.getLogger(VHMJsonInputMessage.class.getName());
    public static final int TARGET_SIZE_UNLIMITED = -1;
    
-
-   private byte[] _data;
-   
    // TODO:  move to separate file?
    private class VHMCommandMessage {
       int version;          // currently at version 3 
@@ -40,7 +37,6 @@ public class VHMJsonInputMessage {
    private VHMCommandMessage _command; 
    
    public VHMJsonInputMessage(byte[] data) {
-      _data = data;
       Gson gson = new Gson();
       String jsonString = new String(data);
 

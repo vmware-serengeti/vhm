@@ -41,6 +41,7 @@ public class RabbitAdaptor implements MQClient {
 
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
+   @SuppressWarnings("unused")
    private void deliberatelyFail(long afterTimeMillis) {
       if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
          _deliberateFailureTriggered = true;

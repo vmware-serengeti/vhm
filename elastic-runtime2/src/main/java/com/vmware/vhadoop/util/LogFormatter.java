@@ -29,13 +29,13 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 public class LogFormatter extends Formatter {
-   public static Map<String, String> _vmIdToNameMapper = Collections.synchronizedMap(new HashMap<String, String>());
-   public static Map<String, String> _clusterIdToNameMapper = Collections.synchronizedMap(new HashMap<String, String>());
+   public static final Map<String, String> _vmIdToNameMapper = Collections.synchronizedMap(new HashMap<String, String>());
+   public static final Map<String, String> _clusterIdToNameMapper = Collections.synchronizedMap(new HashMap<String, String>());
 
-   public static String VMID_PREFIX = "<%V";
-   public static String VMID_POSTFIX = "%V>";
-   public static String CLUSTERID_PREFIX = "<%C";
-   public static String CLUSTERID_POSTFIX = "%C>";
+   public static final String VMID_PREFIX = "<%V";
+   public static final String VMID_POSTFIX = "%V>";
+   public static final String CLUSTERID_PREFIX = "<%C";
+   public static final String CLUSTERID_POSTFIX = "%C>";
 
    public static final String NEWLINE = System.getProperty("line.separator");
    private static final int NEWLINE_LENGTH = NEWLINE == null ? 0 : NEWLINE.length();

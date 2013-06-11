@@ -98,9 +98,11 @@ public class HadoopConnection {
          perms = _connectionProperties.getScpReadPerms();
       }
 
-      exitStatus = _sshUtils.scpBytes(_log, channel, inputData, remotePath, remoteFileName, perms);
-
-      _sshUtils.cleanup(_log, null, channel);
+      try {
+         exitStatus = _sshUtils.scpBytes(_log, channel, inputData, remotePath, remoteFileName, perms);
+      } finally {
+         _sshUtils.cleanup(_log, null, channel);
+      }
 
       return exitStatus;
    }
@@ -110,36 +112,33 @@ public class HadoopConnection {
 
       _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker");
 
-      ChannelExec channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
-      if (channel == null) {
-         return UNKNOWN_ERROR;          /* TODO: Improve */
+      ChannelExec channel = null;
+      PrintStream ps = null;
+      try {
+         channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
+         if (channel == null) {
+            return UNKNOWN_ERROR;          /* TODO: Improve */
+         }
+   
+         StringBuilder command = new StringBuilder(destinationPath + scriptFileName).append(" ");
+         for (String scriptArg : scriptArgs) {
+            command.append(scriptArg).append(" ");
+         }
+   
+         ps = new PrintStream(out);
+         exitStatus = _sshUtils.exec(_log, channel, out, command.toString().trim());
+      } finally {
+         _sshUtils.cleanup(_log, null, channel);
+         if (ps != null) {
+            ps.flush();       /* Results in out.flush() */
+         }
       }
-
-      StringBuilder command = new StringBuilder(destinationPath + scriptFileName).append(" ");
-      for (String scriptArg : scriptArgs) {
-         command.append(scriptArg).append(" ");
-      }
-
-      //TODO: refactor "out"
-      //OutputStream out = new ByteArrayOutputStream();
-      PrintStream ps = new PrintStream(out);
-      exitStatus = _sshUtils.exec(_log, channel, out, command.toString().trim());
-      ps.flush();
 
       _log.log(Level.FINEST, "Output from SSH script execution:\n{0}\n", out.toString());
 
-      //_sshUtils.cleanup(_log, out, channel);
       _sshUtils.cleanup(_log, null, channel);
 
       return exitStatus;
-   }
-
-   public boolean pingJobTracker() {
-      ChannelExec channel = _sshUtils.createChannel(_log, _credentials,
-            _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
-      boolean result = _sshUtils.testChannel(_log, channel);
-      _log.log(Level.INFO, "Ping JobTracker result = "+result);
-      return result;
    }
 
    public String getHadoopHome() {

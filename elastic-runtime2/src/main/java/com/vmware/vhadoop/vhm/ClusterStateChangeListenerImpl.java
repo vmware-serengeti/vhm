@@ -55,6 +55,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       SerengetiClusterVariableData _clusterVariableData;
    }
    
+   @SuppressWarnings("unused")
    private void deliberatelyFail(long afterTimeMillis) {
       if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
          _deliberateFailureTriggered = true;
@@ -319,6 +320,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    public void stop() {
       _started = false;
       _vcActions.interruptWait();
+      /* TODO: Need to implement a cleanup on the PropertyFilter being used in waitForUpdates */
    }
 
    @Override

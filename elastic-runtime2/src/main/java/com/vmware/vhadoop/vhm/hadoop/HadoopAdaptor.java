@@ -173,7 +173,8 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    private byte[] loadLocalScript(String fileName) {
-	   InputStream is = HadoopAdaptor.class.getClassLoader().getResourceAsStream(fileName);
+      ClassLoader cl = HadoopAdaptor.class.getClassLoader();
+	   InputStream is = ((cl != null) && (fileName != null)) ? cl.getResourceAsStream(fileName) : null;
 	   if (is == null) {
 		   _log.log(Level.SEVERE, "File "+ fileName + " does not exist!");
 		   return null;
@@ -306,7 +307,6 @@ public class HadoopAdaptor implements HadoopActions {
             rc = SUCCESS;
         	   break;
          }
-         //TODO: out.close()?
 
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 

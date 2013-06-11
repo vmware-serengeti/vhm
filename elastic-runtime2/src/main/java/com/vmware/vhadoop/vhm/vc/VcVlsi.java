@@ -176,9 +176,17 @@ public class VcVlsi {
    private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey) throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
-      InputStream is = new FileInputStream(keyStoreFile);
-      keyStore.load(is, keyStorePwd.toCharArray());
-      is.close();
+      InputStream is = null;
+      try {
+         is = new FileInputStream(keyStoreFile);
+         keyStore.load(is, keyStorePwd.toCharArray());
+      } finally {
+         if (is != null) {
+            try {
+               is.close();
+            } catch (IOException e) {}
+         }
+      }
 
       HttpConfigurationImpl httpConfig = new HttpConfigurationImpl();
       httpConfig.setKeyStore(keyStore);
@@ -254,19 +262,20 @@ public class VcVlsi {
       return newClient;
    }
 
-   @SuppressWarnings("finally")
    public boolean testConnection(Client vcClient) {
       // Test the operation of the current connection using the standard simple call for this purpose.
       Calendar vcTime = null;
       try {
          ServiceInstance si = getServiceInstance(vcClient);
          vcTime = si.currentTime();
+      } catch (Exception e) {
+         /* We don't really care what the exception was, we just don't want it propogating */
       } finally {
          if (vcTime == null) {
-            _log.log(Level.SEVERE, "testConnection found VC connection dropped; caller will reconnect");
+            _log.log(Level.WARNING, "testConnection found VC connection dropped; caller will reconnect");
          }
-         return vcTime != null;
       }
+      return (vcTime != null);
    }
 
 
