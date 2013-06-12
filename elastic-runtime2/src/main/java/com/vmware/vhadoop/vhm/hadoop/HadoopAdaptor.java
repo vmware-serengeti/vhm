@@ -278,7 +278,7 @@ public class HadoopAdaptor implements HadoopActions {
    public String[] getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
       HadoopConnection connection = getConnectionForCluster(cluster);
       OutputStream out = new ByteArrayOutputStream();
-      int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getHadoopHome()}, out);
+      int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
       /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
       String[] allActiveTTs = out.toString().split("\n");

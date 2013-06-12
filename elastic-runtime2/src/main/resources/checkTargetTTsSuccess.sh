@@ -5,10 +5,10 @@
 # * This script is deployed on the jobtracker VM
 # * The jobtracker is running  
 # 
-# USAGE: $ME <targetActiveTTs> <HadoopHome> 
+# USAGE: $ME <targetActiveTTs> <ExcludesFile> <HadoopHome> 
 
 # Constants
-EXPECTED_ARGS=2
+EXPECTED_ARGS=3
 ME=`basename $0`
 LOGFILE="$HOME/.$ME.log"
 JTERRFILE="$HOME/.$ME.jt.stderr"
@@ -17,6 +17,7 @@ JTENV="/etc/default/hadoop-0.20-mapreduce"
 
 # Errors/Warnings
 ERROR_BAD_ARGS=100
+ERROR_EXCLUDES_FILE_NOT_FOUND=101
 ERROR_BAD_HADOOP_HOME=103
 ERROR_JT_CONNECTION=104
 ERROR_JT_UNKNOWN=105
@@ -36,13 +37,19 @@ checkArguments()
     fi
     
     local loc_numTargetTTs=$1
-    local loc_hadoopHome=$2
+    local loc_excludesFile=$2
+    local loc_hadoopHome=$3
     
     if [[ $loc_numTargetTTs -lt 0 ]]; then
 	echo "ERROR: Bad number of targetTTs - $loc_numTargetTTs"
 	exit $ERROR_BAD_TARGET_TTS
     fi
         
+    if [ ! -f $loc_excludesFile ]; then
+        echo "ERROR: Excludes file \"$loc_excludesFile\" not found"
+        exit $ERROR_EXCLUDES_FILE_NOT_FOUND
+    fi
+
     if [ ! -f $loc_hadoopHome/bin/hadoop ]; then
 	echo "ERROR: \"$loc_hadoopHome\" is not HADOOP_HOME" 
 	exit $ERROR_BAD_HADOOP_HOME
@@ -164,7 +171,8 @@ main()
     checkArguments $*
 
     numTargetTTs=$1
-    hadoopHome=$2
+    excludesFile=$2
+    hadoopHome=$3
         
     echo "INFO: Arguments:: Target for active TTs: $targetActiveTTs; hadoopHome: $hadoopHome" 
 
@@ -186,6 +194,20 @@ main()
 # Determine if target TTs is reached
 	checkTargetActiveTTs $numTargetTTs $hadoopHome
 	retVal=$?
+
+# Clear excludes file
+        > $excludesFile
+
+        $hadoopHome/bin/hadoop mradmin -refreshNodes 2> $JTERRFILE
+
+        if [ -s $JTERRFILE ]; then
+            parseJTErrFile $JTERRFILE
+            returnVal=$?
+            if [ $returnVal -ne $WARN_IGNORE ]; then
+                exit $?
+            fi
+        fi
+
     } 200>$LOCKFILE
     
     lockExitVal=$?
@@ -210,6 +232,7 @@ main()
 
 # Print list of ActiveTTs on stdout
     printActiveTTs $hadoopHome
+
 
     exit $exitVal
 }
