@@ -155,6 +155,8 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
             cluster.createComputeNodes(computeNodesPerHost, host);
             numberOfComputeNodes+= computeNodesPerHost;
          }
+
+         host.powerOn();
       }
 
       /* register the cluster as an event producer */

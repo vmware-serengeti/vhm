@@ -36,7 +36,6 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          String[] hostNameArray = hostNames.toArray(new String[0]);
-         status.addStatus(_hadoopActions.recommissionTTs(hostNameArray, hadoopCluster));
          if (_vcActions.changeVMPowerState(toEnable, true) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
          } else {
@@ -44,6 +43,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNameArray, totalTargetEnabled, hadoopCluster));
             }
          }
+
+         status.addStatus(_hadoopActions.recommissionTTs(hostNameArray, hadoopCluster));
       }
    }
 

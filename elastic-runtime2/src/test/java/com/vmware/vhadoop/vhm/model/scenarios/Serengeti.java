@@ -190,6 +190,8 @@ public class Serengeti extends Folder
       public Compute create(VirtualCenter vCenter, String id, Allocation capacity) {
          Compute compute = new Compute(vCenter, master, id, capacity);
          compute.install(new Linux("Linux-"+id));
+         compute.setHostname(Serengeti.constructHostnameForCompute(master, id));
+
          return compute;
       }
    }
@@ -204,8 +206,6 @@ public class Serengeti extends Folder
          setExtraInfo("vhmInfo.elastic", "true");
          setExtraInfo("vhmInfo.masterVM.uuid", master.getClusterId());
          setExtraInfo("vhmInfo.masterVM.moid", master.getId());
-
-         setHostname(Serengeti.constructHostnameForCompute(master, id));
 
          _log.info(master.clusterId+": created cluster compute node ("+id+")");
       }
@@ -576,13 +576,14 @@ public class Serengeti extends Folder
        */
       private boolean scheduleNewTask(Compute node) {
          try {
+            _log.info(name()+": prompted to look at shceduling a task on node "+node.name());
             if (node.powerState()) {
                for (HadoopJob job : jobs) {
                   if (job.queueSize() > 0) {
                      Process task = job.getTask();
                      if (task != null) {
                         node.execute(task);
-                        tasks.put(node,  task);
+                        tasks.put(node, task);
                         return true;
                      }
                   }

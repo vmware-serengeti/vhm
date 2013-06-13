@@ -9,7 +9,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.vhadoop.util.LogFormatter;
@@ -49,7 +48,6 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       }
    }
 
-   @Ignore
    @Test
    public void testJobDeploysAfterHardPowerCycle() {
       final int numberOfHosts = 2;
@@ -153,5 +151,63 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       for (Compute node : nodes) {
          assertEquals("cpu ready value is not correct for "+node.name(), 2000, _vCenter.getRawMetric(node.name(), READY).longValue());
       }
+   }
+
+   @Test
+   public void testRollingPowerOnJobDeploys() {
+      final int numberOfHosts = 1;
+      final int computeNodesPerHost = 8;
+      String clusterName = "serengetiTest";
+
+      Allocation hostCapacity = Allocation.zeroed();
+      hostCapacity.set(ResourceType.CPU, 32000);
+      hostCapacity.set(ResourceType.MEMORY, 24000);
+
+      /* general test setup */
+      setup(numberOfHosts, hostCapacity);
+      _vCenter.setMetricsInterval(500);
+      _serengeti.setMaxLatency(500);
+
+      /* create a cluster to work with */
+      Master cluster = createCluster(clusterName, computeNodesPerHost);
+
+      /* power on all the nodes and enable them in serengeti */
+      Compute nodes[] = cluster.getComputeNodes().toArray(new Compute[0]);
+
+      Allocation footprint = Allocation.zeroed();
+      footprint.set(ResourceType.CPU, 4000);
+      footprint.set(ResourceType.MEMORY, 2000);
+      HadoopJob job = new EndlessTaskGreedyJob("greedyJob", numberOfHosts, footprint);
+
+      cluster.execute(job);
+
+      logMetrics(nodes);
+
+      /* rolling power on of the nodes, via target compute node num and expect not to need to explicitly enable the nodes here */
+      for (int target = 1; target <= cluster.availableComputeNodes(); target++) {
+         cluster.setTargetComputeNodeNum(target);
+
+         setTimeout(5000);
+         assertVMsInPowerState("waiting for target compute node num ("+target+") to take effect", cluster, target, true);
+
+         /* retry check until max latency has expired */
+         logMetrics(nodes);
+         int processingTasks;
+         int poweredOnNodes;
+
+         do {
+            /* wait for the stats interval to expire */
+            try {
+               Thread.sleep(_vCenter.getMetricsInterval());
+            } catch (InterruptedException e) {}
+
+            processingTasks = job.getTasks(HadoopJob.Stage.PROCESSING);
+            poweredOnNodes = cluster.numberComputeNodesInPowerState(true);
+         } while (timeout() >= 0 && processingTasks != poweredOnNodes);
+
+         assertEquals("number of hadoop tasks does not match powered on nodes", poweredOnNodes, processingTasks);
+      }
+
+      logMetrics(nodes);
    }
 }
