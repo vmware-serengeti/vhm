@@ -1,7 +1,10 @@
 package com.vmware.vhadoop.vhm.hadoop;
 
+import java.util.Collection;
+
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenterEntity;
@@ -83,6 +86,30 @@ public class ModelHadoopAdapter implements HadoopActions
       }
 
       return (Master)vm;
+   }
+
+   @Override
+   public String[] getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
+      Master master = getJobTracker(cluster, status);
+      if (master == null) {
+         return null;
+      }
+
+      Collection<Compute> enabled = master.getComputeNodesInState(true);
+      String hostnames[] = new String[enabled.size()];
+
+      int index = 0;
+      for (Compute node : enabled) {
+         hostnames[index++] = node.getHostname();
+      }
+
+      if (enabled.size() != totalTargetEnabled) {
+         status.registerTaskFailed(true, "Target was "+totalTargetEnabled+", number enabled "+enabled.size());
+      } else {
+         status.registerTaskSucceeded();
+      }
+
+      return hostnames;
    }
 
 }

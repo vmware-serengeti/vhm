@@ -3,6 +3,7 @@ package com.vmware.vhadoop.vhm.model.scenarios;
 import static com.vmware.vhadoop.vhm.model.api.ResourceType.CPU;
 import static com.vmware.vhadoop.vhm.model.api.ResourceType.MEMORY;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -370,10 +371,6 @@ public class Serengeti extends Folder
          return nodes;
       }
 
-      public int numberComputeNodesInState(boolean enabled) {
-         return this.enabled.size();
-      }
-
       public Set<Compute> getComputeNodesInPowerState(boolean power) {
          Set<Compute> compute = new HashSet<Compute>();
          long timestamp = vCenter.getConfigurationTimestamp();
@@ -392,6 +389,18 @@ public class Serengeti extends Folder
          }
 
          return compute;
+      }
+
+      public int numberComputeNodesInState(boolean enabled) {
+         return this.enabled.size();
+      }
+
+      public Collection<Compute> getComputeNodesInState(boolean enabled) {
+         if (enabled) {
+            return Collections.unmodifiableCollection(this.enabled.values());
+         }
+
+         return Collections.unmodifiableCollection(this.disabled.values());
       }
 
       public Set<Compute> getComputeNodes() {
