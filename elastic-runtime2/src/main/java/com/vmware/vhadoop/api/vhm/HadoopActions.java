@@ -78,4 +78,6 @@ public interface HadoopActions {
 
 		
 		public CompoundStatus checkTargetTTsSuccess(String opType, String[] tts, int totalTargetEnabled, HadoopClusterInfo cluster);
+		
+	   public String[] getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status);
 }

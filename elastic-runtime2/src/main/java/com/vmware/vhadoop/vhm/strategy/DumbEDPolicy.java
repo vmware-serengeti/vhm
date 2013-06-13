@@ -35,4 +35,9 @@ public class DumbEDPolicy extends AbstractClusterMapReader implements EDPolicy {
       }
    }
 
+   @Override
+   public Set<String> getActiveTTs(String clusterId) throws Exception {
+      return null;
+   }
+
 }

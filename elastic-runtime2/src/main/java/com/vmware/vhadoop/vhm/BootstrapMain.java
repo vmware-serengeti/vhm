@@ -66,12 +66,18 @@ public class BootstrapMain
          loggingProperties = buildVHMFilePath(DEFAULT_CONF_SUBDIR, DEFAULT_LOG_CONFIG_FILENAME);
       }
 
+      InputStream is = null;
       try {
-         InputStream is = new FileInputStream(loggingProperties);
+         is = new FileInputStream(loggingProperties);
          LogManager.getLogManager().readConfiguration(is);
-         is.close();
       } catch (Exception e) {
          System.err.println("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
+      } finally {
+         if (is != null) {
+            try {
+               is.close();
+            } catch (IOException e) {}
+         }
       }
 
       Handler handlers[] = Logger.getLogger("").getHandlers();
@@ -156,16 +162,15 @@ public class BootstrapMain
       } catch (IOException e) {
          System.err.println("Unable to read properties file from filesystem or as a resource from the jar files:" + name);
       } finally {
-         try {
-            if (resource != null) {
+         if (resource != null) {
+            try {
                resource.close();
-            }
-
-            if (is != null) {
+            } catch (IOException e) {}
+         }
+         if (is != null) {
+            try {
                is.close();
-            }
-         } catch (IOException e) {
-            /* squash */
+            } catch (IOException e) {}
          }
       }
 

@@ -173,7 +173,8 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    private byte[] loadLocalScript(String fileName) {
-	   InputStream is = HadoopAdaptor.class.getClassLoader().getResourceAsStream(fileName);
+      ClassLoader cl = HadoopAdaptor.class.getClassLoader();
+	   InputStream is = ((cl != null) && (fileName != null)) ? cl.getResourceAsStream(fileName) : null;
 	   if (is == null) {
 		   _log.log(Level.SEVERE, "File "+ fileName + " does not exist!");
 		   return null;
@@ -274,15 +275,29 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
+   public String[] getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
+      HadoopConnection connection = getConnectionForCluster(cluster);
+      OutputStream out = new ByteArrayOutputStream();
+      int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
+
+      /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
+      String[] allActiveTTs = out.toString().split("\n");
+      allActiveTTs[allActiveTTs.length - 1] = null;
+      
+      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
+      return allActiveTTs;
+   }
+   
+   @Override
    public CompoundStatus checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
       CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
 
-	   String scriptFileName = CHECK_SCRIPT_FILE_NAME;
+      String scriptFileName = CHECK_SCRIPT_FILE_NAME;
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
 
-	   _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(affectedTTs));
+      _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(affectedTTs));
 
       HadoopConnection connection = getConnectionForCluster(cluster);
       setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
@@ -290,12 +305,12 @@ public class HadoopAdaptor implements HadoopActions {
       int rc = -1;
       int iterations = 0;
       do {
-    	   if (iterations > 0) {
-    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
+         if (iterations > 0) {
+          _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
          }
 
          OutputStream out = new ByteArrayOutputStream();
-    	   rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{""+totalTargetEnabled, connection.getHadoopHome()}, out);
+         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
          /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
          String[] allActiveTTs = out.toString().split("\n");
@@ -304,15 +319,47 @@ public class HadoopAdaptor implements HadoopActions {
          if (checkOpSuccess(opType, affectedTTs, allActiveTTs)) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
             rc = SUCCESS;
-        	   break;
+            break;
          }
-         //TODO: out.close()?
 
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 
       status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return status;
    }
+   
+//   @Override
+//   public CompoundStatus checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
+//      CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
+//
+//      String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
+//      String listRemoteFilePath = null;
+//      String opDesc = "checkTargetTTsSuccess";
+//
+//	   _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(affectedTTs));
+//
+//      setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
+//
+//      int iterations = 0;
+//      CompoundStatus getActiveStatus = null;
+//      do {
+//    	   if (iterations > 0) {
+//    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
+//         }
+//    	   
+//         getActiveStatus = new CompoundStatus("getActiveTTs");
+//    	   String[] allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
+//    	  
+//         if (checkOpSuccess(opType, affectedTTs, allActiveTTs)) {
+//            _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
+//        	   break;
+//         }
+//
+//      } while ((getActiveStatus.getFirstFailure() != null) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
+//
+//      status.addStatus(getActiveStatus);
+//      return status;
+//   }
 
    private boolean checkOpSuccess(String opType, String[] affectedTTs, String[] allActiveTTs) {
 

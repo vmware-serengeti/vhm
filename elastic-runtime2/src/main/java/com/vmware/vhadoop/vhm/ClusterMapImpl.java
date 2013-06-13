@@ -59,17 +59,20 @@ public class ClusterMapImpl implements ClusterMap {
       final VMVariableData _variableData;
       final String _clusterId;
 
-      VMInfo(String moRef, VMConstantData constantData,
+      /* VMInfo is created with a completed VMConstantData and a potentially incomplete or even null variableData
+       * moRef and clusterId must not be null */
+      VMInfo(String moRef, VMConstantData constantData, 
             VMVariableData variableData, String clusterId) {
-         this._moRef = moRef;
-         this._constantData = constantData;
-         this._variableData = variableData;
-         this._clusterId = clusterId;
-         if ((this._variableData._powerState != null) && (this._variableData._powerState)) {
-            this._powerOnTime = System.currentTimeMillis();
+         _moRef = moRef;
+         _constantData = constantData;
+         /* Provide an empty variableData if a null one is passed in */
+         _variableData = (variableData != null) ? variableData : new VMVariableData();
+         _clusterId = clusterId;
+         if ((_variableData._powerState != null) && (_variableData._powerState)) {
+            _powerOnTime = System.currentTimeMillis();
          }
-         _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s",
-               new String[]{moRef, moRef, clusterId, constantData.toString(), variableData.toString()});
+         _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s", 
+               new String[]{moRef, moRef, clusterId, _constantData.toString(), _variableData.toString()});
       }
 
       long _powerOnTime; // most recent timestamp when VHM learned VM is on
@@ -181,7 +184,6 @@ public class ClusterMapImpl implements ClusterMap {
          return null;
       }
 
-      updateVMVariableData(vmId, variableData);
       return clusterId;
    }
 
@@ -364,11 +366,16 @@ public class ClusterMapImpl implements ClusterMap {
                result.add(vminfo._moRef);
             }
          } catch (NullPointerException e) {
-          //vminfo.xxx could be null for VMs where we only have partial data from VC
+            /* vmInfo._constantData should never be null or have null values. 
+             * vmInfo._clusterId and vmInfo._moRef should never be null
+             * vmInfo._variableData should never be null, but may have null values */
             VMVariableData variableInfo = vminfo._variableData;
+            VMConstantData constantInfo = vminfo._constantData;
             _log.fine("Null pointer checking for matching vm (name: "+variableInfo._myName+
-                                                          ", uuid: "+vminfo._constantData._myUUID+
+                                                          ", uuid: "+constantInfo._myUUID+
+                                                          ", vmType: "+constantInfo._vmType+
                                                           ", host: "+variableInfo._hostMoRef+
+                                                          ". powerState: "+variableInfo._powerState+
                                                           ", cluster: <%C"+vminfo._clusterId+
                                                        "%C>, moRef: "+vminfo._moRef+")");
          }

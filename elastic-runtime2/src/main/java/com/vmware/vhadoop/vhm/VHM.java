@@ -289,12 +289,23 @@ public class VHM implements EventConsumer {
       return results;
    }
 
-   /* For now, remove any events that the scale strategy is not designed to be able to handle */
-   private Set<ClusterScaleEvent> consolidateClusterEvents(ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> scaleEventsForCluster) {
+   private void doRemove(Set<ClusterScaleEvent> scaleEventsForCluster, Set<ClusterScaleEvent> toRemove, String method) {
+      if (toRemove != null) {
+         int beforeSize = scaleEventsForCluster.size();
+         scaleEventsForCluster.removeAll(toRemove);
+         int afterSize = scaleEventsForCluster.size();
+         _log.info("Consolidating scale events from "+beforeSize+" to "+afterSize+" for method "+method);
+      }
+   }
+   
+   /* Takes a list of types that are allowed for a particular cluster and removes any 
+    * events that are not of those types, either directly or through inheritance */
+   private void removeEventsThisClusterCantHandle(Class<? extends ClusterScaleEvent>[] typesHandled, 
+                                                  Set<ClusterScaleEvent> scaleEventsForCluster) {
       Set<ClusterScaleEvent> toRemove = null;
       for (ClusterScaleEvent event : scaleEventsForCluster) {
          boolean isAssignableFromAtLeastOne = false;
-         for (Class<? extends ClusterScaleEvent> typeHandled : scaleStrategy.getScaleEventTypesHandled()) {
+         for (Class<? extends ClusterScaleEvent> typeHandled : typesHandled) {
             if (typeHandled.isAssignableFrom(event.getClass())) {
                isAssignableFromAtLeastOne = true;
                break;
@@ -307,12 +318,38 @@ public class VHM implements EventConsumer {
             toRemove.add(event);
          }
       }
-      if (toRemove != null) {
-         int beforeSize = scaleEventsForCluster.size();
-         scaleEventsForCluster.removeAll(toRemove);
-         int afterSize = scaleEventsForCluster.size();
-         _log.info("Consolidating scale events from "+beforeSize+" to "+afterSize+" for scaleStrategy "+scaleStrategy);
+      doRemove(scaleEventsForCluster, toRemove, "removeEventsThisClusterCantHandle");
+   }
+
+   /* If events are marked isExclusive() == true and if there are duplicate 
+    * events of that type, only the most recent should be returned */
+   private void consolidateExclusiveEvents(Set<ClusterScaleEvent> scaleEventsForCluster) {
+      Set<ClusterScaleEvent> toRemove = new HashSet<ClusterScaleEvent>();;
+
+      Map<Class<? extends ClusterScaleEvent>, ClusterScaleEvent> newestEventMap = 
+            new HashMap<Class<? extends ClusterScaleEvent>, ClusterScaleEvent>();
+      for (ClusterScaleEvent event : scaleEventsForCluster) {
+         if (event.isExclusive()) {
+            ClusterScaleEvent toCompare = newestEventMap.get(event.getClass());
+            if (toCompare == null) {
+               newestEventMap.put(event.getClass(), event);
+            } else {
+               if (toCompare.getTimestamp() >= event.getTimestamp()) {
+                  toRemove.add(event);
+               } else {
+                  newestEventMap.put(event.getClass(), event);
+                  toRemove.add(toCompare);
+               }
+            }
+         }
       }
+      doRemove(scaleEventsForCluster, toRemove, "consolidateExclusiveEvents");
+   }
+
+   /* For now, remove any events that the scale strategy is not designed to be able to handle */
+   private Set<ClusterScaleEvent> consolidateClusterEvents(ScaleStrategy scaleStrategy, Set<ClusterScaleEvent> scaleEventsForCluster) {
+      removeEventsThisClusterCantHandle(scaleStrategy.getScaleEventTypesHandled(), scaleEventsForCluster);
+      consolidateExclusiveEvents(scaleEventsForCluster);
       return scaleEventsForCluster;
    }
 
@@ -375,15 +412,19 @@ public class VHM implements EventConsumer {
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
             Set<ClusterScaleEvent> unconsolidatedEvents = clusterScaleEvents.get(clusterId);
+            if (unconsolidatedEvents == null) {
+               continue;
+            }
             /* If ClusterMap has not yet been fully updated with information about a cluster, defer this operation */
             if (!_clusterMap.validateClusterCompleteness(clusterId)) {
-               if ((unconsolidatedEvents != null) && (unconsolidatedEvents.size() > 0)) {
+               if (unconsolidatedEvents.size() > 0) {
                   _log.info("ClusterInfo not yet complete. Putting event collection back on queue for cluster <%C"+clusterId);
                   placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
                }
                continue;
             }
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
+            /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
                if (scaleStrategy != null) {

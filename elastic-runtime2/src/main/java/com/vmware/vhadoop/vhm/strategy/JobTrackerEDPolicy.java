@@ -1,5 +1,7 @@
 package com.vmware.vhadoop.vhm.strategy;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
@@ -73,6 +75,26 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
          }
       }
+   }
+
+   @Override
+   public Set<String> getActiveTTs(String clusterId) throws Exception {
+      HadoopClusterInfo hadoopCluster = null;
+
+      ClusterMap clusterMap = getAndReadLockClusterMap();
+      try {
+         hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
+      } finally {
+         unlockClusterMap(clusterMap);
+      }
+
+      if (hadoopCluster != null) {
+         String[] activeTTs = _hadoopActions.getActiveTTs(hadoopCluster, 0, getCompoundStatus());
+         if (activeTTs != null) {
+            return new HashSet<String>(Arrays.asList(activeTTs));
+         }
+      }
+      return null;
    }
 
 }

@@ -33,6 +33,8 @@ public class VcAdapter implements VCActions {
       _vcVlsi.setThreadLocalCompoundStatus(tlcs);
    }
 
+   /* TODO: CompoundStatus is currently unused in VC functions, but we can get richer failure info if/when it's used */
+   @SuppressWarnings("unused")
    private CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
          if (_log.isLoggable(Level.FINER)) {

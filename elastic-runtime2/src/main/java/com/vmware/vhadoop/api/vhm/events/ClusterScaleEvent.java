@@ -8,4 +8,6 @@ public interface ClusterScaleEvent extends NotificationEvent {
    String getHostId();
    
    String getClusterId();
+   
+   boolean isExclusive();
 }
