@@ -343,7 +343,9 @@ public class VHM implements EventConsumer {
             }
          }
       }
-      doRemove(scaleEventsForCluster, toRemove, "consolidateExclusiveEvents");
+      if (toRemove.size() > 0) {
+         doRemove(scaleEventsForCluster, toRemove, "consolidateExclusiveEvents");
+      }
    }
 
    /* For now, remove any events that the scale strategy is not designed to be able to handle */

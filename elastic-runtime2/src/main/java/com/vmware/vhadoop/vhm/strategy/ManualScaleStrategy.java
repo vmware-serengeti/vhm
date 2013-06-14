@@ -14,6 +14,7 @@ import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -117,7 +118,14 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                limitEvent.reportCompletion();
             } else {
                TaskStatus firstError = tlStatus.getFirstFailure();
-               if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY, 
+               if (firstError.getCompoundName().equals(HadoopAdaptor.STATUS_GET_ACTIVE_TTS)) {
+                  String[] failedTTs = getFailedTTsFromErrorMsg(firstError.getMessage());
+                  if (failedTTs != null) {
+                     for (String failedTT : failedTTs) {
+                        _log.warning("VM <%V"+failedTT+"%V> did not successfully respond in a reasonable time");
+                     }
+                  }
+               } else if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY, 
                      VCActions.VC_POWER_OFF_STATUS_KEY, 
                      ClusterMapReader.POWER_STATE_CHANGE_STATUS_KEY})) {
                   limitEvent.reportError(firstError.getMessage() + " however, powering on/off VMs succeeded;");
@@ -130,6 +138,15 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
          }
          return returnEvent;
       }
+
+      private String[] getFailedTTsFromErrorMsg(String failedTTList) {
+         String withoutBrackets = failedTTList.substring(1, failedTTList.length()-1);
+         if (withoutBrackets.length() > 0) {
+            return withoutBrackets.split(", ");
+         }
+         return null;
+      }
+
    }
 
    @Override
