@@ -19,16 +19,13 @@ import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_CATCHALL;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_FOUND;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
-import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.SUCCESS;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -40,6 +37,7 @@ import org.apache.commons.io.IOUtils;
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopConnectionProperties;
 import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopCredentials;
 import com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ParamTypes;
@@ -60,6 +58,7 @@ public class HadoopAdaptor implements HadoopActions {
    private JTConfigInfo _jtConfig;
    private HadoopConnectionProperties _connectionProperties;        /* TODO: Provide setter? If not, make local */
    private Map<String, Map<ParamTypes, String>> _errorParamValues;               /* TODO: Will need one per connection/cluster */
+   private ThreadLocalCompoundStatus _threadLocalStatus;
 
    /* TODO: I think it's ok that these are all constants for now. Easy to externalize in future though */
 
@@ -77,18 +76,25 @@ public class HadoopAdaptor implements HadoopActions {
    public static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
    public static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
    
-   public static final String STATUS_GET_ACTIVE_TTS = "getActiveTTs";
    public static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
    public static final int MAX_CHECK_RETRY_ITERATIONS = 10;
 
-   public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig) {
+   public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
       _credentials = credentials;
       _jtConfig = jtConfig;
       _errorCodes = new HadoopErrorCodes();
       _errorParamValues = new HashMap<String, Map<ParamTypes, String>>();
       _connections = new HashMap<String, HadoopConnection>();
+      _threadLocalStatus = tlcs;
+   }
+   
+   CompoundStatus getCompoundStatus() {
+      if (_threadLocalStatus == null) {
+         return new CompoundStatus("DUMMY_STATUS");
+      }
+      return _threadLocalStatus.get();
    }
 
    private void setErrorParamValue(HadoopClusterInfo cluster, ParamTypes paramType, String paramValue) {
@@ -272,76 +278,38 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
-   public CompoundStatus decommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster) {
-      return decomRecomTTs("Decommission", tts, cluster, DECOM_SCRIPT_FILE_NAME, DECOM_LIST_FILE_NAME);
+   public void decommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster) {
+      getCompoundStatus().addStatus(decomRecomTTs("Decommission", tts, cluster, DECOM_SCRIPT_FILE_NAME, DECOM_LIST_FILE_NAME));
    }
 
    @Override
-   public CompoundStatus recommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster) {
-      return decomRecomTTs("Recommission", tts, cluster, RECOM_SCRIPT_FILE_NAME, RECOM_LIST_FILE_NAME);
+   public void recommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster) {
+      getCompoundStatus().addStatus(decomRecomTTs("Recommission", tts, cluster, RECOM_SCRIPT_FILE_NAME, RECOM_LIST_FILE_NAME));
    }
 
    @Override
-   public String[] getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
+   public Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled) {
+      return getActiveTTs(cluster, totalTargetEnabled, getCompoundStatus());
+   }
+
+      
+   private Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
       HadoopConnection connection = getConnectionForCluster(cluster);
       OutputStream out = new ByteArrayOutputStream();
       int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
-      /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
       String[] unformattedList = out.toString().split("\n");
-      String[] formattedList = new String[unformattedList.length - 1];
-      for (int i = 0; i < formattedList.length; i++) {
-         formattedList[i] = unformattedList[i].trim();
+      Set<String> formattedList = new HashSet<String>();
+      for (int i = 0; i < unformattedList.length-1; i++) {
+         formattedList.add(unformattedList[i].trim());
       }
       
       status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return formattedList;
    }
    
-//   @Override
-//   public CompoundStatus checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
-//      CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
-//
-//      String scriptFileName = CHECK_SCRIPT_FILE_NAME;
-//      String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
-//      String listRemoteFilePath = null;
-//      String opDesc = "checkTargetTTsSuccess";
-//
-//      _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(affectedTTs));
-//
-//      HadoopConnection connection = getConnectionForCluster(cluster);
-//      setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
-//
-//      int rc = -1;
-//      int iterations = 0;
-//      do {
-//         if (iterations > 0) {
-//          _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
-//         }
-//
-//         OutputStream out = new ByteArrayOutputStream();
-//         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
-//
-//         /* Convert to String array and "nullify" last element (which happens to be "@@@..." or empty line) */
-//         String[] allActiveTTs = out.toString().split("\n");
-//         allActiveTTs[allActiveTTs.length - 1] = null;
-//
-//         if (checkOpSuccess(opType, affectedTTs, allActiveTTs)) {
-//            _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
-//            rc = SUCCESS;
-//            break;
-//         }
-//
-//      } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
-//
-//      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
-//      return status;
-//   }
-   
    @Override
-   public CompoundStatus checkTargetTTsSuccess(String opType, Map<String, String> affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
-      CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
-
+   public Set<String> checkTargetTTsSuccess(String opType, Map<String, String> affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
       String[] dnsNameArray = affectedTTs.values().toArray(new String[0]);
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
       String listRemoteFilePath = null;
@@ -354,14 +322,14 @@ public class HadoopAdaptor implements HadoopActions {
       int iterations = 0;
       CompoundStatus getActiveStatus = null;
       int rc = 0;
-      boolean keepTrying = false;
+      Set<String> allActiveTTs = null;
       do {
     	   if (iterations > 0) {
     	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
          }
     	   
-         getActiveStatus = new CompoundStatus(STATUS_GET_ACTIVE_TTS);
-    	   String[] allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
+         getActiveStatus = new CompoundStatus("getActiveStatus");
+    	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
     	  
          if (getActiveStatus.getFirstFailure() == null) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
@@ -372,57 +340,29 @@ public class HadoopAdaptor implements HadoopActions {
          TaskStatus taskStatus = getActiveStatus.getFirstFailure(STATUS_INTERPRET_ERROR_CODE);
          if (taskStatus != null) {
             rc = taskStatus.getErrorCode();
-
-            /* If the error is simply that the TT count is not yet complete, keep trying
-             *  and note the active TTs in the CompoundStats if we end up timing out */
-            if ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS)) {
-               keepTrying = true;
-               String incompleteVmList = null;
-               if (rc == ERROR_FEWER_TTS) {
-                  /* We're likely recommissioning so we want to report on the VMs that have not yet become active
-                   * This means finding the VMs in affectedTTs that are not in allActiveTTs and mapping that back to the vmIds */
-                  incompleteVmList = listIncompleteVmIdsForRecommission(affectedTTs, allActiveTTs).toString();
-               } else {
-                  /* We're likely decomissioning so we want to report on the VMs that are still active 
-                   * This means finding the union of affectedTTs and allActiveTTs and mapping that back to the vmIds */
-                  incompleteVmList = listIncompleteVmIdsForDecommission(affectedTTs, allActiveTTs).toString();
-               }
-               getActiveStatus.registerTaskIncomplete(false, incompleteVmList, rc);
-               _log.info("Building incomplete list of VMs: "+incompleteVmList);
-            }
          }
-      } while (keepTrying && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
+      } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 
-      status.addStatus(getActiveStatus);
-      return status;
-   }
-   
-   Map<String, String> buildReverseLookup(Map<String, String> vmIdToDnsName) {
-      Map<String, String> result = new HashMap<String, String>();
-      for (String vmId : vmIdToDnsName.keySet()) {
-         result.put(vmIdToDnsName.get(vmId), vmId);
-      }
-      return result;
+      getCompoundStatus().addStatus(getActiveStatus);
+      return convertDnsNamesToVmIds(affectedTTs, allActiveTTs);
    }
 
-   private List<String> listIncompleteVmIdsForRecommission(Map<String, String> vmsShouldBeActive, String[] allActiveTTs) {
-      List<String> result = new ArrayList<String>();
-      Map<String, String> dnsNameToVmId = buildReverseLookup(vmsShouldBeActive);
-      for (String activeTT : allActiveTTs) {
-         dnsNameToVmId.remove(activeTT);
-      }
-      result.addAll(dnsNameToVmId.values());
-      return result;
-   }
-
-   private List<String> listIncompleteVmIdsForDecommission(Map<String, String> vmsShouldNotBeActive, String[] allActiveTTs) {
-      List<String> result = new ArrayList<String>();
-      Map<String, String> dnsNameToVmId = buildReverseLookup(vmsShouldNotBeActive);
+   private Set<String> convertDnsNamesToVmIds(Map<String, String> vmIdToDnsName, Set<String> allActiveTTs) {
+      Set<String> result = new HashSet<String>();
+      Map<String, String> dnsNameToVmId = buildReverseLookup(vmIdToDnsName);
       for (String activeTT : allActiveTTs) {
          String vmId = dnsNameToVmId.get(activeTT);
          if (vmId != null) {
             result.add(vmId);
          }
+      }
+      return result;
+   }
+   
+   private Map<String, String> buildReverseLookup(Map<String, String> vmIdToDnsName) {
+      Map<String, String> result = new HashMap<String, String>();
+      for (String vmId : vmIdToDnsName.keySet()) {
+         result.put(vmIdToDnsName.get(vmId), vmId);
       }
       return result;
    }

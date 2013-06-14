@@ -16,8 +16,7 @@
 package com.vmware.vhadoop.api.vhm;
 
 import java.util.Map;
-
-import com.vmware.vhadoop.util.CompoundStatus;
+import java.util.Set;
 
 /* Represents actions which can be invoked on the Hadoop subsystem */
 public interface HadoopActions {
@@ -69,17 +68,17 @@ public interface HadoopActions {
 	 *	@param TaskTrackers that need to be decommissioned
 	 *  @return SUCCESS/FAIL
 	 */
-		public CompoundStatus decommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster);
+		public void decommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster);
 
 	/** 
 	 * 	Recommission a given set of TaskTrackers to a JobTracker 
 	 *	@param TaskTrackers that need to be recommissioned/added
 	 *  @return SUCCESS/FAIL
 	 */
-		public CompoundStatus recommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster);
+		public void recommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster);
 
 		
-		public CompoundStatus checkTargetTTsSuccess(String opType, Map<String, String> tts, int totalTargetEnabled, HadoopClusterInfo cluster);
+		public Set<String> checkTargetTTsSuccess(String opType, Map<String, String> tts, int totalTargetEnabled, HadoopClusterInfo cluster);
 		
-	   public String[] getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status);
+	   public Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled);
 }

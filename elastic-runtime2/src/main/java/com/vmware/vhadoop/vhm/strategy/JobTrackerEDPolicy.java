@@ -1,6 +1,5 @@
 package com.vmware.vhadoop.vhm.strategy;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -23,9 +22,10 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    }
 
    @Override
-   public void enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
+   public Set<String> enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
       Map<String, String> hostNames = null;
       HadoopClusterInfo hadoopCluster = null;
+      Set<String> activeVmIds = null;
 
       ClusterMap clusterMap = getAndReadLockClusterMap();
       try {
@@ -38,21 +38,23 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       if (hostNames != null) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
-         status.addStatus(_hadoopActions.recommissionTTs(hostNames, hadoopCluster));
+         _hadoopActions.recommissionTTs(hostNames, hadoopCluster);
          if (_vcActions.changeVMPowerState(toEnable, true) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
          } else {
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-               status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster));
+               activeVmIds = _hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster);
             }
          }
       }
+      return activeVmIds;
    }
 
    @Override
-   public void disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
+   public Set<String> disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
       Map<String, String> hostNames = null;
       HadoopClusterInfo hadoopCluster = null;
+      Set<String> activeVmIds = null;
 
       ClusterMap clusterMap = getAndReadLockClusterMap();
       try {
@@ -65,14 +67,25 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       if (hostNames != null) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
-         status.addStatus(_hadoopActions.decommissionTTs(hostNames, hadoopCluster));
+         _hadoopActions.decommissionTTs(hostNames, hadoopCluster);
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
-            status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster));
+            activeVmIds = _hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster);
          }
          if (_vcActions.changeVMPowerState(toDisable, false) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
          }
       }
+      return getSuccessfullyDisabledVmIds(toDisable, activeVmIds);
+   }
+
+   private Set<String> getSuccessfullyDisabledVmIds(Set<String> toDisable, Set<String> activeVmIds) {
+      Set<String> result = new HashSet<String>();
+      for (String testDisabled : toDisable) {
+         if (!activeVmIds.contains(testDisabled)) {
+            result.add(testDisabled);
+         }
+      }
+      return result;
    }
 
    @Override
@@ -87,10 +100,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       }
 
       if (hadoopCluster != null) {
-         String[] activeTTs = _hadoopActions.getActiveTTs(hadoopCluster, 0, getCompoundStatus());
-         if (activeTTs != null) {
-            return new HashSet<String>(Arrays.asList(activeTTs));
-         }
+         return _hadoopActions.getActiveTTs(hadoopCluster, 0);
       }
       return null;
    }
