@@ -178,7 +178,7 @@ public class Serengeti extends Folder
          return;
       }
 
-      master.deliverMessage(routeKey, msg);
+      master.deliverMessage(parts[0], msg);
    }
 
 
@@ -280,6 +280,7 @@ public class Serengeti extends Folder
       final ComputeTemplate computeOVA = new ComputeTemplate(this);
       Set<HadoopJob> jobs = new HashSet<HadoopJob>();
       final Map<Compute,Process> tasks = new HashMap<Compute,Process>();
+      final Map<String,VHMJsonReturnMessage> messages = new HashMap<String,VHMJsonReturnMessage>();
 
       public String getClusterId() {
          return clusterId;
@@ -326,32 +327,80 @@ public class Serengeti extends Folder
                                        ", error_msg: "+msg.error_msg+
                                        ", progress_msg: "+msg.progress_msg);
 
-         /* TODO: track inflight messages somehow */
+         synchronized(messages) {
+            messages.put(msgId, msg);
+            messages.notifyAll();
+         }
+      }
+
+      /**
+       * This waits for a response message from VHM with the given id. Currently this only notifies
+       * when the completion message arrives, but logs the arrival of progress updates.
+       *
+       * If the wait times out then the most recent response matching the ID will be returned, or null
+       * if none have been seen.
+       *
+       * @param id
+       * @param timeout
+       * @return
+       */
+      public VHMJsonReturnMessage waitForResponse(String id, long timeout) {
+         long deadline = System.currentTimeMillis() + timeout;
+         long remaining = timeout;
+         int progress = -1;
+
+         synchronized(messages) {
+            VHMJsonReturnMessage response = messages.get(id);
+            try {
+               while ((response == null || !response.finished) && remaining > 0) {
+                  messages.wait(remaining);
+                  remaining = deadline - System.currentTimeMillis();
+                  response = messages.get(id);
+                  if (response != null && response.progress != progress) {
+                     _log.info(name()+": received update for interaction "+id+", progress: "+progress);
+                     progress = response.progress;
+                  }
+               }
+            } catch (InterruptedException e) {}
+
+            return response;
+         }
       }
 
 
       /**
        * ensure that we're meeting our obligation for compute nodes
+       * @return the msgId for the message under which we will see replies
        */
-      protected void applyTarget() {
+      protected String applyTarget() {
          if (eventConsumer == null) {
-            return;
+            return null;
          }
 
          if (targetComputeNodeNum == UNSET) {
-            return;
+            return null;
          }
 
          /* TODO: decide whether we want to support a callback mechanism */
          _log.info(clusterId+": dispatching SerengetiLimitInstruction ("+targetComputeNodeNum+")");
-         eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(folder.name(), SerengetiLimitInstruction.actionSetTarget, targetComputeNodeNum, new RabbitConnectionCallback(packRouteKey(Integer.toString(msgId++), clusterId), Serengeti.this)));
+         String id = Integer.toString(msgId++);
+         eventConsumer.placeEventOnQueue(new SerengetiLimitInstruction(folder.name(), SerengetiLimitInstruction.actionSetTarget, targetComputeNodeNum, new RabbitConnectionCallback(packRouteKey(id, clusterId), Serengeti.this)));
+
+         return id;
       }
 
-      public void setTargetComputeNodeNum(int target) {
+      /**
+       * Sets the target compute node number for the cluster
+       * @param target the number of nodes we want
+       * @return the id of the interaction for retrieving responses, null if the command could not be dispatched
+       */
+      public String setTargetComputeNodeNum(int target) {
          if (targetComputeNodeNum != target) {
             targetComputeNodeNum = target;
-            applyTarget();
+            return applyTarget();
          }
+
+         return null;
       }
 
       public int numberComputeNodesInPowerState(boolean power) {
