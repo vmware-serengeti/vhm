@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm.hadoop;
 
+import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopConnectionProperties;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
@@ -10,8 +11,8 @@ public class ModelHadoopAdaptorThin extends HadoopAdaptor
 {
    VirtualCenter vCenter;
 
-   public ModelHadoopAdaptorThin(VirtualCenter vCenter) {
-      super(new SimpleHadoopCredentials("vHadoopUser", "vHadoopPwd", "vHadoopPrvkeyFile"), new JTConfigInfo("vHadoopHome", "vHadoopExcludeTTFile"));
+   public ModelHadoopAdaptorThin(VirtualCenter vCenter, ThreadLocalCompoundStatus tlcs) {
+      super(new SimpleHadoopCredentials("vHadoopUser", "vHadoopPwd", "vHadoopPrvkeyFile"), new JTConfigInfo("vHadoopHome", "vHadoopExcludeTTFile"), tlcs);
       this.vCenter = vCenter;
    }
 
