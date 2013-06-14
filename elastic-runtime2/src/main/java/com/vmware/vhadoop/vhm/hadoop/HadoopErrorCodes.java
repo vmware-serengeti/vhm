@@ -109,7 +109,7 @@ public class HadoopErrorCodes {
    }
 
    public CompoundStatus interpretErrorCode(Logger log, int code, Map<ParamTypes, String> paramValuesMap) {
-      CompoundStatus status = new CompoundStatus("interpretErrorCode");
+      CompoundStatus status = new CompoundStatus(HadoopAdaptor.STATUS_INTERPRET_ERROR_CODE);
       ErrorCode rc = _errorCodes.get(code);
       String[] paramValues = null;
       if (rc == null) {
@@ -130,7 +130,7 @@ public class HadoopErrorCodes {
          String formattedString = (paramValues == null) ?
                rc._logError : String.format(rc._logError, (Object[])paramValues);
          /* Currently all of these errors are considered non-fatal to subsequent operations */
-         status.registerTaskFailed(false, formattedString);
+         status.registerTaskFailed(false, formattedString, rc._code);
       }
       return status;
    }

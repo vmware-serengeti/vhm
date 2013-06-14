@@ -49,7 +49,7 @@ public interface ClusterMap {
 
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
 
-   Set<String> getDnsNameForVMs(Set<String> vmIds);
+   Map<String, String> getDnsNameForVMs(Set<String> vmIds);
 
    String getHostIdForVm(String vmId);
 

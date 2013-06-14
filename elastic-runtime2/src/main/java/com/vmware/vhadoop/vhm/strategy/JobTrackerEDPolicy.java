@@ -2,6 +2,7 @@ package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
@@ -23,7 +24,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
    @Override
    public void enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
-      Set<String> hostNames = null;
+      Map<String, String> hostNames = null;
       HadoopClusterInfo hadoopCluster = null;
 
       ClusterMap clusterMap = getAndReadLockClusterMap();
@@ -37,22 +38,20 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       if (hostNames != null) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
-         String[] hostNameArray = hostNames.toArray(new String[0]);
          if (_vcActions.changeVMPowerState(toEnable, true) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
          } else {
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-               status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+               status.addStatus(_hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster));
             }
          }
-
-         status.addStatus(_hadoopActions.recommissionTTs(hostNameArray, hadoopCluster));
+         status.addStatus(_hadoopActions.recommissionTTs(hostNames, hadoopCluster));
       }
    }
 
    @Override
    public void disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
-      Set<String> hostNames = null;
+      Map<String, String> hostNames = null;
       HadoopClusterInfo hadoopCluster = null;
 
       ClusterMap clusterMap = getAndReadLockClusterMap();
@@ -66,10 +65,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       if (hostNames != null) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
-         String[] hostNameArray = hostNames.toArray(new String[0]);
-         status.addStatus(_hadoopActions.decommissionTTs(hostNameArray, hadoopCluster));
+         status.addStatus(_hadoopActions.decommissionTTs(hostNames, hadoopCluster));
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
-            status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNameArray, totalTargetEnabled, hadoopCluster));
+            status.addStatus(_hadoopActions.checkTargetTTsSuccess("Decommission", hostNames, totalTargetEnabled, hadoopCluster));
          }
          if (_vcActions.changeVMPowerState(toDisable, false) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");

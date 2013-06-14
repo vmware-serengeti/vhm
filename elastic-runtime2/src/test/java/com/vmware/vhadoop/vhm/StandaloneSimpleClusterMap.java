@@ -203,7 +203,7 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	}
 
    @Override
-   public Set<String> getDnsNameForVMs(final Set<String> vms) {
+   public Map<String, String> getDnsNameForVMs(final Set<String> vms) {
       // TODO Auto-generated method stub
       return null;
    }

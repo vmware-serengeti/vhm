@@ -51,6 +51,7 @@ public class FaultInjectionSerengeti extends Serengeti {
       public String enable(String hostname) {
          if (!recommissionFailures.isEmpty()) {
             expectedMsg = recommissionFailures.poll();
+            _log.info(name()+": injecting enable failure with reason: "+expectedMsg);
             return expectedMsg;
          } else {
             return super.enable(hostname);
@@ -61,6 +62,7 @@ public class FaultInjectionSerengeti extends Serengeti {
       public String disable(String hostname) {
          if (!decommissionFailures.isEmpty()) {
             expectedMsg = decommissionFailures.poll();
+            _log.info(name()+": injecting disable failure with reason: "+expectedMsg);
             return expectedMsg;
          } else {
             return super.enable(hostname);
@@ -85,9 +87,11 @@ public class FaultInjectionSerengeti extends Serengeti {
                ", error_msg: "+msg.error_msg+
                ", progress_msg: "+msg.progress_msg);
 
-         synchronized(expectedResponse) {
-            expectedResponse.put(expectedMsg, msg.error_msg);
-            expectedResponse.notifyAll();
+         if (msg.finished) {
+            synchronized(expectedResponse) {
+               expectedResponse.put(expectedMsg, msg.error_msg);
+               expectedResponse.notifyAll();
+            }
          }
       }
 

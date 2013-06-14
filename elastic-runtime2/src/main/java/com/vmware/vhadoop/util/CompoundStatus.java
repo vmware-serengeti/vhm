@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
@@ -35,22 +37,24 @@ import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
  */
 public class CompoundStatus {
    
-   private Set<TaskStatus> _taskStatusList;     /* Ordered by timestamp for audit */
+   private List<TaskStatus> _taskStatusList;     /* Ordered by timestamp for audit */
    private String _name;
    
-   public static class TaskStatus implements Comparable<TaskStatus> {
+   public static class TaskStatus {
       public enum TaskState{SUCCEEDED, INCOMPLETE, FAILED};
       private String _compoundName;
       private final long _timeOccurred = System.currentTimeMillis();
       private TaskState _taskState;
       private boolean _isFatal;
       private String _message;
+      private Integer _errorCode;
       
-      public TaskStatus(TaskState state, boolean isFatal, String message, String compoundName) {
+      public TaskStatus(TaskState state, boolean isFatal, String message, String compoundName, Integer errorCode) {
          _taskState = state;
          _isFatal = isFatal;
          _message = message;
          _compoundName = compoundName;
+         _errorCode = errorCode;
       }
       
       public TaskState getTaskState() {
@@ -72,12 +76,11 @@ public class CompoundStatus {
       public String getCompoundName() {
          return _compoundName;
       }
-
-      @Override
-      public int compareTo(TaskStatus comparator) {
-         return (int)(comparator._timeOccurred - _timeOccurred);
-      }
       
+      public Integer getErrorCode() {
+         return _errorCode;
+      }
+
       @Override
       public String toString() {
          return _timeOccurred+": "+_compoundName+" -> "+_message;
@@ -86,7 +89,7 @@ public class CompoundStatus {
    
    /* Create a new compound status. The name is typically the class/method name that created the status */
    public CompoundStatus(String name) {
-      _taskStatusList = new TreeSet<TaskStatus>();
+      _taskStatusList = new ArrayList<TaskStatus>();
       _name = name;
    }
    
@@ -97,17 +100,25 @@ public class CompoundStatus {
    
    /* If a task succeeds, provide a record of this */
    public void registerTaskSucceeded() {
-      _taskStatusList.add(new TaskStatus(TaskState.SUCCEEDED, false, null, _name));
+      _taskStatusList.add(new TaskStatus(TaskState.SUCCEEDED, false, null, _name, null));
+   }
+
+   public void registerTaskFailed(boolean isFatal, String errorMsg) {
+      registerTaskFailed(isFatal, errorMsg, null);
    }
    
    /* If a task fails, record the failure. It could be fatal or not */
-   public void registerTaskFailed(boolean isFatal, String errorMsg) {
-      _taskStatusList.add(new TaskStatus(TaskState.FAILED, false, errorMsg, _name));
+   public void registerTaskFailed(boolean isFatal, String errorMsg, Integer errorCode) {
+      _taskStatusList.add(new TaskStatus(TaskState.FAILED, false, errorMsg, _name, errorCode));
+   }
+
+   public void registerTaskIncomplete(boolean isFatal, String errorMsg) {
+      registerTaskIncomplete(isFatal, errorMsg, null);
    }
    
    /* If a task doesn't complete, this could be indication for a retry */
-   public void registerTaskIncomplete(boolean isFatal, String errorMsg) {
-      _taskStatusList.add(new TaskStatus(TaskState.INCOMPLETE, false, errorMsg, _name));
+   public void registerTaskIncomplete(boolean isFatal, String errorMsg, Integer errorCode) {
+      _taskStatusList.add(new TaskStatus(TaskState.INCOMPLETE, false, errorMsg, _name, errorCode));
    }
    
    public int getTotalTaskCount() {
@@ -143,13 +154,29 @@ public class CompoundStatus {
    }
 
    public TaskStatus getFirstFailure() {
+      TaskStatus result = null;
       for (TaskStatus taskStatus : _taskStatusList) {
          if (!taskStatus._taskState.equals(TaskState.SUCCEEDED)
                && (taskStatus._message != null)) {
-            return taskStatus;
+            if ((result == null) || result._timeOccurred > taskStatus._timeOccurred) {
+               result = taskStatus;
+            }
          }
       }
-      return null;
+      return result;
+   }
+
+   public TaskStatus getFirstFailure(String failedCompoundName) {
+      TaskStatus result = null;
+      for (TaskStatus taskStatus : _taskStatusList) {
+         if (taskStatus._compoundName.equals(failedCompoundName) &&
+               !taskStatus._taskState.equals(TaskState.SUCCEEDED)) {
+            if ((result == null) || result._timeOccurred > taskStatus._timeOccurred) {
+               result = taskStatus;
+            }
+         }
+      }
+      return result;
    }
 
    /* true == no failure found */
