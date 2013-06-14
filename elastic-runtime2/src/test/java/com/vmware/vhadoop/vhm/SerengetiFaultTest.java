@@ -4,12 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Map;
-
 import org.junit.Test;
 
 import com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes;
 import com.vmware.vhadoop.vhm.model.scenarios.FaultInjectionSerengeti.Master;
+import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase {
    /**
@@ -31,16 +30,16 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
 
       /* queue faults */
-      /* queue faults */
       Integer fault = HadoopErrorCodes.UNKNOWN_ERROR;
       cluster.queueRecommissionFailure(fault);
-      /* elicit faults */
-      cluster.setTargetComputeNodeNum(2);
-      Map<Integer,String> results = cluster.getResponses(timeout());
 
-      String response = results.get(fault);
-      assertNotNull("Expected detail message in response to recommission failure", response);
-      assertTrue("Expected recommission error message to start with injected fault string", response.startsWith("Unknown exit status during recommission"));
+      /* elicit faults */
+      String id = cluster.setTargetComputeNodeNum(2);
+      assertMessageResponse("waiting for report of injected failure ", cluster, id);
+
+      VHMJsonReturnMessage response = cluster.waitForResponse(id, 0);
+      assertNotNull("Expected detail message in response to recommission failure", response.error_msg);
+      assertTrue("Expected recommission error message to start with known error description", response.error_msg.startsWith("Unknown exit status during recommission"));
 
       assertVMsInPowerState("expected VMs to power on regardless", cluster, 2, true);
       assertEquals("expected one compute node to be enabled", 1, cluster.numberComputeNodesInState(true));
@@ -71,14 +70,14 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       Integer fault = HadoopErrorCodes.UNKNOWN_ERROR;
       cluster.queueDecommissionFailure(fault);
 
-      cluster.setTargetComputeNodeNum(0);
 
       /* elicit faults */
-      Map<Integer,String> results = cluster.getResponses(timeout());
+      String id = cluster.setTargetComputeNodeNum(0);
+      assertMessageResponse("waiting for report of injected failure ", cluster, id);
 
-      String response = results.get(fault);
-      assertNotNull("Expected detail message in response to decommission failure", response);
-      assertTrue("Expected decommission error message to start with injected fault string", response.startsWith("Unknown exit status during decommission"));
+      VHMJsonReturnMessage response = cluster.waitForResponse(id, 0);
+      assertNotNull("Expected detail message in response to decommission failure", response.error_msg);
+      assertTrue("Expected decommission error message to start with known error description", response.error_msg.startsWith("Unknown exit status during decommission"));
 
       assertVMsInPowerState("expected VMs to power off regardless", cluster, 0, true);
       assertEquals("expected one compute node to still be enabled", 1, cluster.numberComputeNodesInState(true));
@@ -110,18 +109,53 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
             cluster.queueRecommissionFailure(fault);
          }
 
-         cluster.setTargetComputeNodeNum(i);
+         String id = cluster.setTargetComputeNodeNum(i);
+         assertMessageResponse("waiting for report of injected failure ", cluster, id);
+
+         VHMJsonReturnMessage response = cluster.waitForResponse(id, 0);
+         if (inject) {
+            assertNotNull("Expected detail message in response to decommission failure", response.error_msg);
+            assertTrue("Expected decommission error message to start with known error description", response.error_msg.startsWith("Unknown exit status during recommission"));
+         }
 
          assertVMsInPowerState("expected VMs to power on regardless", cluster, i, true);
          assertEquals("expected compute node to fail enabling", i/2, cluster.numberComputeNodesInState(true));
       }
+   }
 
-      /* check faults */
-      Map<Integer,String> results = cluster.getResponses(timeout());
-      for (Integer errCode : results.keySet()) {
-         String response = results.get(errCode);
-         assertNotNull("Expected detail message in response to failure", response);
-         assertTrue("Expected error message to start with injected fault string", response.startsWith("Unknown exit status during recommission"));
-      }
+   /**
+    * Tests diagnostic messages with unknown errors
+    */
+   @Test
+   public void testUnknownError() {
+      final int numberOfHosts = 1;
+      final int computeNodesPerHost = 1;
+      String clusterName = "faultInjectionUnknownError";
+
+      int UNRECOGNIZED_ERROR = -41;
+
+      /* general test setup */
+      setup(numberOfHosts);
+
+      /* create a cluster to work with */
+      Master cluster = createCluster(clusterName, computeNodesPerHost);
+
+      /* set the general timeout for the faults */
+      setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
+
+      /* queue faults */
+      Integer fault = UNRECOGNIZED_ERROR;
+      cluster.queueRecommissionFailure(fault);
+
+      /* elicit faults */
+      String id = cluster.setTargetComputeNodeNum(1);
+      assertMessageResponse("waiting for report of injected failure ", cluster, id);
+
+      VHMJsonReturnMessage response = cluster.waitForResponse(id, 0);
+      assertNotNull("Expected detail message in response to decommission failure", response.error_msg);
+      assertTrue("Expected decommission error message to start with known error description", response.error_msg.startsWith("Unknown exit status during recommission"));
+
+      assertVMsInPowerState("expected VMs to power on regardless", cluster, 2, true);
+      assertEquals("expected one compute node to be enabled", 1, cluster.numberComputeNodesInState(true));
    }
 }

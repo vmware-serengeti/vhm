@@ -23,6 +23,7 @@ import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.Host;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
+import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 
 abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Master> extends AbstractClusterMapReader implements EventProducer {
@@ -427,5 +428,35 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
    public void assertScaleStrategySet(String msg, String clusterId) {
       assertScaleStrategySet(msg, clusterId, timeout());
+   }
+
+
+   /**
+    * This waits for the specified message to be delivered to the cluster master via the rabbit queue.
+    * If asserts on message internals need to be done then the message should be extracted after this
+    * returns via Master.waitForResponse. This will wait for completion messages.
+    *
+    * @param msg a descriptive message of what we're waiting for
+    * @param cluster the cluster we're operating on
+    * @param id the interaction id we want a reply for
+    * @param timeout
+    */
+   public void assertMessageResponse(String msg, Master cluster, String id, long timeout) {
+      long deadline = System.currentTimeMillis() + timeout;
+
+      _log.info(msg+" - waiting for completion response from "+cluster.getClusterId()+" with id "+id+", timeout "+(timeout/1000));
+      VHMJsonReturnMessage response;
+      do {
+         response = cluster.waitForResponse(id, timeout);
+      } while ((response == null || !response.finished) && System.currentTimeMillis() < deadline);
+
+      assertNotNull(msg+" - expected response from "+cluster.getClusterId()+" with id "+id, response);
+      assertEquals(msg+" - expected 100% complete response from "+cluster.getClusterId()+" with id "+id, 100, response.progress);
+
+      _log.info(msg+" - received completion response from "+cluster.getClusterId()+" for id "+id+", status: "+(response.succeed ? "successful" : "failed"));
+   }
+
+   public void assertMessageResponse(String msg, Master cluster, String id) {
+      assertMessageResponse(msg, cluster, id, timeout());
    }
 }
