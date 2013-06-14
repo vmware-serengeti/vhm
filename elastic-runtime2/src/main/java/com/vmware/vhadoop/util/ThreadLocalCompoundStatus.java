@@ -17,17 +17,19 @@ public class ThreadLocalCompoundStatus extends ThreadLocal<CompoundStatus> {
    }
 
    ThreadLocal<InitializedState> _initializedState = new ThreadLocal<InitializedState>() {
-      @Override
-      public InitializedState get() {
+      @Override 
+      protected InitializedState initialValue() {
          return new InitializedState();
-      }
+      };
+      
    };
 
    /* Ensures that only a single caller can initialize the ThreadLocal which is the same caller that removes it
     * This means that any code can call get() and if it's running in a thread that hasn't initialized a CompoundStatus
     *   the code gets a dummy CompoundStatus to avoid a NPE, but a memory leak cannot occur */
    public CompoundStatus initialize() {
-      _initializedState.get()._initialized = true;
+      InitializedState threadLocalIS = _initializedState.get();
+      threadLocalIS._initialized = true;
       return super.get();     /* Returns the result of initialValue() and then that same object, until remove() is called */
    }
 
@@ -41,9 +43,10 @@ public class ThreadLocalCompoundStatus extends ThreadLocal<CompoundStatus> {
    public CompoundStatus get() {
       /* If this thread has not explicitly initialized its TLCS, it should not be allowed to create a ThreadLocal
        * Instead it gets a useless dummy */
-      if (_initializedState.get()._initialized == false) {
+      InitializedState threadLocalIS = _initializedState.get();
+      if (threadLocalIS._initialized == false) {
          _initializedState.remove();
-         return new CompoundStatus("DUMMY_STATUS");
+         return new CompoundStatus("UNINITIALIZED DUMMY");
       }
       return super.get();
    }

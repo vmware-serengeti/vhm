@@ -567,13 +567,13 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   public Set<String> getDnsNameForVMs(Set<String> vmIds) {
+   public Map<String, String> getDnsNameForVMs(Set<String> vmIds) {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
-         Set<String> results = new HashSet<String>();
+         Map<String, String> results = new HashMap<String, String>();
          for (String vm : vmIds) {
             VMInfo vminfo = _vms.get(vm);
             if (vminfo != null) {
-               results.add(vminfo._variableData._dnsName);
+               results.put(vm, vminfo._variableData._dnsName);
             }
          }
          if (results.size() > 0) {
