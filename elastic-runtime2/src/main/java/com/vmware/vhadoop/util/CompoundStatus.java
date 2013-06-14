@@ -17,8 +17,6 @@ package com.vmware.vhadoop.util;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus.TaskState;
 
 /**
@@ -154,22 +152,13 @@ public class CompoundStatus {
    }
 
    public TaskStatus getFirstFailure() {
-      TaskStatus result = null;
-      for (TaskStatus taskStatus : _taskStatusList) {
-         if (!taskStatus._taskState.equals(TaskState.SUCCEEDED)
-               && (taskStatus._message != null)) {
-            if ((result == null) || result._timeOccurred > taskStatus._timeOccurred) {
-               result = taskStatus;
-            }
-         }
-      }
-      return result;
+      return getFirstFailure(null);
    }
 
    public TaskStatus getFirstFailure(String failedCompoundName) {
       TaskStatus result = null;
       for (TaskStatus taskStatus : _taskStatusList) {
-         if (taskStatus._compoundName.equals(failedCompoundName) &&
+         if (((failedCompoundName == null) || taskStatus._compoundName.equals(failedCompoundName)) &&
                !taskStatus._taskState.equals(TaskState.SUCCEEDED)) {
             if ((result == null) || result._timeOccurred > taskStatus._timeOccurred) {
                result = taskStatus;
@@ -184,8 +173,7 @@ public class CompoundStatus {
       for (TaskStatus taskStatus : _taskStatusList) {
          for (String failureName : failedCompoundNames) {
             if (taskStatus._compoundName.equals(failureName) && 
-                  !taskStatus._taskState.equals(TaskState.SUCCEEDED) &&
-                  (taskStatus._message != null)) {
+                  !taskStatus._taskState.equals(TaskState.SUCCEEDED)) {
                return false;
             }
          }
