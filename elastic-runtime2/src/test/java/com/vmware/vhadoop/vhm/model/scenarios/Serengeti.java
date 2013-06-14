@@ -244,7 +244,7 @@ public class Serengeti extends Folder
 
 
    /***************** Master Node start *****************************************************/
-   class MasterTemplate implements OVA<Master> {
+   protected class MasterTemplate implements OVA<Master> {
       @Override
       public Master create(VirtualCenter vCenter, String id, Allocation capacity) {
          Master master = new Master(vCenter, id, capacity);
@@ -285,7 +285,7 @@ public class Serengeti extends Folder
       /* TODO: serengeti master should run a Hadoop job which virtualizes the compute VMs available and asks for resource based
        * on both running and queued jobs. HadoopJobs should be run by that Hadoop job on any powered on compute nodes.
        */
-      Master(VirtualCenter vCenter, String cluster, Allocation capacity) {
+      protected Master(VirtualCenter vCenter, String cluster, Allocation capacity) {
          super(vCenter, cluster+"-master", capacity);
          clusterName = cluster;
          clusterId = getId();
@@ -438,7 +438,9 @@ public class Serengeti extends Folder
             folder.add(compute);
             computePool.add(compute);
             /* mark it as disabled to hadoop */
-            disabled.put(compute.getId(), compute);
+            synchronized(this) {
+               disabled.put(compute.getId(), compute);
+            }
             /* add this to the vApp so that we've a solid accounting for everything */
             Serengeti.this.add(compute);
          }
@@ -460,7 +462,7 @@ public class Serengeti extends Folder
        * @param hostname
        * @return null on success, error detail otherwise
        */
-      public String enable(String hostname) {
+      public synchronized String enable(String hostname) {
          String id = getComputeIdFromHostname(hostname);
          if (id == null) {
             return "unknown hostname for task tracker";
@@ -492,7 +494,7 @@ public class Serengeti extends Folder
        * @param hostname
        * @return null on success, error detail otherwise
        */
-      public String disable(String hostname) {
+      public synchronized String disable(String hostname) {
          String id = getComputeIdFromHostname(hostname);
          if (id == null) {
             return "unknown hostname for task tracker";
