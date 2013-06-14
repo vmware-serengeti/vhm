@@ -363,7 +363,7 @@ public class HadoopAdaptor implements HadoopActions {
          getActiveStatus = new CompoundStatus(STATUS_GET_ACTIVE_TTS);
     	   String[] allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
     	  
-         if (checkOpSuccess(opType, dnsNameArray, allActiveTTs)) {
+         if (getActiveStatus.getFirstFailure() == null) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
         	   break;
          }
@@ -425,22 +425,5 @@ public class HadoopAdaptor implements HadoopActions {
          }
       }
       return result;
-   }
-
-   private boolean checkOpSuccess(String opType, String[] affectedTTs, String[] allActiveTTs) {
-
-	  Set<String> setTTs = new TreeSet<String>(Arrays.asList(allActiveTTs));
-
-	   for (String tt : affectedTTs) {
-	      if (tt != null) {
-   		   if (setTTs.contains(tt) && opType.equals("Decommission")) {
-   			   return false;
-   		   } else if (!setTTs.contains(tt) && opType.equals("Recommission")) {
-   			   return false;
-   		   }
-	      }
-	   }
-
-	   return true;
    }
 }
