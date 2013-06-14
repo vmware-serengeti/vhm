@@ -1,6 +1,9 @@
 package com.vmware.vhadoop.vhm.hadoop;
 
 import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.util.CompoundStatus;
@@ -18,18 +21,18 @@ public class ModelHadoopAdapter implements HadoopActions
    }
 
    @Override
-   public CompoundStatus decommissionTTs(String[] taskTrackerHostnames, HadoopClusterInfo cluster) {
-      return manageNodes(taskTrackerHostnames, cluster, false);
+   public CompoundStatus decommissionTTs(Map<String,String> vmToHostname, HadoopClusterInfo cluster) {
+      return manageNodes(vmToHostname.values(), cluster, false);
    }
 
    @Override
-   public CompoundStatus recommissionTTs(String[] taskTrackerHostnames, HadoopClusterInfo cluster) {
-      return manageNodes(taskTrackerHostnames, cluster, true);
+   public CompoundStatus recommissionTTs(Map<String,String> vmToHostname, HadoopClusterInfo cluster) {
+      return manageNodes(vmToHostname.values(), cluster, true);
    }
 
-   CompoundStatus manageNodes(String[] computeNodeHostnames, HadoopClusterInfo cluster, boolean enable) {
+   CompoundStatus manageNodes(Collection<String> computeNodeHostnames, HadoopClusterInfo cluster, boolean enable) {
       String action = (enable ? "Enable" : "Disable");
-      CompoundStatus status = new CompoundStatus("model"+action);
+      CompoundStatus status = new CompoundStatus(HadoopAdaptor.STATUS_INTERPRET_ERROR_CODE);
 
       /* get the cluster Master from vCenter */
 
@@ -59,13 +62,25 @@ public class ModelHadoopAdapter implements HadoopActions
    }
 
    @Override
-   public CompoundStatus checkTargetTTsSuccess(String opType, String[] tts, int totalTargetEnabled, HadoopClusterInfo cluster) {
-      CompoundStatus status = new CompoundStatus("Check enabled task trackers");
+   public CompoundStatus checkTargetTTsSuccess(String opType, Map<String,String> vmToHostname, int totalTargetEnabled, HadoopClusterInfo cluster) {
+      CompoundStatus status = new CompoundStatus(HadoopAdaptor.STATUS_GET_ACTIVE_TTS);
       Master master = getJobTracker(cluster, status);
 
       int enabled = master.numberComputeNodesInState(true);
       if (enabled != totalTargetEnabled) {
-         status.registerTaskFailed(true, "Target was "+totalTargetEnabled+", number enabled "+enabled);
+         Set<String> failed = new TreeSet<String>(vmToHostname.keySet());
+         Collection<Compute> nodes;
+
+         /* if enabled < target then we're likley recommissioning, so check the enabled set, and visa versa */
+         nodes = master.getComputeNodesInState(enabled < totalTargetEnabled);
+         for (Compute node : nodes) {
+            String vmid = node.name();
+            if (vmToHostname.containsKey(vmid)) {
+               failed.remove(vmid);
+            }
+         }
+
+         status.registerTaskFailed(true, failed.toString());
       } else {
          status.registerTaskSucceeded();
       }

@@ -1,6 +1,7 @@
 package com.vmware.vhadoop.vhm;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Map;
 
@@ -24,15 +25,6 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
 
-      /* set the general timeout for the test as a whole */
-//      setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
-//
-//      /* make sure we're all functioning without faults */
-//      cluster.setTargetComputeNodeNum(cluster.availableComputeNodes());
-//      assertVMsInPowerState("power on all VMs", cluster, cluster.availableComputeNodes(), true);
-//      cluster.setTargetComputeNodeNum(0);
-//      assertVMsInPowerState("power off all VMs", cluster, cluster.availableComputeNodes(), false);
-
       /* set the general timeout for the faults */
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
 
@@ -43,6 +35,8 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       cluster.setTargetComputeNodeNum(1);
       Map<String,String> results = cluster.getResponses(timeout());
 
-      assertEquals("Expected recommission error message to match injected fault", fault, results.get(fault));
+      String response = results.get(fault);
+      assertNotNull("Expected detail message in response to recommission failure", response);
+      assertTrue("Expected recommission error message to start with injected fault string", response.startsWith(fault));
    }
 }
