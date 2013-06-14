@@ -117,20 +117,24 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             if (tlStatus.getFailedTaskCount() == 0) {
                limitEvent.reportCompletion();
             } else {
-               TaskStatus firstError = tlStatus.getFirstFailure();
-               if (firstError.getCompoundName().equals(HadoopAdaptor.STATUS_GET_ACTIVE_TTS)) {
-                  String[] failedTTs = getFailedTTsFromErrorMsg(firstError.getMessage());
+               TaskStatus activeTTsError = tlStatus.getFirstFailure(HadoopAdaptor.STATUS_GET_ACTIVE_TTS);
+               if (activeTTsError != null) {
+                  String[] failedTTs = getFailedTTsFromErrorMsg(activeTTsError.getMessage());
                   if (failedTTs != null) {
                      for (String failedTT : failedTTs) {
                         _log.warning("VM <%V"+failedTT+"%V> did not successfully respond in a reasonable time");
                      }
                   }
-               } else if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY, 
+               }
+               TaskStatus firstGeneralError = tlStatus.getFirstFailure();
+               if (firstGeneralError != null) {
+                  if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY, 
                      VCActions.VC_POWER_OFF_STATUS_KEY, 
                      ClusterMapReader.POWER_STATE_CHANGE_STATUS_KEY})) {
-                  limitEvent.reportError(firstError.getMessage() + " however, powering on/off VMs succeeded;");
-               } else {
-                  limitEvent.reportError(firstError.getMessage());
+                     limitEvent.reportError(firstGeneralError.getMessage() + " however, powering on/off VMs succeeded;");
+                  } else {
+                     limitEvent.reportError(firstGeneralError.getMessage());
+                  }
                }
             }
          } else {
