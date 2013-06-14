@@ -46,8 +46,8 @@ public class ModelController extends BootstrapMain {
    }
 
    @Override
-   HadoopActions getHadoopInterface() {
-      return new ModelHadoopAdaptorThin(vApp.getVCenter());
+   HadoopActions getHadoopInterface(ThreadLocalCompoundStatus tlcs) {
+      return new ModelHadoopAdaptorThin(vApp.getVCenter(), tlcs);
    }
 
    @Override

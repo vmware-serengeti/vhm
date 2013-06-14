@@ -88,12 +88,15 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                }
             } finally {
                unlockClusterMap(clusterMap);
-            } 
+            }
+            Set<String> uninitializedVmIds = null;
             if (delta > 0) {
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
-                  _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
+                  Set<String> enabledTTs = _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
+                  _log.fine("Enabled TTs: "+enabledTTs);
+                  uninitializedVmIds = diffIds(vmsToED, enabledTTs);
                   limitEvent.reportProgress(30, null);
                   returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
                   if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
@@ -105,7 +108,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
-                  _enableDisablePolicy.disableTTs(vmsToED, targetSize, clusterId);
+                  Set<String> disabledTTs = _enableDisablePolicy.disableTTs(vmsToED, targetSize, clusterId);
+                  _log.fine("Disabled TTs: "+disabledTTs);
+                  uninitializedVmIds = diffIds(vmsToED, disabledTTs);
                   limitEvent.reportProgress(30, null);
                   returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
                   if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
@@ -117,13 +122,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             if (tlStatus.getFailedTaskCount() == 0) {
                limitEvent.reportCompletion();
             } else {
-               TaskStatus activeTTsError = tlStatus.getFirstFailure(HadoopAdaptor.STATUS_GET_ACTIVE_TTS);
-               if (activeTTsError != null) {
-                  String[] failedTTs = getFailedTTsFromErrorMsg(activeTTsError.getMessage());
-                  if (failedTTs != null) {
-                     for (String failedTT : failedTTs) {
-                        _log.warning("VM <%V"+failedTT+"%V> did not successfully respond in a reasonable time");
-                     }
+               if (uninitializedVmIds != null) {
+                  for (String uninitializedVmId : uninitializedVmIds) {
+                     _log.warning("VM <%V"+uninitializedVmId+"%V> did not successfully respond in a reasonable time");
                   }
                }
                TaskStatus firstGeneralError = tlStatus.getFirstFailure();
@@ -143,12 +144,13 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
          return returnEvent;
       }
 
-      private String[] getFailedTTsFromErrorMsg(String failedTTList) {
-         String withoutBrackets = failedTTList.substring(1, failedTTList.length()-1);
-         if (withoutBrackets.length() > 0) {
-            return withoutBrackets.split(", ");
+      private Set<String> diffIds(Set<String> vmIdsInstructed, Set<String> vmIdsInitialized) {
+         Set<String> result = new HashSet<String>(vmIdsInstructed);
+         result.removeAll(vmIdsInitialized);
+         if (result.size() == 0) {
+            return null;
          }
-         return null;
+         return result;
       }
 
    }

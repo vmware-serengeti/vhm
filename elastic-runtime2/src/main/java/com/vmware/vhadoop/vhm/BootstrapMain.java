@@ -203,16 +203,19 @@ public class BootstrapMain
       return _vcActions;
    }
 
-
    MQClient getRabbitInterface() {
       return new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"), _properties.getProperty("exchangeName"),
             _properties.getProperty("routeKeyCommand"), _properties.getProperty("routeKeyStatus")));
    }
 
-   HadoopActions getHadoopInterface() {
+   HadoopActions getHadoopInterface(ThreadLocalCompoundStatus tlcs) {
       if (_hadoopActions == null) {
-         _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"), _properties.getProperty("vHadoopPwd"),
-               _properties.getProperty("vHadoopPrvkeyFile")), new JTConfigInfo(_properties.getProperty("vHadoopHome"), _properties.getProperty("vHadoopExcludeTTFile")));
+         _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"), 
+                                                                        _properties.getProperty("vHadoopPwd"),
+                                                                        _properties.getProperty("vHadoopPrvkeyFile")), 
+                                            new JTConfigInfo(_properties.getProperty("vHadoopHome"), 
+                                                             _properties.getProperty("vHadoopExcludeTTFile")), 
+                                            tlcs);
       }
       return _hadoopActions;
    }
@@ -222,7 +225,7 @@ public class BootstrapMain
    }
 
    ScaleStrategy[] getScaleStrategies(final ThreadLocalCompoundStatus tlcs) {
-      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(), getVCInterface(tlcs)));
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(tlcs), getVCInterface(tlcs)));
       return new ScaleStrategy[] { manualScaleStrategy };
    }
 
