@@ -52,13 +52,21 @@ public class ModelClusterMap implements ClusterMap
       vms.add(new VM("vm7", "clusterB", "hostX", ON));
       vms.add(new VM("vm8", "clusterB", "hostY", OFF));
 	}
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> e9ffa2b... Restoring ModelClusterMap from master - Ben's compound status patch
 	public ModelClusterMap(boolean prepopulate) {
 	   if (prepopulate) {
 	      populateTestData();
 	   }
 	}
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> e9ffa2b... Restoring ModelClusterMap from master - Ben's compound status patch
 	public List<VM> getMapContents() {
 	   return vms;
 	}
@@ -191,7 +199,11 @@ public class ModelClusterMap implements ClusterMap
 	}
 
    @Override
+<<<<<<< HEAD
    public Map<String, String> getDnsNameForVMs(final Set<String> vms) {
+=======
+   public Set<String> getDnsNameForVMs(final Set<String> vms) {
+>>>>>>> e9ffa2b... Restoring ModelClusterMap from master - Ben's compound status patch
       // TODO Auto-generated method stub
       return null;
    }
