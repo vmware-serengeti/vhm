@@ -46,8 +46,6 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                activeVmIds = _hadoopActions.checkTargetTTsSuccess("Recommission", hostNames, totalTargetEnabled, hadoopCluster);
             }
          }
-
-         status.addStatus(_hadoopActions.recommissionTTs(hostNameArray, hadoopCluster));
       }
       return activeVmIds;
    }

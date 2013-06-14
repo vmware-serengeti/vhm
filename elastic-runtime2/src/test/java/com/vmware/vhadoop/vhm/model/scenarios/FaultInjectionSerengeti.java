@@ -38,8 +38,7 @@ public class FaultInjectionSerengeti extends Serengeti {
    public class Master extends Serengeti.Master {
       Queue<String> recommissionFailures = new LinkedList<String>();
       Queue<String> decommissionFailures = new LinkedList<String>();
-
-      String expectedMsg = "";
+      Queue<String> expectedFailureMessages = new LinkedList<String>();
 
       Map<String,String> expectedResponse = new HashMap<String,String>();
 
@@ -48,10 +47,11 @@ public class FaultInjectionSerengeti extends Serengeti {
       }
 
       @Override
-      public String enable(String hostname) {
+      public synchronized String enable(String hostname) {
          if (!recommissionFailures.isEmpty()) {
-            expectedMsg = recommissionFailures.poll();
+            String expectedMsg = recommissionFailures.poll();
             _log.info(name()+": injecting enable failure with reason: "+expectedMsg);
+            expectedFailureMessages.add(expectedMsg);
             return expectedMsg;
          } else {
             return super.enable(hostname);
@@ -59,26 +59,27 @@ public class FaultInjectionSerengeti extends Serengeti {
       }
 
       @Override
-      public String disable(String hostname) {
+      public synchronized String disable(String hostname) {
          if (!decommissionFailures.isEmpty()) {
-            expectedMsg = decommissionFailures.poll();
+            String expectedMsg = decommissionFailures.poll();
             _log.info(name()+": injecting disable failure with reason: "+expectedMsg);
+            expectedFailureMessages.add(expectedMsg);
             return expectedMsg;
          } else {
-            return super.enable(hostname);
+            return super.disable(hostname);
          }
       }
 
-      public void queueRecommissionFailure(String errorMessage) {
+      public synchronized void queueRecommissionFailure(String errorMessage) {
          recommissionFailures.add(errorMessage);
       }
 
-      public void queueDecommissionFailure(String errorMessage) {
+      public synchronized void queueDecommissionFailure(String errorMessage) {
          decommissionFailures.add(errorMessage);
       }
 
       @Override
-      public void deliverMessage(String msgId, VHMJsonReturnMessage msg) {
+      public synchronized void deliverMessage(String msgId, VHMJsonReturnMessage msg) {
          _log.info(name()+": received message, id: "+msgId+
                ", finished: "+msg.finished+
                ", succeeded: "+msg.succeed+
@@ -87,9 +88,9 @@ public class FaultInjectionSerengeti extends Serengeti {
                ", error_msg: "+msg.error_msg+
                ", progress_msg: "+msg.progress_msg);
 
-         if (msg.finished) {
+         if (msg.finished && !msg.succeed && !expectedFailureMessages.isEmpty()) {
             synchronized(expectedResponse) {
-               expectedResponse.put(expectedMsg, msg.error_msg);
+               expectedResponse.put(expectedFailureMessages.poll(), msg.error_msg);
                expectedResponse.notifyAll();
             }
          }
