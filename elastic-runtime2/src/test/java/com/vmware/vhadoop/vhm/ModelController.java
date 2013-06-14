@@ -5,7 +5,7 @@ import java.util.logging.Logger;
 import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
-import com.vmware.vhadoop.vhm.hadoop.ModelHadoopAdapter;
+import com.vmware.vhadoop.vhm.hadoop.ModelHadoopAdaptorThin;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.rabbit.ModelRabbitAdaptor;
 import com.vmware.vhadoop.vhm.vc.ModelVcAdapter;
@@ -47,7 +47,7 @@ public class ModelController extends BootstrapMain {
 
    @Override
    HadoopActions getHadoopInterface() {
-      return new ModelHadoopAdapter(vApp.getVCenter());
+      return new ModelHadoopAdaptorThin(vApp.getVCenter());
    }
 
    @Override

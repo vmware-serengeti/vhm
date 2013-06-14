@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes;
 import com.vmware.vhadoop.vhm.model.scenarios.FaultInjectionSerengeti.Master;
 
 public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase {
@@ -30,15 +31,16 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
 
       /* queue faults */
-      String fault = "Injected error, failure to enable compute node";
+      /* queue faults */
+      Integer fault = HadoopErrorCodes.UNKNOWN_ERROR;
       cluster.queueRecommissionFailure(fault);
       /* elicit faults */
       cluster.setTargetComputeNodeNum(2);
-      Map<String,String> results = cluster.getResponses(timeout());
+      Map<Integer,String> results = cluster.getResponses(timeout());
 
       String response = results.get(fault);
       assertNotNull("Expected detail message in response to recommission failure", response);
-      assertTrue("Expected recommission error message to start with injected fault string", response.startsWith(fault));
+      assertTrue("Expected recommission error message to start with injected fault string", response.startsWith("Unknown exit status during recommission"));
 
       assertVMsInPowerState("expected VMs to power on regardless", cluster, 2, true);
       assertEquals("expected one compute node to be enabled", 1, cluster.numberComputeNodesInState(true));
@@ -66,17 +68,17 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       assertVMsInPowerState("expected VMs to power on regardless", cluster, 2, true);
 
       /* queue faults */
-      String fault = "Injected error, failed to disable compute node";
+      Integer fault = HadoopErrorCodes.UNKNOWN_ERROR;
       cluster.queueDecommissionFailure(fault);
 
       cluster.setTargetComputeNodeNum(0);
 
       /* elicit faults */
-      Map<String,String> results = cluster.getResponses(timeout());
+      Map<Integer,String> results = cluster.getResponses(timeout());
 
       String response = results.get(fault);
       assertNotNull("Expected detail message in response to decommission failure", response);
-      assertTrue("Expected decommission error message to start with injected fault string", response.startsWith(fault));
+      assertTrue("Expected decommission error message to start with injected fault string", response.startsWith("Unknown exit status during decommission"));
 
       assertVMsInPowerState("expected VMs to power off regardless", cluster, 0, true);
       assertEquals("expected one compute node to still be enabled", 1, cluster.numberComputeNodesInState(true));
@@ -104,7 +106,7 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
          boolean inject = i % 2 != 0;
          if (inject) {
             /* queue faults */
-            String fault = "Injected error "+i+", failed to enable compute node";
+            Integer fault = HadoopErrorCodes.UNKNOWN_ERROR;
             cluster.queueRecommissionFailure(fault);
          }
 
@@ -115,11 +117,11 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       }
 
       /* check faults */
-      Map<String,String> results = cluster.getResponses(timeout());
-      for (String injected : results.keySet()) {
-         String response = results.get(injected);
+      Map<Integer,String> results = cluster.getResponses(timeout());
+      for (Integer errCode : results.keySet()) {
+         String response = results.get(errCode);
          assertNotNull("Expected detail message in response to failure", response);
-         assertTrue("Expected error message to start with injected fault string", response.startsWith(injected));
+         assertTrue("Expected error message to start with injected fault string", response.startsWith("Unknown exit status during recommission"));
       }
    }
 }

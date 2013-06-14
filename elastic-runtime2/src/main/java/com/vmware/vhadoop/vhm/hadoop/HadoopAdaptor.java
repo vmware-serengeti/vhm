@@ -19,7 +19,6 @@ import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_CATCHALL;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_FOUND;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
-import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.SUCCESS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -76,7 +75,7 @@ public class HadoopAdaptor implements HadoopActions {
    /* TODO: Option to change the default values? */
    public static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
    public static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
-   
+
    public static final String STATUS_GET_ACTIVE_TTS = "getActiveTTs";
    public static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
@@ -125,7 +124,7 @@ public class HadoopAdaptor implements HadoopActions {
       HadoopConnection result = _connections.get(cluster.getClusterId());
       if (result == null) {
          /* TODO: SshUtils could be a single shared thread-safe object or non threadsafe object per connection */
-         result = new HadoopConnection(cluster, _connectionProperties, new NonThreadSafeSshUtils());
+         result = getHadoopConnection(cluster, _connectionProperties);
          result.setHadoopCredentials(_credentials);
          result.setHadoopExcludeTTPath(_jtConfig.getExcludeTTPath());
          result.setHadoopHomePath(_jtConfig.getHadoopHomePath());
@@ -293,11 +292,11 @@ public class HadoopAdaptor implements HadoopActions {
       for (int i = 0; i < formattedList.length; i++) {
          formattedList[i] = unformattedList[i].trim();
       }
-      
+
       status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return formattedList;
    }
-   
+
 //   @Override
 //   public CompoundStatus checkTargetTTsSuccess(String opType, String[] affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
 //      CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
@@ -337,7 +336,7 @@ public class HadoopAdaptor implements HadoopActions {
 //      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
 //      return status;
 //   }
-   
+
    @Override
    public CompoundStatus checkTargetTTsSuccess(String opType, Map<String, String> affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
       CompoundStatus status = new CompoundStatus("checkTargetTTsSuccess");
@@ -359,15 +358,15 @@ public class HadoopAdaptor implements HadoopActions {
     	   if (iterations > 0) {
     	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
          }
-    	   
+
          getActiveStatus = new CompoundStatus(STATUS_GET_ACTIVE_TTS);
     	   String[] allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
-    	  
+
          if (getActiveStatus.getFirstFailure() == null) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
         	   break;
          }
-         
+
          /* If there was an error reported by getActiveTTs... */
          TaskStatus taskStatus = getActiveStatus.getFirstFailure(STATUS_INTERPRET_ERROR_CODE);
          if (taskStatus != null) {
@@ -383,7 +382,7 @@ public class HadoopAdaptor implements HadoopActions {
                    * This means finding the VMs in affectedTTs that are not in allActiveTTs and mapping that back to the vmIds */
                   incompleteVmList = listIncompleteVmIdsForRecommission(affectedTTs, allActiveTTs).toString();
                } else {
-                  /* We're likely decomissioning so we want to report on the VMs that are still active 
+                  /* We're likely decomissioning so we want to report on the VMs that are still active
                    * This means finding the union of affectedTTs and allActiveTTs and mapping that back to the vmIds */
                   incompleteVmList = listIncompleteVmIdsForDecommission(affectedTTs, allActiveTTs).toString();
                }
@@ -396,7 +395,7 @@ public class HadoopAdaptor implements HadoopActions {
       status.addStatus(getActiveStatus);
       return status;
    }
-   
+
    Map<String, String> buildReverseLookup(Map<String, String> vmIdToDnsName) {
       Map<String, String> result = new HashMap<String, String>();
       for (String vmId : vmIdToDnsName.keySet()) {
@@ -425,5 +424,13 @@ public class HadoopAdaptor implements HadoopActions {
          }
       }
       return result;
+   }
+
+   /**
+    * Interception point for fault injection, etc.
+    * @return
+    */
+   protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
+      return new HadoopConnection(cluster, properties, new NonThreadSafeSshUtils());
    }
 }
