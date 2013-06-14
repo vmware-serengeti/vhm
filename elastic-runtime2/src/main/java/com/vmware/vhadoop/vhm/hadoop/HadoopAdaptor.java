@@ -133,7 +133,7 @@ public class HadoopAdaptor implements HadoopActions {
       HadoopConnection result = _connections.get(cluster.getClusterId());
       if (result == null) {
          /* TODO: SshUtils could be a single shared thread-safe object or non threadsafe object per connection */
-         result = new HadoopConnection(cluster, _connectionProperties, new NonThreadSafeSshUtils());
+         result = getHadoopConnection(cluster, _connectionProperties);
          result.setHadoopCredentials(_credentials);
          result.setHadoopExcludeTTPath(_jtConfig.getExcludeTTPath());
          result.setHadoopHomePath(_jtConfig.getHadoopHomePath());
@@ -386,5 +386,13 @@ public class HadoopAdaptor implements HadoopActions {
          result.put(vmIdToDnsName.get(vmId), vmId);
       }
       return result;
+   }
+
+   /**
+    * Interception point for fault injection, etc.
+    * @return
+    */
+   protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
+      return new HadoopConnection(cluster, properties, new NonThreadSafeSshUtils());
    }
 }

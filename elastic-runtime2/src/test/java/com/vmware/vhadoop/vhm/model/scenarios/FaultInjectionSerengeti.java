@@ -36,11 +36,11 @@ public class FaultInjectionSerengeti extends Serengeti {
    }
 
    public class Master extends Serengeti.Master {
-      Queue<String> recommissionFailures = new LinkedList<String>();
-      Queue<String> decommissionFailures = new LinkedList<String>();
-      Queue<String> expectedFailureMessages = new LinkedList<String>();
+      Queue<Integer> recommissionFailures = new LinkedList<Integer>();
+      Queue<Integer> decommissionFailures = new LinkedList<Integer>();
+      Queue<Integer> expectedFailureMessages = new LinkedList<Integer>();
 
-      Map<String,String> expectedResponse = new HashMap<String,String>();
+      Map<Integer,String> expectedResponse = new HashMap<Integer,String>();
 
       Master(VirtualCenter vCenter, String id, Allocation capacity) {
          super(vCenter, id, capacity);
@@ -49,10 +49,10 @@ public class FaultInjectionSerengeti extends Serengeti {
       @Override
       public synchronized String enable(String hostname) {
          if (!recommissionFailures.isEmpty()) {
-            String expectedMsg = recommissionFailures.poll();
-            _log.info(name()+": injecting enable failure with reason: "+expectedMsg);
-            expectedFailureMessages.add(expectedMsg);
-            return expectedMsg;
+            Integer injectedError = recommissionFailures.poll();
+            _log.info(name()+": injecting enable failure: "+injectedError);
+            expectedFailureMessages.add(injectedError);
+            return injectedError.toString();
          } else {
             return super.enable(hostname);
          }
@@ -61,21 +61,21 @@ public class FaultInjectionSerengeti extends Serengeti {
       @Override
       public synchronized String disable(String hostname) {
          if (!decommissionFailures.isEmpty()) {
-            String expectedMsg = decommissionFailures.poll();
-            _log.info(name()+": injecting disable failure with reason: "+expectedMsg);
-            expectedFailureMessages.add(expectedMsg);
-            return expectedMsg;
+            Integer injectedError = decommissionFailures.poll();
+            _log.info(name()+": injecting disable failure: "+injectedError);
+            expectedFailureMessages.add(injectedError);
+            return injectedError.toString();
          } else {
             return super.disable(hostname);
          }
       }
 
-      public synchronized void queueRecommissionFailure(String errorMessage) {
-         recommissionFailures.add(errorMessage);
+      public synchronized void queueRecommissionFailure(Integer errorCode) {
+         recommissionFailures.add(errorCode);
       }
 
-      public synchronized void queueDecommissionFailure(String errorMessage) {
-         decommissionFailures.add(errorMessage);
+      public synchronized void queueDecommissionFailure(Integer errorCode) {
+         decommissionFailures.add(errorCode);
       }
 
       @Override
@@ -101,7 +101,7 @@ public class FaultInjectionSerengeti extends Serengeti {
        * error message that is returned via Rabbit
        * @return
        */
-      public Map<String,String> getResponses(long timeout) {
+      public Map<Integer,String> getResponses(long timeout) {
          synchronized(expectedResponse) {
             try {
                long deadline = System.currentTimeMillis() + timeout;
@@ -111,7 +111,7 @@ public class FaultInjectionSerengeti extends Serengeti {
                }
             } catch (InterruptedException e) {}
 
-            Map<String,String> results = new HashMap<String,String>(expectedResponse);
+            Map<Integer,String> results = new HashMap<Integer,String>(expectedResponse);
             expectedResponse.clear();
 
             return results;

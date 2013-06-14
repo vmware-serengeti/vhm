@@ -36,6 +36,9 @@ public class Serengeti extends Folder
    public static final int UNSET = -1;
    final static String COMPUTE_SUBDOMAIN = "compute";
    final static String ROUTEKEY_SEPARATOR = ":";
+   public static final String UNKNOWN_HOSTNAME_FOR_TASK_TRACKER = "unknown hostname for task tracker";
+   public static final String TASK_TRACKER_IN_UNDETERMINED_STATE = "task tracker was neither enabled or disabled";
+   public static final String TASK_TRACKER_ALREADY_IN_TARGET_STATE = "task tracker was already in the target state";
 
    /** The frequency with which we want to check the state of the world, unprompted. milliseconds */
    long maxLatency = 5000;
@@ -465,16 +468,16 @@ public class Serengeti extends Folder
       public synchronized String enable(String hostname) {
          String id = getComputeIdFromHostname(hostname);
          if (id == null) {
-            return "unknown hostname for task tracker";
+            return UNKNOWN_HOSTNAME_FOR_TASK_TRACKER;
          }
 
          Compute node = disabled.remove(id);
          if (node == null) {
             if (enabled.containsKey(id)) {
-               return "task tracker was already enabled";
+               return TASK_TRACKER_ALREADY_IN_TARGET_STATE;
             }
 
-            return "task tracker was neither enabled or disabled!";
+            return TASK_TRACKER_IN_UNDETERMINED_STATE;
          }
 
          _log.info(name()+" enabling compute node "+id);
@@ -497,16 +500,16 @@ public class Serengeti extends Folder
       public synchronized String disable(String hostname) {
          String id = getComputeIdFromHostname(hostname);
          if (id == null) {
-            return "unknown hostname for task tracker";
+            return UNKNOWN_HOSTNAME_FOR_TASK_TRACKER;
          }
 
          Compute node = enabled.remove(id);
          if (node == null) {
             if (disabled.containsKey(id)) {
-               return "task tracker was already disabled";
+               return TASK_TRACKER_ALREADY_IN_TARGET_STATE;
             }
 
-            return "task tracker was neither enabled or disabled!";
+            return TASK_TRACKER_IN_UNDETERMINED_STATE;
          }
 
          Compute old = disabled.put(id, node);
