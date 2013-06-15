@@ -52,13 +52,13 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       vms.add(new VM("vm7", "clusterB", "hostX", ON));
       vms.add(new VM("vm8", "clusterB", "hostY", OFF));
 	}
-	
+
 	public StandaloneSimpleClusterMap(boolean prepopulate) {
 	   if (prepopulate) {
 	      populateTestData();
 	   }
 	}
-	
+
 	public List<VM> getMapContents() {
 	   return vms;
 	}
@@ -191,7 +191,7 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	}
 
    @Override
-   public Set<String> getDnsNameForVMs(final Set<String> vms) {
+   public Map<String, String> getDnsNameForVMs(final Set<String> vms) {
       // TODO Auto-generated method stub
       return null;
    }
