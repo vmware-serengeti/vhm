@@ -80,6 +80,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
    private Set<String> getSuccessfullyDisabledVmIds(Set<String> toDisable, Set<String> activeVmIds) {
       Set<String> result = new HashSet<String>();
+      /* JG: If hostnames are screwed up (e.g., become localhost, etc.), activeVmIds can be null */
+      if (activeVmIds == null) { return result; }
       for (String testDisabled : toDisable) {
          if (!activeVmIds.contains(testDisabled)) {
             result.add(testDisabled);

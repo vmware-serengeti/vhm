@@ -19,6 +19,7 @@ import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_CATCHALL;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_FOUND;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
+import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.SUCCESS;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +36,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.IOUtils;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions;
+import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
@@ -78,7 +80,7 @@ public class HadoopAdaptor implements HadoopActions {
    
    public static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
-   public static final int MAX_CHECK_RETRY_ITERATIONS = 10;
+   public static final int MAX_CHECK_RETRY_ITERATIONS = 8;
 
    public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
@@ -304,6 +306,8 @@ public class HadoopAdaptor implements HadoopActions {
          formattedList.add(unformattedList[i].trim());
       }
       
+      _log.info("Active TTs so far: " + Arrays.toString(formattedList.toArray()));
+      _log.info("#Active TTs: " + formattedList.size() + "\t #Target TTs: " + totalTargetEnabled);
       status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return formattedList;
    }
@@ -323,27 +327,44 @@ public class HadoopAdaptor implements HadoopActions {
       CompoundStatus getActiveStatus = null;
       int rc = 0;
       Set<String> allActiveTTs = null;
+      Set<String> patients = new HashSet<String>(affectedTTs.values());
       do {
     	   if (iterations > 0) {
-    	    _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
+       	   _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
+       	   _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(dnsNameArray));
          }
     	   
-         getActiveStatus = new CompoundStatus("getActiveStatus");
+         getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
     	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
     	  
-         if (getActiveStatus.getFirstFailure() == null) {
+    	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
+    	   if ((opType.equals("Recommission") && allActiveTTs.containsAll(patients)) || (opType.equals("Decommission") && patients.retainAll(allActiveTTs) && patients.isEmpty())) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
-        	   break;
+            rc = SUCCESS;
+            break;
          }
-         
+
          /* If there was an error reported by getActiveTTs... */
          TaskStatus taskStatus = getActiveStatus.getFirstFailure(STATUS_INTERPRET_ERROR_CODE);
          if (taskStatus != null) {
             rc = taskStatus.getErrorCode();
+         } else {
+            /* 
+             * JG: Sometimes we don't know the hostnames (e.g., localhost); in these cases as long as the check script returns success based
+             * on target #TTs we are good. 
+             * TODO: Change check script to return success if #newly added + #current_enabled is met rather than target #TTs is met. This is
+             * to address scenarios where there is a mismatch (#Active TTs != #poweredOn VMs) to begin with... 
+             * */
+            rc = SUCCESS;
          }
       } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
 
-      getCompoundStatus().addStatus(getActiveStatus);
+      getCompoundStatus().addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
+      if (rc != SUCCESS) {
+         getActiveStatus.registerTaskFailed(false, "Check Test Failed");
+         getCompoundStatus().addStatus(getActiveStatus);
+      }
+      
       return convertDnsNamesToVmIds(affectedTTs, allActiveTTs);
    }
 
