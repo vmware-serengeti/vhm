@@ -230,24 +230,6 @@ public class Serengeti extends Folder
 
          return super.remove(workload);
       }
-
-      @Override
-      public void powerOn() {
-         super.powerOn();
-
-         /* task trackers talk to the job tracker on start up and are picked up as active */
-         this.master.enable(this.getHostname());
-         _log.info(name()+": powered on, hosted by "+getHost().name());
-      }
-
-      @Override
-      public void powerOff() {
-         /* task trackers will not be listed as active once powered off */
-         this.master.disable(this.getHostname());
-
-         super.powerOff();
-         _log.info(name()+": powered off, hosted by "+getHost().name());
-      }
    }
    /***************** Compute Node end *****************************************************/
 
