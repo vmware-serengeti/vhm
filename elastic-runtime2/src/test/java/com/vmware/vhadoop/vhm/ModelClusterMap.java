@@ -262,4 +262,10 @@ public class ModelClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public Set<String> listComputeVMsForCluster(String clusterId) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }

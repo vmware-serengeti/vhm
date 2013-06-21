@@ -17,7 +17,7 @@ package com.vmware.vhadoop.vhm.events;
 
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor.RabbitConnectionCallback;
+import com.vmware.vhadoop.api.vhm.QueueClient;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
@@ -28,11 +28,11 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    String _action;
    String _clusterFolderName;
    int _toSize;
-   RabbitConnectionCallback _messageCallback;
+   QueueClient _messageCallback;
 
    private static final Logger _log = Logger.getLogger(SerengetiLimitInstruction.class.getName());
 
-   public SerengetiLimitInstruction(String clusterFolderName, String action, int toSize, RabbitConnectionCallback messageCallback) {
+   public SerengetiLimitInstruction(String clusterFolderName, String action, int toSize, QueueClient messageCallback) {
       _action = action;
       _clusterFolderName = clusterFolderName;
       _toSize = toSize;
@@ -42,15 +42,15 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    public String getAction() {
       return _action;
    }
-   
+
    public String getClusterFolderName() {
       return _clusterFolderName;
    }
-   
+
    public int getToSize() {
       return _toSize;
    }
-   
+
    public void reportProgress(int percentage, String message) {
       if (_messageCallback != null) {
          _log.info("Reporting progress "+percentage+"%");

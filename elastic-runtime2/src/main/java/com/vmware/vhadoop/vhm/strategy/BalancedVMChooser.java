@@ -58,6 +58,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          Host host = targets.poll();
          if (host == null) {
             /* there are no candidates left, so return what we have */
+            _log.warning("BalancedVMChooser no more hosts with candidate VMs, shortfall is "+(remaining+1));
             return result;
          }
 
@@ -105,12 +106,22 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
             @Override
             public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
          });
-   
+
          /* build the entries for the priority queue */
          for (String host : hosts) {
             Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
             Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
             if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
+               _log.info("found "+candidateVMs.size()+" candidate VMs on host "+host);
+               for (String id : candidateVMs) {
+                  _log.info("candidate VM on "+host+": "+id);
+               }
+               if (on != null) {
+                  _log.info("found "+on.size()+" VMs powered on, on host "+host);
+                  for (String id : on) {
+                     _log.info("powered on VM on "+host+": "+id);
+                  }
+               }
                Host h = new Host();
                h.candidates = candidateVMs;
                h.on = (on == null) ? 0 : on.size();
@@ -184,7 +195,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
                Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
                h.on = (vmIds == null) ? 0 : vmIds.size();
             }
-   
+
             h.candidates.add(vm);
             hosts.put(hostid, h);
          }

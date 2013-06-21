@@ -42,7 +42,6 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLException;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.LogFormatter;
@@ -105,19 +104,19 @@ public class VcVlsi {
    private Client defaultClient;
    private String vcThumbprint = null;
 
-   private static final String VC_PROP_VM_NAME = "name";
-   private static final String VC_PROP_VM_EXTRA_CONFIG = "config.extraConfig";
-   private static final String VC_PROP_VM_UUID = "config.uuid";
-   private static final String VC_PROP_VM_NUM_CPU = "config.hardware.numCPU";
-   private static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
-   private static final String VC_PROP_VM_HOST = "runtime.host";
-   private static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
-   private static final String VC_PROP_VM_GUEST_HOSTNAME = "guest.hostName";
+   static final String VC_PROP_VM_NAME = "name";
+   static final String VC_PROP_VM_EXTRA_CONFIG = "config.extraConfig";
+   static final String VC_PROP_VM_UUID = "config.uuid";
+   static final String VC_PROP_VM_NUM_CPU = "config.hardware.numCPU";
+   static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
+   static final String VC_PROP_VM_HOST = "runtime.host";
+   static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
+   static final String VC_PROP_VM_GUEST_HOSTNAME = "guest.hostName";
 
-   private static final String VC_MOREF_TYPE_TASK = "Task";
-   private static final String VC_MOREF_TYPE_VM = "VirtualMachine";
-   private static final String VC_MOREF_TYPE_FOLDER = "Folder";
-   private static final String VC_MOREF_TYPE_CONTAINER_VIEW = "ContainerView";
+   static final String VC_MOREF_TYPE_TASK = "Task";
+   static final String VC_MOREF_TYPE_VM = "VirtualMachine";
+   static final String VC_MOREF_TYPE_FOLDER = "Folder";
+   static final String VC_MOREF_TYPE_CONTAINER_VIEW = "ContainerView";
    private static final TypeNameImpl typeTask = new TypeNameImpl(VC_MOREF_TYPE_TASK);
    private static final TypeNameImpl typeVM = new TypeNameImpl(VC_MOREF_TYPE_VM);
    private static final TypeNameImpl typeFolder = new TypeNameImpl(VC_MOREF_TYPE_FOLDER);
@@ -125,14 +124,14 @@ public class VcVlsi {
 
    private static final int propertyCollectorTimeout = 300;
 
-   private static final String VHM_EXTRA_CONFIG_PREFIX = "vhmInfo.";
-   private static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";
-   private static final String VHM_EXTRA_CONFIG_MASTER_UUID = "vhmInfo.masterVM.uuid";
-   private static final String VHM_EXTRA_CONFIG_MASTER_MOREF = "vhmInfo.masterVM.moid";
-   private static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
-   private static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
-   private static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
-   private static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
+   static final String VHM_EXTRA_CONFIG_PREFIX = "vhmInfo.";
+   static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";
+   static final String VHM_EXTRA_CONFIG_MASTER_UUID = "vhmInfo.masterVM.uuid";
+   static final String VHM_EXTRA_CONFIG_MASTER_MOREF = "vhmInfo.masterVM.moid";
+   static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
+   static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
+   static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
+   static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";
 
@@ -407,7 +406,7 @@ public class VcVlsi {
       if (baseFolder == null) {
          return null;
       }
-      
+
       List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
       ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
 
@@ -498,40 +497,12 @@ public class VcVlsi {
       propFilter.cleanup();
    }
 
-   static private MasterVmEventData getMasterVmData(VMEventData vmData) {
-      if (vmData._masterVmData == null) {
-         vmData._masterVmData = new MasterVmEventData();
-      }
-      return vmData._masterVmData;
-   }
-
-   static void parseExtraConfig(VMEventData vmData, String key, String value) {
-      if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
-         //_log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
-         if (key.equals(VHM_EXTRA_CONFIG_UUID)) {
-            vmData._serengetiFolder = value;
-         } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_UUID)) {
-            vmData._masterUUID = value;
-         } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_MOREF)) {
-            vmData._masterMoRef = value;
-         } else if (key.equals(VHM_EXTRA_CONFIG_ELASTIC)) {
-            vmData._isElastic = value.equalsIgnoreCase("true");
-         } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_ENABLE)) {
-            getMasterVmData(vmData)._enableAutomation = value.equalsIgnoreCase("true");
-         } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
-            getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
-         } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
-            getMasterVmData(vmData)._jobTrackerPort = Integer.valueOf(value);
-         }
-      }
-   }
-
-   private VMEventData parseObjUpdate(ObjectUpdate obj) {
+   private static VMEventData parseObjUpdate(Logger logger, ObjectUpdate obj) {
       VMEventData vmData = new VMEventData();
       vmData._vmMoRef = obj.getObj().getValue();
 
       Kind kind = obj.getKind();
-      _log.log(Level.FINE, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
+      logger.log(Level.FINE, "Pobj kind= " + kind + " obj= " + obj.getObj().getValue());
       if (kind == Kind.leave) {
          vmData._isLeaving = true;
       } else if (kind == Kind.modify || kind == Kind.enter) {
@@ -539,7 +510,7 @@ public class VcVlsi {
          for (Change pc : obj.getChangeSet()) {
             String pcName = pc.getName();
             Object pcValue = pc.getVal();
-            _log.log(Level.FINE, "Pobj prop= " + pcName + " val= " + pcValue);
+            logger.log(Level.FINE, "Pobj prop= " + pcName + " val= " + pcValue);
             if (pcValue != null) {
                if (pcName.equals(VC_PROP_VM_UUID)) {
                   vmData._myUUID = (String)pcValue;
@@ -567,7 +538,7 @@ public class VcVlsi {
                   OptionValue[] ecl = (OptionValue[]) pcValue;
                   for (OptionValue ec : ecl) {
                      if (ec.getKey().startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
-                        parseExtraConfig(vmData, ec.getKey(), (String)ec.getValue());
+                        VcVlsiHelper.parseExtraConfig(vmData, ec.getKey(), (String)ec.getValue());
                      }
                   }
                } else if (pcName.lastIndexOf(VC_PROP_VM_EXTRA_CONFIG) >= 0) {
@@ -582,17 +553,18 @@ public class VcVlsi {
                         } else {
                            valueString = (String) ((OptionValue)pcValue).getValue();
                         }
-                        parseExtraConfig(vmData, parts[1], valueString);
+                        VcVlsiHelper.parseExtraConfig(vmData, parts[1], valueString);
                      }
                   }
                } else {
-                  _log.log(Level.WARNING, "Unexpected update: prop= " + pcName + " val= " + pcValue);
+                  logger.log(Level.WARNING, "Unexpected update: prop= " + pcName + " val= " + pcValue);
                }
             }
          }
       }
       return vmData;
    }
+
 
    private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) throws Exception {
       if (version == null) {
@@ -631,7 +603,7 @@ public class VcVlsi {
                ObjectUpdate[] objectSet = pfu.getObjectSet();
 
                for (ObjectUpdate obj : objectSet) {
-                  VMEventData vmData = parseObjUpdate(obj);
+                  VMEventData vmData = parseObjUpdate(_log, obj);
                   if (vmData != null) {
                      vmDataList.add(vmData);
                   }

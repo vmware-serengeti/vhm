@@ -35,6 +35,7 @@ import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_F
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.SUCCESS;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -92,7 +93,7 @@ public class HadoopAdaptor implements HadoopActions {
    /* TODO: Option to change the default values? */
    public static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
    public static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
-   
+
    public static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
    public static final int MAX_CHECK_RETRY_ITERATIONS = 8;
@@ -106,7 +107,7 @@ public class HadoopAdaptor implements HadoopActions {
       _connections = new HashMap<String, HadoopConnection>();
       _threadLocalStatus = tlcs;
    }
-   
+
    CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
          return new CompoundStatus("DUMMY_STATUS");
@@ -148,7 +149,7 @@ public class HadoopAdaptor implements HadoopActions {
       HadoopConnection result = _connections.get(cluster.getClusterId());
       if (result == null) {
          /* TODO: SshUtils could be a single shared thread-safe object or non threadsafe object per connection */
-         result = new HadoopConnection(cluster, _connectionProperties, new NonThreadSafeSshUtils());
+         result = getHadoopConnection(cluster, _connectionProperties);
          result.setHadoopCredentials(_credentials);
          result.setHadoopExcludeTTPath(_jtConfig.getExcludeTTPath());
          result.setHadoopHomePath(_jtConfig.getHadoopHomePath());
@@ -309,8 +310,8 @@ public class HadoopAdaptor implements HadoopActions {
       return getActiveTTs(cluster, totalTargetEnabled, getCompoundStatus());
    }
 
-      
-   private Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
+
+   protected Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
       HadoopConnection connection = getConnectionForCluster(cluster);
       OutputStream out = new ByteArrayOutputStream();
       int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
@@ -320,13 +321,13 @@ public class HadoopAdaptor implements HadoopActions {
       for (int i = 0; i < unformattedList.length-1; i++) {
          formattedList.add(unformattedList[i].trim());
       }
-      
+
       _log.info("Active TTs so far: " + Arrays.toString(formattedList.toArray()));
       _log.info("#Active TTs: " + formattedList.size() + "\t #Target TTs: " + totalTargetEnabled);
       status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return formattedList;
    }
-   
+
    @Override
    public Set<String> checkTargetTTsSuccess(String opType, Map<String, String> affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
       String[] dnsNameArray = affectedTTs.values().toArray(new String[0]);
@@ -348,10 +349,10 @@ public class HadoopAdaptor implements HadoopActions {
        	   _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
        	   _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(dnsNameArray));
          }
-    	   
+
          getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
     	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
-    	  
+
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
     	   if ((opType.equals("Recommission") && allActiveTTs.containsAll(patients)) || (opType.equals("Decommission") && patients.retainAll(allActiveTTs) && patients.isEmpty())) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
@@ -364,11 +365,11 @@ public class HadoopAdaptor implements HadoopActions {
          if (taskStatus != null) {
             rc = taskStatus.getErrorCode();
          } else {
-            /* 
+            /*
              * JG: Sometimes we don't know the hostnames (e.g., localhost); in these cases as long as the check script returns success based
-             * on target #TTs we are good. 
+             * on target #TTs we are good.
              * TODO: Change check script to return success if #newly added + #current_enabled is met rather than target #TTs is met. This is
-             * to address scenarios where there is a mismatch (#Active TTs != #poweredOn VMs) to begin with... 
+             * to address scenarios where there is a mismatch (#Active TTs != #poweredOn VMs) to begin with...
              * */
             rc = SUCCESS;
          }
@@ -379,7 +380,7 @@ public class HadoopAdaptor implements HadoopActions {
          getActiveStatus.registerTaskFailed(false, "Check Test Failed");
          getCompoundStatus().addStatus(getActiveStatus);
       }
-      
+
       return convertDnsNamesToVmIds(affectedTTs, allActiveTTs);
    }
 
@@ -394,12 +395,20 @@ public class HadoopAdaptor implements HadoopActions {
       }
       return result;
    }
-   
+
    private Map<String, String> buildReverseLookup(Map<String, String> vmIdToDnsName) {
       Map<String, String> result = new HashMap<String, String>();
       for (String vmId : vmIdToDnsName.keySet()) {
          result.put(vmIdToDnsName.get(vmId), vmId);
       }
       return result;
+   }
+
+   /**
+    * Interception point for fault injection, etc.
+    * @return
+    */
+   protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
+      return new HadoopConnection(cluster, properties, new NonThreadSafeSshUtils());
    }
 }

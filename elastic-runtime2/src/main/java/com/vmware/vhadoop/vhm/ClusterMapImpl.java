@@ -49,12 +49,12 @@ import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
  * There should be no need for synchronization in this class provided this model is adhered to */
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
-   
+
    Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
    Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
    Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
    Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
-   
+
    final ExtraInfoToClusterMapper _extraInfoMapper;
 
    public ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
@@ -96,15 +96,15 @@ public class ClusterMapImpl implements ClusterMap {
    class ClusterInfo {
       final String _masterUUID;
       final SerengetiClusterConstantData _constantData;
-      
+
       public ClusterInfo(String clusterId, SerengetiClusterConstantData constantData) {
          this._masterUUID = clusterId;
          this._constantData = constantData;
          _completionEvents = new LinkedList<ClusterScaleCompletionEvent>();
-         _log.log(Level.FINE, "Creating new ClusterInfo <%%C%s%%C>(%s). %s", 
+         _log.log(Level.FINE, "Creating new ClusterInfo <%%C%s%%C>(%s). %s",
                new String[]{clusterId, clusterId, constantData.toString()});
       }
-      
+
       Integer _jobTrackerPort;
       String _discoveredFolderName;        /* Note this field is only set by SerengetiLimitEvents */
       String _scaleStrategyKey;
@@ -119,7 +119,7 @@ public class ClusterMapImpl implements ClusterMap {
    private boolean assertHasData(Map<? extends Object, ? extends Object> toTest) {
       return (toTest != null && (toTest.keySet().size() > 0));
    }
-   
+
    private ClusterInfo getCluster(String clusterId) {
       return _clusters.get(clusterId);
    }
@@ -166,23 +166,23 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return clusterId;
    }
-   
+
    private String addNewVM(NewVmEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
       VMConstantData constantData = event.getConstantData();
       if (constantData == null) {
          _log.severe("VMConstantData cannot be null!");
          return null;
       }
-      
+
       VMVariableData variableData = event.getVariableData();      /* Can be null */
       String vmId = event.getVmId();
       String clusterId = event.getClusterId();
-      
+
       if (clusterId == null) {
          _log.severe("ClusterId should not be null!");
          return null;
       }
-      
+
       if (event instanceof NewMasterVMEvent) {
          SerengetiClusterConstantData clusterConstantData = ((NewMasterVMEvent)event).getClusterConstantData();      /* Should not be null */
          SerengetiClusterVariableData clusterVariableData = ((NewMasterVMEvent)event).getClusterVariableData();      /* Should not be null */
@@ -215,12 +215,12 @@ public class ClusterMapImpl implements ClusterMap {
       VMVariableData variableData = event.getVariableData();
       if (event instanceof MasterVmUpdateEvent) {
          String clusterId = getClusterIdForVm(event.getVmId());
-         updateClusterVariableData(clusterId, ((MasterVmUpdateEvent)event).getClusterVariableData(), 
+         updateClusterVariableData(clusterId, ((MasterVmUpdateEvent)event).getClusterVariableData(),
                impliedScaleEventsResultSet, false);
       }
       return updateVMVariableData(event.getVmId(), variableData);
    }
-   
+
    private boolean testForUpdate(Object toSet, Object newValue, String id, String fieldName, String prefix, String postfix) {
       if ((newValue != null) && ((toSet == null) || !toSet.equals(newValue))) {
          _log.log(Level.FINE, "Updating %s for %s%s%s to %s", new Object[]{fieldName, prefix, id, postfix, newValue});
@@ -278,7 +278,7 @@ public class ClusterMapImpl implements ClusterMap {
       return clusterId;
    }
 
-   private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData, 
+   private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData,
          Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
       boolean variableDataChanged = false;
       ClusterInfo ci = getCluster(clusterId);
@@ -325,7 +325,7 @@ public class ClusterMapImpl implements ClusterMap {
          }
       }
    }
-   
+
    private String updateClusterState(ClusterUpdateEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
       SerengetiClusterVariableData variableData = event.getClusterVariableData();
       String clusterId = getClusterIdForVm(event.getVmId());
@@ -411,10 +411,11 @@ public class ClusterMapImpl implements ClusterMap {
       return generateComputeVMList(null, null, powerState);
    }
 
-   private Set<String> listComputeVMsForCluster(String clusterId) {
+   @Override
+   public Set<String> listComputeVMsForCluster(String clusterId) {
       return generateComputeVMList(clusterId, null, null);
    }
-   
+
    @Override
    public Set<String> listHostsWithComputeVMsForCluster(String clusterId) {
       if (assertHasData(_vms)) {
@@ -469,7 +470,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return clusterId;
    }
-   
+
    boolean validateClusterCompleteness(String clusterId) {
       ClusterInfo ci = getCluster(clusterId);
       if ((ci == null) || (ci._jobTrackerPort == null) || (ci._masterUUID == null) || (ci._scaleStrategyKey == null)) {

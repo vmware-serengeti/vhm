@@ -218,6 +218,11 @@ public class BootstrapMain
       return _vcActions;
    }
 
+   MQClient getRabbitInterface() {
+      return new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"), _properties.getProperty("exchangeName"),
+            _properties.getProperty("routeKeyCommand"), _properties.getProperty("routeKeyStatus")));
+   }
+
    HadoopActions getHadoopInterface(ThreadLocalCompoundStatus tlcs) {
       if (_hadoopActions == null) {
          _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"), 
@@ -243,7 +248,7 @@ public class BootstrapMain
       return new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(SerengetiClusterVariableData clusterData, String clusterId) {
-            return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;         
+            return ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY;
          }
 
          @Override
@@ -261,8 +266,7 @@ public class BootstrapMain
    VHM initVHM(final ThreadLocalCompoundStatus tlcs) {
       VHM vhm;
 
-      MQClient mqClient = new RabbitAdaptor(new SimpleRabbitCredentials(_properties.getProperty("msgHostName"), _properties.getProperty("exchangeName"),
-            _properties.getProperty("routeKeyCommand"), _properties.getProperty("routeKeyStatus")));
+      MQClient mqClient = getRabbitInterface();
 
       vhm = new VHM(getVCInterface(tlcs), getScaleStrategies(tlcs), getStrategyMapper(), tlcs);
       ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
