@@ -201,7 +201,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
                Thread.sleep(_vCenter.getMetricsInterval());
             } catch (InterruptedException e) {}
 
-            processingTasks = job.getTasks(HadoopJob.Stage.PROCESSING);
+            processingTasks = job.numberOfTasks(HadoopJob.Stage.PROCESSING);
             poweredOnNodes = cluster.numberComputeNodesInPowerState(true);
          } while (timeout() >= 0 && processingTasks != poweredOnNodes);
 

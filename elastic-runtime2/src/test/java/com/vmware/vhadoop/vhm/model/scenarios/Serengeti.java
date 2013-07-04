@@ -572,6 +572,7 @@ public class Serengeti extends Folder
          _log.info(name()+" received job for dispatch, "+job.name());
 
          jobs.add(job);
+         /* prompt a call through to getDesiredAllocation() */
          reviseResourceUsage();
       }
 
