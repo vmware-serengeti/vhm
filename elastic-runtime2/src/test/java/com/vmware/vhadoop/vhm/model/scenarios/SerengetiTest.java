@@ -92,7 +92,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       cluster.execute(job);
 
       /* wait for the serengeti max latency and stats interval to expire */
-      long delay = Math.max(_vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
+      long delay = Math.max(2 * _vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
       try {
          Thread.sleep(delay);
       } catch (InterruptedException e) {}
