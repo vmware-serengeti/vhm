@@ -66,6 +66,8 @@ public interface ClusterMap {
 
    Map<String, String> getDnsNameForVMs(Set<String> vmIds);
 
+   Map<String, String> getVmIdsForDnsNames(Set<String> dnsNames);
+
    String getHostIdForVm(String vmId);
 
    String getClusterIdForVm(String vmIds);

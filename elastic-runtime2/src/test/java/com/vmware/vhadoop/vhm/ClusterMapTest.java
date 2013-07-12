@@ -180,6 +180,24 @@ public class ClusterMapTest extends AbstractJUnitTest {
    }
 
    @Test
+   public void getVmIdsForDnsName() {
+      int numClusterIds = 3;
+      populateSimpleClusterMap(numClusterIds, 4, false);
+      Set<String> vmIds = getVmIdsFromVmNames(_vmNames);
+      Map<String, String> dnsNames = _clusterMap.getDnsNameForVMs(vmIds);
+      Map<String, String> vmIdMap = _clusterMap.getVmIdsForDnsNames(new HashSet<String>(dnsNames.values()));
+      assertEquals(dnsNames.size(), vmIdMap.size());
+      for (String vmId : vmIdMap.values()) {
+         assertTrue(vmIds.contains(vmId));
+      }
+
+      /* Negative tests */
+      assertNull(_clusterMap.getVmIdsForDnsNames(getBogusSet()));
+      assertNull(_clusterMap.getVmIdsForDnsNames(getEmptySet()));
+      assertNull(_clusterMap.getVmIdsForDnsNames(null));
+   }
+
+   @Test
    public void getHadoopInfoForCluster() {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
@@ -481,22 +499,23 @@ public class ClusterMapTest extends AbstractJUnitTest {
    
    @Test
    public void invokeGettersOnEmptyClusterMap() {
-      Set<String> vms = new HashSet<String>();
-      vms.add("foo");
+      Set<String> emptySet = new HashSet<String>();
+      emptySet.add("foo");
       assertNull(_clusterMap.getAllKnownClusterIds());
       assertNull(_clusterMap.getClusterIdForFolder("foo"));
       assertNull(_clusterMap.getClusterIdForVm("foo"));
-      assertNull(_clusterMap.getDnsNameForVMs(vms));
+      assertNull(_clusterMap.getDnsNameForVMs(emptySet));
+      assertNull(_clusterMap.getVmIdsForDnsNames(emptySet));
       assertNull(_clusterMap.getHadoopInfoForCluster("foo"));
       assertNull(_clusterMap.getHostIdForVm("foo"));
-      assertNull(_clusterMap.getHostIdsForVMs(vms));
+      assertNull(_clusterMap.getHostIdsForVMs(emptySet));
       assertNull(_clusterMap.getLastClusterScaleCompletionEvent("foo"));
       assertNull(_clusterMap.getScaleStrategyForCluster("foo"));
       assertNull(_clusterMap.listComputeVMsForClusterAndPowerState("foo", false));
       assertNull(_clusterMap.listComputeVMsForClusterHostAndPowerState("foo", "foo", false));
       assertNull(_clusterMap.listComputeVMsForPowerState(false));
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster("foo"));
-      assertNull(_clusterMap.checkPowerStateOfVms(vms, false));
+      assertNull(_clusterMap.checkPowerStateOfVms(emptySet, false));
       assertNull(_clusterMap.getNumVCPUsForVm("foo"));
       assertNull(_clusterMap.getPowerOnTimeForVm("foo"));
       assertNull(_clusterMap.getExtraInfo("foo", "bar"));

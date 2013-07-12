@@ -583,13 +583,34 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
+   /* Note that the map returned will only contain VMs that have got a valid DnsName */
    public Map<String, String> getDnsNameForVMs(Set<String> vmIds) {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (String vm : vmIds) {
             VMInfo vminfo = _vms.get(vm);
             if (vminfo != null) {
-               results.put(vm, vminfo._variableData._dnsName);
+               String dnsName = vminfo._variableData._dnsName;
+               if (!dnsName.isEmpty()) {
+                  results.put(vm, vminfo._variableData._dnsName);
+               }
+            }
+         }
+         if (results.size() > 0) {
+            return results;
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public Map<String, String> getVmIdsForDnsNames(Set<String> dnsNames) {
+      if (assertHasData(dnsNames) && assertHasData(_vms)) {
+         Map<String, String> results = new HashMap<String, String>();
+         for (VMInfo vminfo : _vms.values()) {
+            String dnsName = vminfo._variableData._dnsName;
+            if (dnsNames.contains(dnsName)) {
+               results.put(dnsName, vminfo._moRef);
             }
          }
          if (results.size() > 0) {

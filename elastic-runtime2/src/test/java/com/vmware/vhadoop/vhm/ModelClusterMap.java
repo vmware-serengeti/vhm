@@ -268,4 +268,10 @@ public class ModelClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public Map<String, String> getVmIdsForDnsNames(Set<String> dnsNames) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }
