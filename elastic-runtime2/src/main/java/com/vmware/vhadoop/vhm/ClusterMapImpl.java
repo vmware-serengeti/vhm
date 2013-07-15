@@ -573,7 +573,8 @@ public class ClusterMapImpl implements ClusterMap {
          HadoopClusterInfo result = null;
          if (ci != null) {
             VMInfo vi = _vms.get(ci._constantData._masterMoRef);
-            if (vi != null) {
+            if ((vi != null) && (vi._variableData._ipAddr != null)) {
+               /* Constant data is guaranteed to be non-null. Variable data may be null if JobTracker is powered off */
                result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._ipAddr, ci._jobTrackerPort);
             }
          }

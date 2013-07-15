@@ -110,28 +110,36 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   Set<String> enabledTTs = _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
-                  _log.fine("Enabled TTs: "+enabledTTs);
-                  uninitializedVmIds = diffIds(vmsToED, enabledTTs);
-                  limitEvent.reportProgress(30, null);
-                  returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
-                  if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-                     blockOnPowerStateChange(vmsToED, true, 120000);
+                  if (enabledTTs != null) {
+                     _log.fine("Enabled TTs: "+enabledTTs);
+                     uninitializedVmIds = diffIds(vmsToED, enabledTTs);
+                     limitEvent.reportProgress(30, null);
+                     returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
+                     if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
+                        blockOnPowerStateChange(vmsToED, true, 120000);
+                     }
+                     limitEvent.reportProgress(90, null);
+                  } else {
+                     tlStatus.registerTaskFailed(false, "enableTTs returned null, so aborting operation");
                   }
-                  limitEvent.reportProgress(90, null);
                }
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   Set<String> disabledTTs = _enableDisablePolicy.disableTTs(vmsToED, targetSize, clusterId);
-                  _log.fine("Disabled TTs: "+disabledTTs);
-                  uninitializedVmIds = diffIds(vmsToED, disabledTTs);
-                  limitEvent.reportProgress(30, null);
-                  returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
-                  if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
-                     blockOnPowerStateChange(vmsToED, false, 120000);
+                  if (disabledTTs != null) {
+                     _log.fine("Disabled TTs: "+disabledTTs);
+                     uninitializedVmIds = diffIds(vmsToED, disabledTTs);
+                     limitEvent.reportProgress(30, null);
+                     returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
+                     if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
+                        blockOnPowerStateChange(vmsToED, false, 120000);
+                     }
+                     limitEvent.reportProgress(90, null);
+                  } else {
+                     tlStatus.registerTaskFailed(false, "disableTTs returned null, so aborting operation");
                   }
-                  limitEvent.reportProgress(90, null);
                }
             }
             if (tlStatus.getFailedTaskCount() == 0) {

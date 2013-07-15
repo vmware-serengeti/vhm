@@ -50,7 +50,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      if (hostNames != null) {
+      if ((hostNames != null) && (hadoopCluster != null)) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          _hadoopActions.recommissionTTs(hostNames, hadoopCluster);
@@ -79,7 +79,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      if (hostNames != null) {
+      if ((hostNames != null) && (hadoopCluster != null)) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          _hadoopActions.decommissionTTs(hostNames, hadoopCluster);
@@ -96,7 +96,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    private Set<String> getSuccessfullyDisabledVmIds(Set<String> toDisable, Set<String> activeVmIds) {
       Set<String> result = new HashSet<String>();
       /* JG: If hostnames are screwed up (e.g., become localhost, etc.), activeVmIds can be null */
-      if (activeVmIds == null) { return result; }
+      if (activeVmIds == null) { 
+         return result; 
+      }
       for (String testDisabled : toDisable) {
          if (!activeVmIds.contains(testDisabled)) {
             result.add(testDisabled);

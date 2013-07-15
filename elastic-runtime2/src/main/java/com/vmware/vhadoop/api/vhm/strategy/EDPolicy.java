@@ -23,10 +23,13 @@ import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 public interface EDPolicy extends ClusterMapReader {
    public static final String ACTIVE_TTS_STATUS_KEY = "getActiveStatus";
    /* Caller should expect this to block - returns the VM IDs that were successfully enabled */
+   /* Note that this method may return null in the case of an error */
    Set<String> enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception;
 
    /* Caller should expect this to block - returns the VM IDs that were successfully disabled */
+   /* Note that this method may return null in the case of an error */
    Set<String> disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception;
    
+   /* Note that this method may return null in the case of an error */
    Set<String> getActiveTTs(String clusterId) throws Exception;
 }
