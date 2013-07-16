@@ -16,18 +16,16 @@ public class FaultInjectionSerengeti extends Serengeti {
 
    public FaultInjectionSerengeti(String id, VirtualCenter vCenter) {
       super(id, vCenter);
-
-      /* make sure that masters are created using our enterprise template */
-      masterOva = new MasterTemplate();
    }
 
    /**
     * Hides the template defined in Serengeti
     */
-   class MasterTemplate extends Serengeti.MasterTemplate {
+   public static class MasterTemplate extends Serengeti.MasterTemplate {
       @Override
-      public Master create(VirtualCenter vCenter, String id, Allocation capacity) {
-         Master master = new Master(vCenter, id, capacity);
+      public Master create(VirtualCenter vCenter, String id, Allocation capacity, Object data) {
+         FaultInjectionSerengeti serengeti = (FaultInjectionSerengeti)data;
+         Master master = serengeti.new Master(vCenter, id, capacity);
          master.install(new Linux("Linux"));
 
          return master;

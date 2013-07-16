@@ -36,12 +36,13 @@ import com.vmware.vhadoop.vhm.model.scenarios.BasicScenario;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
+import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.MasterTemplate;
 import com.vmware.vhadoop.vhm.model.vcenter.Host;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 
-abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Master> extends AbstractClusterMapReader implements EventProducer {
+abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Master, J> extends AbstractClusterMapReader implements EventProducer {
 
    /** Set this to "true" to disable the test timeouts */
    public final static String DISABLE_TIMEOUT = "disable.timeout";
@@ -158,7 +159,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
       /* create a cluster to work with */
       @SuppressWarnings("unchecked")
-      M cluster = (M)_serengeti.createCluster(clusterName);
+      M cluster = (M)_serengeti.createCluster(clusterName, getMasterTemplate());
       String clusterId = cluster.getClusterId();
 
       @SuppressWarnings("unchecked")
@@ -175,9 +176,6 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
          host.powerOn();
       }
 
-      /* register the cluster as an event producer */
-      _vhm.registerEventProducer(cluster);
-
       /* power on the master node */
       cluster.powerOn();
 
@@ -188,6 +186,17 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
       return cluster;
    }
+
+   protected abstract MasterTemplate getMasterTemplate();
+
+   /**
+    * This provides easy access to the application hosted in the cluster. This will most likely be
+    * obtained by using the OperatingSystem.connect call to get the governing application process
+    * for the cluster.
+    * @param master
+    * @return
+    */
+   protected abstract J getApplication(M master);
 
    /**
     * Sub-classes MUST over-ride this method to create a serengeti of the desired type
@@ -214,6 +223,9 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
 
       /* start the system */
       startVHM();
+
+      /* register Serengeti as an event producer */
+      _vhm.registerEventProducer(_serengeti);
 
       return _serengeti;
    }

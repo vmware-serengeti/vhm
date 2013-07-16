@@ -128,11 +128,11 @@ public class ModelHadoopConnection extends HadoopConnection
          if (result == null) {
             /* success */
             continue;
-         } else if (result.equals(Serengeti.UNKNOWN_HOSTNAME_FOR_TASK_TRACKER)) {
+         } else if (result.equals(Serengeti.UNKNOWN_HOSTNAME_FOR_COMPUTE_NODE)) {
             return UNKNOWN_ERROR;
-         } else if (result.equals(Serengeti.TASK_TRACKER_ALREADY_IN_TARGET_STATE)) {
+         } else if (result.equals(Serengeti.COMPUTE_NODE_ALREADY_IN_TARGET_STATE)) {
             returnVal = enable ? WARN_TT_ACTIVE : WARN_TT_EXCLUDESFILE;
-         } else if (result.equals(Serengeti.TASK_TRACKER_IN_UNDETERMINED_STATE)) {
+         } else if (result.equals(Serengeti.COMPUTE_NODE_IN_UNDETERMINED_STATE)) {
             return UNKNOWN_ERROR;
          } else {
             /* try turning it into a return code */

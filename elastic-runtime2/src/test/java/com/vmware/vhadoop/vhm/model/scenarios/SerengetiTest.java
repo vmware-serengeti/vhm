@@ -15,11 +15,11 @@ import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.vhm.AbstractSerengetiTestBase;
 import com.vmware.vhadoop.vhm.model.Allocation;
 import com.vmware.vhadoop.vhm.model.api.ResourceType;
+import com.vmware.vhadoop.vhm.model.hadoop.HadoopJob;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter.Metric;
 import com.vmware.vhadoop.vhm.model.workloads.EndlessTaskGreedyJob;
-import com.vmware.vhadoop.vhm.model.workloads.HadoopJob;
 
 public class SerengetiTest extends AbstractSerengetiTestBase
 {
@@ -89,7 +89,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       HadoopJob job = new EndlessTaskGreedyJob("greedyJob", numberOfHosts, footprint);
 
       /* start a job that should roll out to all of the nodes as they power on */
-      cluster.execute(job);
+      getApplication(cluster).execute(job);
 
       /* wait for the serengeti max latency and stats interval to expire */
       long delay = Math.max(2 * _vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
@@ -129,7 +129,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       footprint.set(ResourceType.MEMORY, 2000);
       HadoopJob job = new EndlessTaskGreedyJob("greedyJob", numberOfHosts, footprint);
 
-      cluster.execute(job);
+      getApplication(cluster).execute(job);
 
       logMetrics(nodes);
 
@@ -179,7 +179,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       footprint.set(ResourceType.MEMORY, 2000);
       HadoopJob job = new EndlessTaskGreedyJob("greedyJob", numberOfHosts, footprint);
 
-      cluster.execute(job);
+      getApplication(cluster).execute(job);
 
       logMetrics(nodes);
 
