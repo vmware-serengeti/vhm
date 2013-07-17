@@ -45,12 +45,12 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       ClusterMap clusterMap = getAndReadLockClusterMap();
       try {
          hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-         hostNames = clusterMap.getDnsNameForVMs(toEnable);
+         hostNames = clusterMap.getDnsNamesForVMs(toEnable);
       } finally {
          unlockClusterMap(clusterMap);
       }
 
-      if ((hostNames != null) && (hadoopCluster != null)) {
+      if ((hostNames != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          _hadoopActions.recommissionTTs(hostNames, hadoopCluster);
@@ -74,12 +74,12 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       ClusterMap clusterMap = getAndReadLockClusterMap();
       try {
          hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
-         hostNames = clusterMap.getDnsNameForVMs(toDisable);
+         hostNames = clusterMap.getDnsNamesForVMs(toDisable);
       } finally {
          unlockClusterMap(clusterMap);
       }
 
-      if ((hostNames != null) && (hadoopCluster != null)) {
+      if ((hostNames != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          _hadoopActions.decommissionTTs(hostNames, hadoopCluster);
@@ -118,7 +118,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      if (hadoopCluster != null) {
+      if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          return _hadoopActions.getActiveTTs(hadoopCluster, 0);
       }
       return null;

@@ -29,8 +29,6 @@ import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
-import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
-
 import java.util.*;
 import java.util.logging.Logger;
 

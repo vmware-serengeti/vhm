@@ -29,6 +29,7 @@ public class ModelRabbitAdaptor implements MQClient {
          this.serengeti = serengeti;
       }
 
+      @Override
       public void sendMessage(byte[] data) {
          if (routeKey == null) {
             serengeti.deliverMessage(data);

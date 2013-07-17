@@ -526,21 +526,33 @@ public class ClusterMapImpl implements ClusterMap {
    public Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState) {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          for (String vmId : vmIds) {
-            VMInfo vm = _vms.get(vmId);
-            if (vm != null) {
-               if (vm._variableData._powerState != expectedPowerState) {
-                  return false;
-               }
-            } else {
-               _log.warning("VM "+vmId+" does not exist in ClusterMap!");
-               return null;
+            Boolean result = checkPowerStateOfVm(vmId, expectedPowerState);
+            if ((result == null) || (result == false)) {
+               return result;
             }
          }
          return true;
       }
       return null;
    }
-
+   
+   @Override
+   public Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState) {
+      if (assertHasData(_vms)) {
+         VMInfo vm = _vms.get(vmId);
+         if (vm != null) {
+            if (vm._variableData._powerState == null) {
+               return null;
+            }
+            return vm._variableData._powerState == expectedPowerState;
+         } else {
+            _log.warning("VM "+vmId+" does not exist in ClusterMap!");
+            return null;
+         }
+      }
+      return null;
+   }
+   
    @Override
    public Map<String, String> getHostIdsForVMs(Set<String> vmIds) {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
@@ -567,15 +579,18 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
+   /* HadoopClusterInfo returned may contain null values for any of its fields except for clusterId
+    * This method will return null if a JobTracker representing the cluster is powered off */
    public HadoopClusterInfo getHadoopInfoForCluster(String clusterId) {
       if (assertHasData(_clusters)) {
          ClusterInfo ci = getCluster(clusterId);
          HadoopClusterInfo result = null;
          if (ci != null) {
             VMInfo vi = _vms.get(ci._constantData._masterMoRef);
-            if ((vi != null) && (vi._variableData._ipAddr != null)) {
-               /* Constant data is guaranteed to be non-null. Variable data may be null if JobTracker is powered off */
-               result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._ipAddr, ci._jobTrackerPort);
+            if ((vi != null) && checkPowerStateOfVm(vi._moRef, true)) {
+               /* Constant data is guaranteed to be non-null. iPAddress or dnsName may be null */
+               result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._dnsName, 
+                     vi._variableData._ipAddr, ci._jobTrackerPort);
             }
          }
          return result;
@@ -585,20 +600,31 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    /* Note that the map returned will only contain VMs that have got a valid DnsName */
-   public Map<String, String> getDnsNameForVMs(Set<String> vmIds) {
+   public Map<String, String> getDnsNamesForVMs(Set<String> vmIds) {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
-         for (String vm : vmIds) {
-            VMInfo vminfo = _vms.get(vm);
-            if (vminfo != null) {
-               String dnsName = vminfo._variableData._dnsName;
-               if (!dnsName.isEmpty()) {
-                  results.put(vm, vminfo._variableData._dnsName);
-               }
+         for (String vmId : vmIds) {
+            String dnsName = getDnsNameForVM(vmId);
+            if (dnsName != null) {
+               results.put(vmId, dnsName);
             }
          }
          if (results.size() > 0) {
             return results;
+         }
+      }
+      return null;
+   }
+   
+   @Override
+   public String getDnsNameForVM(String vmId) {
+      if (assertHasData(_vms)) {
+         VMInfo vminfo = _vms.get(vmId);
+         if (vminfo != null) {
+            String dnsName = vminfo._variableData._dnsName;
+            if (!dnsName.isEmpty()) {
+               return dnsName;
+            }
          }
       }
       return null;
@@ -609,13 +635,26 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(dnsNames) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (VMInfo vminfo : _vms.values()) {
-            String dnsName = vminfo._variableData._dnsName;
-            if (dnsNames.contains(dnsName)) {
-               results.put(dnsName, vminfo._moRef);
+            String dnsNameToTest = vminfo._variableData._dnsName;
+            if ((dnsNameToTest != null) && dnsNames.contains(dnsNameToTest)) {
+               results.put(dnsNameToTest, vminfo._moRef);
             }
          }
          if (results.size() > 0) {
             return results;
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public String getVmIdForDnsName(String dnsName) {
+      if (assertHasData(_vms)) {
+         for (VMInfo vminfo : _vms.values()) {
+            String dnsNameToTest = vminfo._variableData._dnsName;
+            if ((dnsName != null) && dnsNameToTest.equals(dnsName)) {
+               return vminfo._moRef;
+            }
          }
       }
       return null;

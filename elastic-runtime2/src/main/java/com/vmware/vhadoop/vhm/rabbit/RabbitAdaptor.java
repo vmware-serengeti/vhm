@@ -74,6 +74,7 @@ public class RabbitAdaptor implements MQClient {
          _innerConnection = connection;
       }
 
+      @Override
       public void sendMessage(byte[] data) {
          if (_routeKey == null) {
             _innerConnection.sendMessage(data);

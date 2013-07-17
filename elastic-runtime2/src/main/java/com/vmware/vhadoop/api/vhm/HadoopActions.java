@@ -38,12 +38,14 @@ public interface HadoopActions {
 
    public class HadoopClusterInfo {
       private String _clusterId;
-      private String _jobTrackerAddr;
+      private String _jobTrackerDnsName;
+      private String _jobTrackerIpAddr;
       private Integer _jobTrackerPort;
       
-      public HadoopClusterInfo(String clusterId, String jobTrackerAddr, Integer jobTrackerPort) {
+      public HadoopClusterInfo(String clusterId, String jobTrackerDnsName, String jobTrackerIpAddr, Integer jobTrackerPort) {
          _clusterId = clusterId;
-         _jobTrackerAddr = jobTrackerAddr;
+         _jobTrackerDnsName = jobTrackerDnsName;
+         _jobTrackerIpAddr = jobTrackerIpAddr;
          _jobTrackerPort = jobTrackerPort;
       }
       
@@ -51,8 +53,12 @@ public interface HadoopActions {
          return _clusterId;
       }
       
-      public String getJobTrackerAddr() {
-         return _jobTrackerAddr;
+      public String getJobTrackerDnsName() {
+         return _jobTrackerDnsName;
+      }
+
+      public String getJobTrackerIpAddr() {
+         return _jobTrackerIpAddr;
       }
 
       public Integer getJobTrackerPort() {

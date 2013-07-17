@@ -206,7 +206,7 @@ public class ModelClusterMap implements ClusterMap
 	}
 
    @Override
-   public Map<String, String> getDnsNameForVMs(final Set<String> vms) {
+   public Map<String, String> getDnsNamesForVMs(final Set<String> vms) {
       // TODO Auto-generated method stub
       return null;
    }
@@ -271,6 +271,24 @@ public class ModelClusterMap implements ClusterMap
 
    @Override
    public Map<String, String> getVmIdsForDnsNames(Set<String> dnsNames) {
+      // TODO Auto-generated method stub
+      return null;
+   }
+
+   @Override
+   public Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState) {
+      // TODO Auto-generated method stub
+      return null;
+   }
+
+   @Override
+   public String getDnsNameForVM(String vmId) {
+      // TODO Auto-generated method stub
+      return null;
+   }
+
+   @Override
+   public String getVmIdForDnsName(String dnsName) {
       // TODO Auto-generated method stub
       return null;
    }

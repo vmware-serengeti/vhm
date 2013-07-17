@@ -162,11 +162,11 @@ public class ClusterMapTest extends AbstractJUnitTest {
    }
    
    @Test
-   public void getDnsNameForVMs() {
+   public void getDnsNamesForVMs() {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
       Set<String> vmIds = getVmIdsFromVmNames(_vmNames);
-      Map<String, String> dnsNames = _clusterMap.getDnsNameForVMs(vmIds);
+      Map<String, String> dnsNames = _clusterMap.getDnsNamesForVMs(vmIds);
       assertEquals(_vmNames.size(), dnsNames.size());
       for (String vmName : _vmNames) {
          String vmId = getVmIdFromVmName(vmName);
@@ -174,9 +174,12 @@ public class ClusterMapTest extends AbstractJUnitTest {
       }
 
       /* Negative tests */
-      assertNull(_clusterMap.getDnsNameForVMs(getBogusSet()));
-      assertNull(_clusterMap.getDnsNameForVMs(getEmptySet()));
-      assertNull(_clusterMap.getDnsNameForVMs(null));
+      assertNull(_clusterMap.getDnsNamesForVMs(getBogusSet()));
+      assertNull(_clusterMap.getDnsNamesForVMs(getEmptySet()));
+      assertNull(_clusterMap.getDnsNamesForVMs(null));
+
+      assertNull(_clusterMap.getDnsNameForVM("bogus"));
+      assertNull(_clusterMap.getDnsNameForVM(null));
    }
 
    @Test
@@ -184,7 +187,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
       Set<String> vmIds = getVmIdsFromVmNames(_vmNames);
-      Map<String, String> dnsNames = _clusterMap.getDnsNameForVMs(vmIds);
+      Map<String, String> dnsNames = _clusterMap.getDnsNamesForVMs(vmIds);
       Map<String, String> vmIdMap = _clusterMap.getVmIdsForDnsNames(new HashSet<String>(dnsNames.values()));
       assertEquals(dnsNames.size(), vmIdMap.size());
       for (String vmId : vmIdMap.values()) {
@@ -195,6 +198,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getVmIdsForDnsNames(getBogusSet()));
       assertNull(_clusterMap.getVmIdsForDnsNames(getEmptySet()));
       assertNull(_clusterMap.getVmIdsForDnsNames(null));
+
+      assertNull(_clusterMap.getVmIdForDnsName("bogus"));
+      assertNull(_clusterMap.getVmIdForDnsName(null));
    }
 
    @Test
@@ -205,7 +211,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          String clusterId = deriveClusterIdFromClusterName(clusterName);
          HadoopClusterInfo hci = _clusterMap.getHadoopInfoForCluster(clusterId);
          assertNotNull(hci);
-         assertEquals(deriveMasterIpAddrFromClusterId(clusterId), hci.getJobTrackerAddr());
+         assertEquals(deriveMasterIpAddrFromClusterId(clusterId), hci.getJobTrackerIpAddr());
          assertEquals((Integer)DEFAULT_PORT, hci.getJobTrackerPort());
       }
 
@@ -392,7 +398,10 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.checkPowerStateOfVms(null, false));
       assertNull(_clusterMap.checkPowerStateOfVms(getEmptySet(), false));
       assertNull(_clusterMap.checkPowerStateOfVms(getBogusSet(), false));
-      
+
+      assertNull(_clusterMap.checkPowerStateOfVm(null, false));
+      assertNull(_clusterMap.checkPowerStateOfVm("bogus", false));
+
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster("bogus"));
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster(null));
       
@@ -504,8 +513,10 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getAllKnownClusterIds());
       assertNull(_clusterMap.getClusterIdForFolder("foo"));
       assertNull(_clusterMap.getClusterIdForVm("foo"));
-      assertNull(_clusterMap.getDnsNameForVMs(emptySet));
+      assertNull(_clusterMap.getDnsNamesForVMs(emptySet));
+      assertNull(_clusterMap.getDnsNameForVM("foo"));
       assertNull(_clusterMap.getVmIdsForDnsNames(emptySet));
+      assertNull(_clusterMap.getVmIdForDnsName("foo"));
       assertNull(_clusterMap.getHadoopInfoForCluster("foo"));
       assertNull(_clusterMap.getHostIdForVm("foo"));
       assertNull(_clusterMap.getHostIdsForVMs(emptySet));
@@ -516,6 +527,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.listComputeVMsForPowerState(false));
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster("foo"));
       assertNull(_clusterMap.checkPowerStateOfVms(emptySet, false));
+      assertNull(_clusterMap.checkPowerStateOfVm("foo", false));
       assertNull(_clusterMap.getNumVCPUsForVm("foo"));
       assertNull(_clusterMap.getPowerOnTimeForVm("foo"));
       assertNull(_clusterMap.getExtraInfo("foo", "bar"));

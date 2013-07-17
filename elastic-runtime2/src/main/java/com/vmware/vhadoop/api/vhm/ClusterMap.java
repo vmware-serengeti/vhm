@@ -57,6 +57,8 @@ public interface ClusterMap {
    ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId);
 
    Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState);
+   
+   Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState);
 
    String[] getAllKnownClusterIds();
 
@@ -64,9 +66,13 @@ public interface ClusterMap {
 
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
 
-   Map<String, String> getDnsNameForVMs(Set<String> vmIds);
+   Map<String, String> getDnsNamesForVMs(Set<String> vmIds);
+
+   String getDnsNameForVM(String vmId);
 
    Map<String, String> getVmIdsForDnsNames(Set<String> dnsNames);
+
+   String getVmIdForDnsName(String dnsName);
 
    String getHostIdForVm(String vmId);
 

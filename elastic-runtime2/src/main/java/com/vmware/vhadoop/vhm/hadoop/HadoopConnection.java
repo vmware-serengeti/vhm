@@ -101,7 +101,7 @@ public class HadoopConnection {
 
       _log.log(Level.INFO, "Copying data to remote file "+remotePath+remoteFileName + " on jobtracker");
 
-      ChannelExec channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
+      ChannelExec channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerIpAddr(), _connectionProperties.getSshPort());
       if (channel == null) {
          return UNKNOWN_ERROR;          /* TODO: Improve */
       }
@@ -130,7 +130,7 @@ public class HadoopConnection {
       ChannelExec channel = null;
       PrintStream ps = null;
       try {
-         channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerAddr(), _connectionProperties.getSshPort());
+         channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerIpAddr(), _connectionProperties.getSshPort());
          if (channel == null) {
             return UNKNOWN_ERROR;          /* TODO: Improve */
          }
@@ -161,7 +161,7 @@ public class HadoopConnection {
    }
 
    public String getJobTrackerAddr() {
-      return _hadoopCluster.getJobTrackerAddr();
+      return _hadoopCluster.getJobTrackerIpAddr();
    }
 
    public String getExcludeFilePath() {
