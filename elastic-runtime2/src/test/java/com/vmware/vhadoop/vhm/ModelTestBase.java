@@ -485,4 +485,30 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
    public void assertMessageResponse(String msg, Master cluster, String id) {
       assertMessageResponse(msg, cluster, id, timeout());
    }
+
+   public boolean assertWaitEquals(String msg, Object expected, Object value, long sleep) {
+      if (expected.equals(value)) {
+         _log.info(msg+" - expected value "+expected.toString()+" matched");
+         return true;
+      }
+
+      long timeout = timeout();
+      if (timeout > 0) {
+         try {
+            Thread.sleep(Math.min(sleep, timeout));
+         } catch (InterruptedException e) {}
+      }
+
+      /* there's still time to try again */
+      if (timeout() > 0) {
+         return false;
+      }
+
+      /* we're out of time so one last chance */
+      assertEquals(msg+" - failed to match expected values", expected, value);
+
+      /* they matched at the last opportunity */
+      _log.info(msg+" - expected value "+expected.toString()+" matched");
+      return true;
+   }
 }

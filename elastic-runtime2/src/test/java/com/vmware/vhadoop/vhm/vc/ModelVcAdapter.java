@@ -85,7 +85,7 @@ public class ModelVcAdapter implements VCActions {
          vmData._vmMoRef = vm.getId();
          vmData._dnsName = vm.getHostname();
          vmData._hostMoRef = vm.getHost() != null ? vm.getHost().getId() : null;
-         vmData._ipAddr = "127.0.0.1";
+         vmData._ipAddr = vm.getIpAddress();
          vmData._isLeaving = false;
          vmData._myName = vm.getId();
          vmData._myUUID = vm.getId();
