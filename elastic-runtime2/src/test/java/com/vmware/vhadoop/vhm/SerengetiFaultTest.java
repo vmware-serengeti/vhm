@@ -8,7 +8,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes;
-import com.vmware.vhadoop.vhm.model.scenarios.FaultInjectionSerengeti.Master;
+import com.vmware.vhadoop.vhm.model.scenarios.FaultInjectionSerengeti.FaultInjectionMaster;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase {
@@ -25,7 +25,7 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       setup(numberOfHosts);
 
       /* create a cluster to work with */
-      Master cluster = createCluster(clusterName, computeNodesPerHost);
+      FaultInjectionMaster cluster = createCluster(clusterName, computeNodesPerHost);
 
       /* set the general timeout for the faults */
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
@@ -59,7 +59,7 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       setup(numberOfHosts);
 
       /* create a cluster to work with */
-      Master cluster = createCluster(clusterName, computeNodesPerHost);
+      FaultInjectionMaster cluster = createCluster(clusterName, computeNodesPerHost);
 
       /* set the general timeout for the faults */
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
@@ -97,7 +97,7 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       setup(numberOfHosts);
 
       /* create a cluster to work with */
-      Master cluster = createCluster(clusterName, computeNodesPerHost);
+      FaultInjectionMaster cluster = createCluster(clusterName, computeNodesPerHost);
 
       /* set the general timeout for the faults */
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
@@ -140,7 +140,7 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       setup(numberOfHosts);
 
       /* create a cluster to work with */
-      Master cluster = createCluster(clusterName, computeNodesPerHost);
+      FaultInjectionMaster cluster = createCluster(clusterName, computeNodesPerHost);
 
       /* set the general timeout for the faults */
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);

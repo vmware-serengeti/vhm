@@ -17,7 +17,7 @@ package com.vmware.vhadoop.vhm;
 
 import org.junit.Test;
 
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
+import com.vmware.vhadoop.vhm.model.scenarios.Master;
 
 public class SerengetiLimitTest extends AbstractSerengetiTestBase {
    /**

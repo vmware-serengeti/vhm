@@ -16,8 +16,6 @@ import com.vmware.vhadoop.vhm.AbstractSerengetiTestBase;
 import com.vmware.vhadoop.vhm.model.Allocation;
 import com.vmware.vhadoop.vhm.model.api.ResourceType;
 import com.vmware.vhadoop.vhm.model.hadoop.HadoopJob;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter.Metric;
 import com.vmware.vhadoop.vhm.model.workloads.EndlessTaskGreedyJob;
 
@@ -105,7 +103,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
 
    @Test
    public void test() {
-      final int numberOfHosts = 2;
+      final int numberOfHosts = 1;
       final int computeNodesPerHost = 2;
       String clusterName = "serengetiTest";
 
@@ -136,8 +134,6 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       for (Compute node : nodes) {
          _log.info("Powering on node "+node.name());
          node.powerOn();
-         cluster.enable(node.getHostname());
-
          logMetrics(nodes);
       }
 

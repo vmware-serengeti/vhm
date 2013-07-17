@@ -33,16 +33,15 @@ import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.model.api.Allocation;
 import com.vmware.vhadoop.vhm.model.scenarios.BasicScenario;
+import com.vmware.vhadoop.vhm.model.scenarios.Compute;
+import com.vmware.vhadoop.vhm.model.scenarios.Master;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.MasterTemplate;
 import com.vmware.vhadoop.vhm.model.vcenter.Host;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 
-abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Master, J> extends AbstractClusterMapReader implements EventProducer {
+abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> extends AbstractClusterMapReader implements EventProducer {
 
    /** Set this to "true" to disable the test timeouts */
    public final static String DISABLE_TIMEOUT = "disable.timeout";
@@ -187,7 +186,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Serengeti.Mas
       return cluster;
    }
 
-   protected abstract MasterTemplate getMasterTemplate();
+   protected abstract Master.Template getMasterTemplate();
 
    /**
     * This provides easy access to the application hosted in the cluster. This will most likely be

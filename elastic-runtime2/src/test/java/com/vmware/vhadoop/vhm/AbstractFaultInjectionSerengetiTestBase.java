@@ -2,10 +2,10 @@ package com.vmware.vhadoop.vhm;
 
 import com.vmware.vhadoop.vhm.model.hadoop.JobTracker;
 import com.vmware.vhadoop.vhm.model.scenarios.FaultInjectionSerengeti;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.MasterTemplate;
+import com.vmware.vhadoop.vhm.model.scenarios.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
-abstract public class AbstractFaultInjectionSerengetiTestBase extends ModelTestBase<FaultInjectionSerengeti,FaultInjectionSerengeti.Master,JobTracker>
+abstract public class AbstractFaultInjectionSerengetiTestBase extends ModelTestBase<FaultInjectionSerengeti,FaultInjectionSerengeti.FaultInjectionMaster,JobTracker>
 {
    @Override
    protected FaultInjectionSerengeti createSerengeti(String name, VirtualCenter vCenter) {
@@ -13,7 +13,7 @@ abstract public class AbstractFaultInjectionSerengetiTestBase extends ModelTestB
    }
 
    @Override
-   protected MasterTemplate getMasterTemplate() {
+   protected Master.Template getMasterTemplate() {
       return new FaultInjectionSerengeti.MasterTemplate();
    }
 
@@ -22,7 +22,7 @@ abstract public class AbstractFaultInjectionSerengetiTestBase extends ModelTestB
     * Returns the JobTracker for the cluster
     */
    @Override
-   protected JobTracker getApplication(FaultInjectionSerengeti.Master master) {
+   protected JobTracker getApplication(FaultInjectionSerengeti.FaultInjectionMaster master) {
       String port = master.getExtraInfo().get("vhmInfo.jobtracker.port");
       return (JobTracker)master.getOS().connect(port);
    }

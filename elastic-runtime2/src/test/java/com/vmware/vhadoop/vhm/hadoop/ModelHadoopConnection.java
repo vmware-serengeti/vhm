@@ -17,9 +17,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
+import com.vmware.vhadoop.vhm.model.scenarios.Compute;
+import com.vmware.vhadoop.vhm.model.scenarios.Master;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenterEntity;
 

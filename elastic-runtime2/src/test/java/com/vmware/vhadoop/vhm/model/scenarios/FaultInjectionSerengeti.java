@@ -7,7 +7,6 @@ import java.util.Queue;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.vhm.model.api.Allocation;
-import com.vmware.vhadoop.vhm.model.os.Linux;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
 
@@ -21,26 +20,22 @@ public class FaultInjectionSerengeti extends Serengeti {
    /**
     * Hides the template defined in Serengeti
     */
-   public static class MasterTemplate extends Serengeti.MasterTemplate {
+   public static class MasterTemplate extends Master.Template {
       @Override
-      public Master create(VirtualCenter vCenter, String id, Allocation capacity, Object data) {
-         FaultInjectionSerengeti serengeti = (FaultInjectionSerengeti)data;
-         Master master = serengeti.new Master(vCenter, id, capacity);
-         master.install(new Linux("Linux"));
-
-         return master;
+      public FaultInjectionMaster instantiate(VirtualCenter vCenter, String id, Allocation capacity, Serengeti serengeti) {
+         return new FaultInjectionMaster(vCenter, id, capacity, serengeti);
       }
    }
 
-   public class Master extends Serengeti.Master {
+   static public class FaultInjectionMaster extends Master {
       Queue<Integer> recommissionFailures = new LinkedList<Integer>();
       Queue<Integer> decommissionFailures = new LinkedList<Integer>();
       Queue<Integer> expectedFailureMessages = new LinkedList<Integer>();
 
       Map<Integer,String> expectedResponse = new HashMap<Integer,String>();
 
-      Master(VirtualCenter vCenter, String id, Allocation capacity) {
-         super(vCenter, id, capacity);
+      FaultInjectionMaster(VirtualCenter vCenter, String id, Allocation capacity, Serengeti serengeti) {
+         super(vCenter, id, capacity, serengeti);
       }
 
       @Override

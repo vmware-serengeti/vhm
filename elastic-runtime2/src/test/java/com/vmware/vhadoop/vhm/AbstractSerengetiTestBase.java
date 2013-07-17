@@ -3,11 +3,10 @@ package com.vmware.vhadoop.vhm;
 import com.vmware.vhadoop.vhm.model.hadoop.JobTracker;
 import com.vmware.vhadoop.vhm.model.scenarios.JobTrackerSerengetiTemplate;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.MasterTemplate;
+import com.vmware.vhadoop.vhm.model.scenarios.Master;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 
-abstract public class AbstractSerengetiTestBase extends ModelTestBase<Serengeti,Serengeti.Master,JobTracker>
+abstract public class AbstractSerengetiTestBase extends ModelTestBase<Serengeti,Master,JobTracker>
 {
    @Override
    protected Serengeti createSerengeti(String name, VirtualCenter vCenter) {
@@ -15,7 +14,7 @@ abstract public class AbstractSerengetiTestBase extends ModelTestBase<Serengeti,
    }
 
    @Override
-   protected MasterTemplate getMasterTemplate() {
+   protected Master.Template getMasterTemplate() {
       return new JobTrackerSerengetiTemplate();
    }
 

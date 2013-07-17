@@ -2,15 +2,16 @@ package com.vmware.vhadoop.vhm.model.scenarios;
 
 import com.vmware.vhadoop.vhm.model.hadoop.HadoopJob;
 import com.vmware.vhadoop.vhm.model.hadoop.TaskTracker;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Compute;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.ComputeTemplate;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti.Master;
 
-public class TaskTrackerSerengetiTemplate extends ComputeTemplate
+public class TaskTrackerSerengetiTemplate extends Compute.Template
 {
+   TaskTrackerSerengetiTemplate(Master master) {
+      super(master);
+   }
+
    @Override
-   protected void specialize(Compute compute, Master master) {
-      super.specialize(compute, master);
+   protected void specialize(Compute compute, Serengeti serengeti) {
+      super.specialize(compute, serengeti);
 
       String port = master.getExtraInfo().get("vhmInfo.jobtracker.port");
       String host = master.getHostname();
