@@ -495,7 +495,9 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       long timeout = timeout();
       if (timeout > 0) {
          try {
-            Thread.sleep(Math.min(sleep, timeout));
+            long millis = Math.min(sleep, timeout);
+            _log.info(msg+" - expected ("+expected.toString()+") saw ("+value.toString()+"), sleeping for "+millis+"ms");
+            Thread.sleep(millis);
          } catch (InterruptedException e) {}
       }
 

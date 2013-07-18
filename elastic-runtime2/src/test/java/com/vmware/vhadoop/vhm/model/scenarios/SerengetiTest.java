@@ -58,8 +58,8 @@ public class SerengetiTest extends AbstractSerengetiTestBase
 
       /* general test setup */
       setup(numberOfHosts, hostCapacity);
-      _vCenter.setMetricsInterval(500);
-      _serengeti.setMaxLatency(500);
+      _vCenter.setMetricsInterval(200);
+      _serengeti.setMaxLatency(50);
 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
@@ -89,8 +89,10 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       /* start a job that should roll out to all of the nodes as they power on */
       getApplication(cluster).execute(job);
 
+      while(!assertWaitEquals("greedy job should fill nodes", nodes.length, job.numberOfTasks(HadoopJob.Stage.PROCESSING), _serengeti.getMaxLatency()));
+
       /* wait for the serengeti max latency and stats interval to expire */
-      long delay = Math.max(2 * _vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
+      long delay = Math.max(_vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
       try {
          Thread.sleep(delay);
       } catch (InterruptedException e) {}
@@ -113,8 +115,8 @@ public class SerengetiTest extends AbstractSerengetiTestBase
 
       /* general test setup */
       setup(numberOfHosts, hostCapacity);
-      _vCenter.setMetricsInterval(500);
-      _serengeti.setMaxLatency(500);
+      _vCenter.setMetricsInterval(200);
+      _serengeti.setMaxLatency(50);
 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
@@ -134,16 +136,18 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       for (Compute node : nodes) {
          _log.info("Powering on node "+node.name());
          node.powerOn();
-         logMetrics(nodes);
       }
 
+      while(!assertWaitEquals("greedy job should fill nodes", nodes.length, job.numberOfTasks(HadoopJob.Stage.PROCESSING), _serengeti.getMaxLatency()));
+
       /* wait for the serengeti max latency and stats interval to expire */
+      logMetrics(nodes);
       long delay = Math.max(_vCenter.getMetricsInterval(), _serengeti.getMaxLatency());
       try {
          Thread.sleep(delay);
       } catch (InterruptedException e) {}
-
       logMetrics(nodes);
+
       for (Compute node : nodes) {
          assertEquals("cpu ready value is not correct for "+node.name(), 2000, _vCenter.getRawMetric(node.name(), READY).longValue());
       }
@@ -161,8 +165,8 @@ public class SerengetiTest extends AbstractSerengetiTestBase
 
       /* general test setup */
       setup(numberOfHosts, hostCapacity);
-      _vCenter.setMetricsInterval(500);
-      _serengeti.setMaxLatency(500);
+      _vCenter.setMetricsInterval(200);
+      _serengeti.setMaxLatency(50);
 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
