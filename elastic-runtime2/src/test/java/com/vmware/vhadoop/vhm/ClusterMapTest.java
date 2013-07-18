@@ -205,15 +205,23 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
    @Test
    public void getHadoopInfoForCluster() {
-      int numClusterIds = 3;
-      populateSimpleClusterMap(numClusterIds, 4, false);
-      for (String clusterName : _clusterNames) {
-         String clusterId = deriveClusterIdFromClusterName(clusterName);
-         HadoopClusterInfo hci = _clusterMap.getHadoopInfoForCluster(clusterId);
-         assertNotNull(hci);
-         assertEquals(deriveMasterIpAddrFromClusterId(clusterId), hci.getJobTrackerIpAddr());
-         assertEquals((Integer)DEFAULT_PORT, hci.getJobTrackerPort());
-      }
+      String clusterName0 = CLUSTER_NAME_PREFIX+0;
+      String clusterName1 = CLUSTER_NAME_PREFIX+1;
+      populateClusterSameHost(clusterName0, "DEFAULT_HOST", 4, true, false, 0, null);
+      populateClusterSameHost(clusterName1, "DEFAULT_HOST", 4, false, false, 1, null);
+
+      String clusterId = deriveClusterIdFromClusterName(clusterName0);
+      HadoopClusterInfo hci = _clusterMap.getHadoopInfoForCluster(clusterId);
+      assertNotNull(hci);
+      assertEquals(deriveMasterIpAddrFromClusterId(clusterId), hci.getJobTrackerIpAddr());
+      assertEquals((Integer)DEFAULT_PORT, hci.getJobTrackerPort());
+      String masterVmName = getMasterVmNameForCluster(clusterName0);
+      String masterDnsName = getDnsNameFromVmName(masterVmName);
+      assertEquals(masterDnsName, hci.getJobTrackerDnsName());
+      
+      clusterId = deriveClusterIdFromClusterName(clusterName1);
+      hci = _clusterMap.getHadoopInfoForCluster(clusterId);
+      assertNull(hci);        /* If the cluster is not powered on, we should get null */
 
       /* Negative tests */
       assertNull(_clusterMap.getHadoopInfoForCluster("bogus"));
