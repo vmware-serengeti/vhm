@@ -652,7 +652,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_vms)) {
          for (VMInfo vminfo : _vms.values()) {
             String dnsNameToTest = vminfo._variableData._dnsName;
-            if ((dnsName != null) && dnsNameToTest.equals(dnsName)) {
+            if ((dnsNameToTest != null) && (dnsName != null) && dnsNameToTest.equals(dnsName)) {
                return vminfo._moRef;
             }
          }
