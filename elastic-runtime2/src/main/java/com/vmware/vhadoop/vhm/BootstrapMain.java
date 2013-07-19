@@ -89,11 +89,12 @@ public class BootstrapMain
          System.err.println("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
 
          /* We've not got a properties file controlling things so use LogFormatter for the console at INFO level */
+         LogFormatter formatter = new LogFormatter();
          Handler handlers[] = Logger.getLogger("").getHandlers();
          if (handlers.length == 0) {
             System.err.println("No log handlers defined, using default formatting");
          } else {
-            handlers[0].setFormatter(new LogFormatter());
+            handlers[0].setFormatter(formatter);
          }
 
          /* use default file name and LogFormatter for log file */
@@ -103,7 +104,7 @@ public class BootstrapMain
                name = DEFAULT_VHM_LOG_FILENAME;
             }
             FileHandler handler = new FileHandler(name);
-            handler.setFormatter(new LogFormatter());
+            handler.setFormatter(formatter);
             Logger.getLogger("").addHandler(handler);
          } catch (SecurityException f) {
             f.printStackTrace();
