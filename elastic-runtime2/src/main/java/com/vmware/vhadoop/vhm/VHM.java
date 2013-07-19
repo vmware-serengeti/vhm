@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -187,7 +188,7 @@ public class VHM implements EventConsumer {
                _log.warning("Interrupted unexpectedly while waiting for event");
             }
          }
-         results = new HashSet<NotificationEvent>();
+         results = new LinkedHashSet<NotificationEvent>();
          while (_eventQueue.peek() != null) {
             /* Use of a Set ensured duplicates are eliminated */
             /* TODO: add an event key to do event consolidation. At the moment events use the default equality so this has little effect */
@@ -264,7 +265,7 @@ public class VHM implements EventConsumer {
                if (clusterId != null) {
                   Set<ClusterScaleEvent> clusterScaleEvents = results.get(clusterId);
                   if (clusterScaleEvents == null) {
-                     clusterScaleEvents = new HashSet<ClusterScaleEvent>();
+                     clusterScaleEvents = new LinkedHashSet<ClusterScaleEvent>();
                      results.put(clusterId, clusterScaleEvents);
                   }
                   clusterScaleEvents.add((ClusterScaleEvent)event);
@@ -275,7 +276,7 @@ public class VHM implements EventConsumer {
    }
 
    private Set<ClusterStateChangeEvent> getClusterAddRemoveEvents(Set<NotificationEvent> events) {
-      Set<ClusterStateChangeEvent> results = new HashSet<ClusterStateChangeEvent>();
+      Set<ClusterStateChangeEvent> results = new LinkedHashSet<ClusterStateChangeEvent>();
       for (NotificationEvent event : events) {
          if ((event instanceof NewVmEvent) || (event instanceof VmRemovedFromClusterEvent)) {
             results.add((ClusterStateChangeEvent)event);
@@ -285,7 +286,7 @@ public class VHM implements EventConsumer {
    }
 
    private Set<ClusterStateChangeEvent> getClusterUpdateEvents(Set<NotificationEvent> events) {
-      Set<ClusterStateChangeEvent> results = new HashSet<ClusterStateChangeEvent>();
+      Set<ClusterStateChangeEvent> results = new LinkedHashSet<ClusterStateChangeEvent>();
       for (NotificationEvent event : events) {
          if ((event instanceof VmUpdateEvent) || (event instanceof ClusterUpdateEvent)) {
             results.add((ClusterStateChangeEvent)event);
@@ -295,7 +296,7 @@ public class VHM implements EventConsumer {
    }
 
    private Set<ClusterScaleCompletionEvent> getClusterScaleCompletionEvents(Set<NotificationEvent> events) {
-      Set<ClusterScaleCompletionEvent> results = new HashSet<ClusterScaleCompletionEvent>();
+      Set<ClusterScaleCompletionEvent> results = new LinkedHashSet<ClusterScaleCompletionEvent>();
       for (NotificationEvent event : events) {
          if (event instanceof ClusterScaleCompletionEvent) {
             results.add((ClusterScaleCompletionEvent)event);
@@ -312,10 +313,10 @@ public class VHM implements EventConsumer {
          _log.info("Consolidating scale events from "+beforeSize+" to "+afterSize+" for method "+method);
       }
    }
-   
-   /* Takes a list of types that are allowed for a particular cluster and removes any 
+
+   /* Takes a list of types that are allowed for a particular cluster and removes any
     * events that are not of those types, either directly or through inheritance */
-   private void removeEventsThisClusterCantHandle(Class<? extends ClusterScaleEvent>[] typesHandled, 
+   private void removeEventsThisClusterCantHandle(Class<? extends ClusterScaleEvent>[] typesHandled,
                                                   Set<ClusterScaleEvent> scaleEventsForCluster) {
       Set<ClusterScaleEvent> toRemove = null;
       for (ClusterScaleEvent event : scaleEventsForCluster) {
@@ -327,6 +328,7 @@ public class VHM implements EventConsumer {
             }
          }
          if (!isAssignableFromAtLeastOne) {
+            _log.finer("Scale strategy cannot handle event "+event);
             if (toRemove == null) {
                toRemove = new HashSet<ClusterScaleEvent>();
             }
@@ -336,12 +338,12 @@ public class VHM implements EventConsumer {
       doRemove(scaleEventsForCluster, toRemove, "removeEventsThisClusterCantHandle");
    }
 
-   /* If events are marked isExclusive() == true and if there are duplicate 
+   /* If events are marked isExclusive() == true and if there are duplicate
     * events of that type, only the most recent should be returned */
    private void consolidateExclusiveEvents(Set<ClusterScaleEvent> scaleEventsForCluster) {
       Set<ClusterScaleEvent> toRemove = new HashSet<ClusterScaleEvent>();;
 
-      Map<Class<? extends ClusterScaleEvent>, ClusterScaleEvent> newestEventMap = 
+      Map<Class<? extends ClusterScaleEvent>, ClusterScaleEvent> newestEventMap =
             new HashMap<Class<? extends ClusterScaleEvent>, ClusterScaleEvent>();
       for (ClusterScaleEvent event : scaleEventsForCluster) {
          if (event.isExclusive()) {
@@ -442,6 +444,7 @@ public class VHM implements EventConsumer {
             }
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
             /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
+            _log.finer("Using "+scaleStrategy.getKey()+" scale strategy to filter events for cluster "+clusterId);
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
                if (scaleStrategy != null) {

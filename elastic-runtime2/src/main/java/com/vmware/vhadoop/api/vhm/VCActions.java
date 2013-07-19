@@ -32,8 +32,13 @@ public interface VCActions {
       public Boolean _enableAutomation;
       public Integer _minInstances;
       public Integer _jobTrackerPort;
+
+      @Override
+      public String toString() {
+         return "enableAutomation="+_enableAutomation+", minInstances="+_minInstances+", jobTrackerPort="+_jobTrackerPort;
+      }
    }
-   
+
    public class VMEventData {
       // these two fields must always be filled
       public String _vmMoRef;
@@ -52,24 +57,24 @@ public interface VCActions {
       public String _ipAddr;
       public String _dnsName;
       public Integer _vCPUs;
-      
+
       /* If this is non-null, we derive that this is information about a master VM */
       public MasterVmEventData _masterVmData;
-      
+
       @Override
       public String toString() {
          return "<%V"+_vmMoRef+"%V>, isLeaving="+_isLeaving+", isElastic="+_isElastic+", myName="+_myName+", myUUID="+_myUUID+", hostMoRef="+_hostMoRef+", serengetiFolder="+
                      _serengetiFolder+", masterUUID="+_masterUUID+", powerState="+_powerState+", masterMoRef="+_masterMoRef+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", vCPUs="+_vCPUs+
-                     ", masterVMData="+_masterVmData;
+                     ", masterVMData={"+_masterVmData+"}";
       }
    }
-   
+
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean b);
 
    public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) throws InterruptedException;
-   
+
    public void interruptWait();
-   
+
    public Client getStatsPollClient();
 
    public List<String> listVMsInFolder(String folderName);

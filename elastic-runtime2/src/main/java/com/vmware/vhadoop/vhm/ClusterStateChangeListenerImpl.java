@@ -15,12 +15,17 @@
 
 package com.vmware.vhadoop.vhm;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterConstantData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMConstantData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
@@ -35,12 +40,8 @@ import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 
-import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer {
-   private static final Logger _log = Logger.getLogger("ChangeListener");
+   private static final Logger _log = Logger.getLogger("com.vmware.vhadoop.vhm.ChangeListener");
    private final int backoffPeriodMS = 5000;
 
    EventConsumer _eventConsumer;
@@ -49,10 +50,10 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    boolean _started;
    HashMap<String, VmCreatedData> _interimVMData;
    Thread _mainThread;
-   
+
    long _startTime = System.currentTimeMillis();
    boolean _deliberateFailureTriggered = false;
-   
+
    /* Place-holder that indicates that a VM has been created, so any further data about it will be an update */
    class VmCreatedData {
    }
@@ -61,7 +62,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       Boolean _isElastic;
       String _masterUUID;
    }
-   
+
    class InterimVmData extends VmCreatedData {
       String _clusterId;
       CachedVMConstantData _vmConstantData;
@@ -69,7 +70,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       SerengetiClusterConstantData _clusterConstantData;
       SerengetiClusterVariableData _clusterVariableData;
    }
-   
+
    @SuppressWarnings("unused")
    private void deliberatelyFail(long afterTimeMillis) {
       if (!_deliberateFailureTriggered && (System.currentTimeMillis() > (_startTime + afterTimeMillis))) {
@@ -77,18 +78,18 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          throw new RuntimeException("Deliberate failure!!");
       }
    }
-   
+
    public ClusterStateChangeListenerImpl(VCActions vcActions, String serengetiFolderName) {
       _vcActions = vcActions;
       _serengetiFolderName = serengetiFolderName;
       _interimVMData = new HashMap<String, VmCreatedData>();
    }
-   
+
    @Override
    public void registerEventConsumer(EventConsumer consumer) {
       _eventConsumer = consumer;
    }
-   
+
    @Override
    public void start(final EventProducerStoppingCallback stoppingCallback) {
       _started = true;
@@ -272,7 +273,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       return interimVmData;
    }
 
-   /* Turn the raw data from VcVlsi into a rich event hierarchy. 
+   /* Turn the raw data from VcVlsi into a rich event hierarchy.
     * Data may come in from VcVlsi in bits and pieces, particularly when a new cluster is created,
     *   therefore there are clear data-completeness requirements for when we create certain event types
     */
@@ -280,7 +281,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       boolean vmBeingRemoved = (rawData._isLeaving);  /* Should not be null */
       String vmId = rawData._vmMoRef;                 /* Should not be null */
       ClusterStateChangeEvent result = null;
-      
+
       _log.finest("Received rawData: "+rawData);
 
       if (vmBeingRemoved) {
@@ -288,19 +289,19 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          _interimVMData.remove(vmId);
          return new VmRemovedFromClusterEvent(vmId);
       }
-      
+
       InterimVmData interimData = processInterimVmData(vmId, rawData);
-      
+
       if (interimData != null) {
          String clusterId = interimData._clusterId;
          VMConstantData vmConstantData = interimData._vmConstantData;
          VMVariableData vmVariableData = interimData._vmVariableData;
-         
+
          if ((vmConstantData != null) && (vmConstantData.isComplete())) {
             if (vmConstantData._vmType.equals(VmType.MASTER)) {
                SerengetiClusterConstantData clusterConstantData = interimData._clusterConstantData;
                SerengetiClusterVariableData clusterVariableData = interimData._clusterVariableData;
-   
+
                if ((clusterConstantData != null) && (clusterConstantData.isComplete()) &&
                      (clusterVariableData != null) && (clusterVariableData.isComplete())) {
                   result = new NewMasterVMEvent(vmId, clusterId, vmConstantData, vmVariableData, clusterConstantData, clusterVariableData);
