@@ -87,32 +87,36 @@ public class BootstrapMain
          LogManager.getLogManager().readConfiguration(is);
       } catch (Exception e) {
          System.err.println("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
+
+         /* We've not got a properties file controlling things so use LogFormatter for the console at INFO level */
+         Handler handlers[] = Logger.getLogger("").getHandlers();
+         if (handlers.length == 0) {
+            System.err.println("No log handlers defined, using default formatting");
+         } else {
+            handlers[0].setFormatter(new LogFormatter());
+         }
+
+         /* use default file name and LogFormatter for log file */
+         try {
+            String name = fileName;
+            if (name == null) {
+               name = DEFAULT_VHM_LOG_FILENAME;
+            }
+            FileHandler handler = new FileHandler(name);
+            handler.setFormatter(new LogFormatter());
+            Logger.getLogger("").addHandler(handler);
+         } catch (SecurityException f) {
+            f.printStackTrace();
+         } catch (IOException f) {
+            f.printStackTrace();
+         }
       } finally {
          if (is != null) {
             try {
                is.close();
-            } catch (IOException e) {}
+            } catch (IOException e) {
+            }
          }
-      }
-
-      Handler handlers[] = Logger.getLogger("").getHandlers();
-      if (handlers.length == 0) {
-         System.err.println("No log handlers defined, using default formatting");
-      } else {
-         handlers[0].setFormatter(new LogFormatter());
-      }
-
-      try {
-         String name = fileName;
-         if (name == null) {
-            name = DEFAULT_VHM_LOG_FILENAME;
-         }
-         FileHandler handler = new FileHandler(name);
-         Logger.getLogger("").addHandler(handler);
-      } catch (SecurityException e) {
-         e.printStackTrace();
-      } catch (IOException e) {
-         e.printStackTrace();
       }
    }
 
@@ -225,11 +229,11 @@ public class BootstrapMain
 
    HadoopActions getHadoopInterface(ThreadLocalCompoundStatus tlcs) {
       if (_hadoopActions == null) {
-         _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"), 
+         _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"),
                                                                         _properties.getProperty("vHadoopPwd"),
-                                                                        _properties.getProperty("vHadoopPrvkeyFile")), 
-                                            new JTConfigInfo(_properties.getProperty("vHadoopHome"), 
-                                                             _properties.getProperty("vHadoopExcludeTTFile")), 
+                                                                        _properties.getProperty("vHadoopPrvkeyFile")),
+                                            new JTConfigInfo(_properties.getProperty("vHadoopHome"),
+                                                             _properties.getProperty("vHadoopExcludeTTFile")),
                                             tlcs);
       }
       return _hadoopActions;
