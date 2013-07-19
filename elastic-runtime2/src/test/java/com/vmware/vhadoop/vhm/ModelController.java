@@ -34,8 +34,8 @@ public class ModelController extends BootstrapMain {
       this.vApp = serengeti;
    }
 
-   public ModelController(final String configFileName, final String logFileName, Serengeti serengeti) {
-      super(configFileName, logFileName);
+   public ModelController(final String configDir, final String logFileName, Serengeti serengeti) {
+      super(configDir, null, logFileName);
       this.vApp = serengeti;
    }
 

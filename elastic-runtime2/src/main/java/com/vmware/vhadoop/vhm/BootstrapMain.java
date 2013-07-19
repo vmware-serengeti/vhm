@@ -56,21 +56,38 @@ public class BootstrapMain
    public static final String DEFAULT_LOGS_SUBDIR = "/logs";
    public static final String DEFAULT_CONF_SUBDIR = "/conf";
    public static final String SERENGETI_HOME_DIR_PROP_KEY = "serengeti.home.dir";
+   private static String CONFIG_DIR = DEFAULT_CONF_SUBDIR;
+
+   private static Logger _log = Logger.getLogger(BootstrapMain.class.getName());
 
    private VCActions _vcActions;
    private HadoopActions _hadoopActions;
    private Properties _properties;
 
    public BootstrapMain() {
-      this(buildVHMFilePath(DEFAULT_CONF_SUBDIR, DEFAULT_VHM_CONFIG_FILENAME), buildVHMFilePath(DEFAULT_LOGS_SUBDIR, DEFAULT_VHM_LOG_FILENAME));
+      this(DEFAULT_CONF_SUBDIR, buildVHMFilePath(DEFAULT_CONF_SUBDIR, DEFAULT_VHM_CONFIG_FILENAME), buildVHMFilePath(DEFAULT_LOGS_SUBDIR, DEFAULT_VHM_LOG_FILENAME));
    }
 
-   public BootstrapMain(final String configFileName, final String logFileName) {
+   public BootstrapMain(final String configDir, final String configFileName, final String logFileName) {
+      if (configDir != null) {
+         CONFIG_DIR = configDir;
+      }
+
+      String configFile = configFileName;
+      if (configFile == null) {
+         configFile = DEFAULT_VHM_CONFIG_FILENAME;
+      }
+
       _properties = readPropertiesFile(configFileName);
       if (_properties == null) {
          _properties = new Properties();
       }
-      setupLogger(logFileName);
+
+      String logFile = logFileName;
+      if (logFile == null) {
+         logFile = DEFAULT_VHM_LOG_FILENAME;
+      }
+      setupLogger(logFile);
    }
 
    private void setupLogger(final String fileName) {
@@ -78,7 +95,7 @@ public class BootstrapMain
       String loggingFlavour = "specified";
       if (loggingProperties == null) {
          loggingFlavour = "default";
-         loggingProperties = buildVHMFilePath(DEFAULT_CONF_SUBDIR, DEFAULT_LOG_CONFIG_FILENAME);
+         loggingProperties = buildVHMFilePath(CONFIG_DIR, DEFAULT_LOG_CONFIG_FILENAME);
       }
 
       InputStream is = null;
@@ -86,7 +103,7 @@ public class BootstrapMain
          is = new FileInputStream(loggingProperties);
          LogManager.getLogManager().readConfiguration(is);
       } catch (Exception e) {
-         System.err.println("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
+         _log.severe("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
 
          /* We've not got a properties file controlling things so use LogFormatter for the console at INFO level */
          LogFormatter formatter = new LogFormatter();
@@ -99,11 +116,7 @@ public class BootstrapMain
 
          /* use default file name and LogFormatter for log file */
          try {
-            String name = fileName;
-            if (name == null) {
-               name = DEFAULT_VHM_LOG_FILENAME;
-            }
-            FileHandler handler = new FileHandler(name);
+            FileHandler handler = new FileHandler(fileName);
             handler.setFormatter(formatter);
             Logger.getLogger("").addHandler(handler);
          } catch (SecurityException f) {
@@ -151,16 +164,17 @@ public class BootstrapMain
 
       try {
          String baseName;
+         File file;
 
          /* check for it in the conf directory if we've only got a base name, otherwise use the entire path */
          if (!name.contains(System.getProperty("file.separator"))) {
-            File file = new File(buildVHMFilePath(DEFAULT_CONF_SUBDIR, name));
+            file = new File(buildVHMFilePath(CONFIG_DIR, name));
             baseName = name;
             if (file.canRead()) {
                is = new FileInputStream(file);
             }
          } else {
-            File file = new File(name);
+            file = new File(name);
             baseName = file.getName();
 
             if (file.canRead()) {
@@ -168,19 +182,27 @@ public class BootstrapMain
             }
          }
 
-         /* check for it as a resource */
+         /* check for it as a resource - this is always our base if it exists */
          resource = ClassLoader.getSystemResourceAsStream(baseName);
          if (resource != null) {
+            _log.info("Loading "+baseName+" from classloader resource");
             properties = new Properties();
             properties.load(resource);
          }
 
+         /* if we've got version from the file system, overlay that on our resource based version if present */
          if (is != null) {
+            if (properties != null) {
+               _log.info("Overlaying "+baseName+" values from "+file.getPath());
+            } else {
+               _log.info("Loading "+baseName+" from "+file.getPath());
+            }
+
             properties = new Properties(properties);
             properties.load(is);
          }
       } catch (IOException e) {
-         System.err.println("Unable to read properties file from filesystem or as a resource from the jar files:" + name);
+         _log.warning("Unable to read properties file from filesystem or as a resource from the jar files:" + name);
       } finally {
          if (resource != null) {
             try {
