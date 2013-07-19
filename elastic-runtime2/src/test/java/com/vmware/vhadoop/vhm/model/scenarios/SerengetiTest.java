@@ -59,7 +59,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       /* general test setup */
       setup(numberOfHosts, hostCapacity);
       _vCenter.setMetricsInterval(200);
-      _serengeti.setMaxLatency(50);
+      _serengeti.setMaxLatency(500);
 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
@@ -116,7 +116,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       /* general test setup */
       setup(numberOfHosts, hostCapacity);
       _vCenter.setMetricsInterval(200);
-      _serengeti.setMaxLatency(50);
+      _serengeti.setMaxLatency(500);
 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
@@ -166,7 +166,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       /* general test setup */
       setup(numberOfHosts, hostCapacity);
       _vCenter.setMetricsInterval(200);
-      _serengeti.setMaxLatency(50);
+      _serengeti.setMaxLatency(500);
 
       /* create a cluster to work with */
       Master cluster = createCluster(clusterName, computeNodesPerHost);
