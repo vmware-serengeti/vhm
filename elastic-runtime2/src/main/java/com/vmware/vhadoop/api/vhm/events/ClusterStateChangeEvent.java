@@ -30,9 +30,13 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
          return ((_vmType != null) && (_myUUID != null));
       }
       
+      protected String getVariableValues() {
+         return "type="+(_vmType==null ? null : _vmType.name())+", UUID="+_myUUID;
+      }
+      
       @Override
       public String toString() {
-         return "VMConstantData{type="+_vmType.name()+", UUID="+_myUUID+"}";
+         return "VMConstantData{"+getVariableValues()+"}";
       }
    }
 
@@ -44,9 +48,13 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
       public Boolean _powerState;
       public String _hostMoRef;
 
+      protected String getVariableValues() {
+         return "name="+_myName+", vCPUs="+_vCPUs+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", powerState="+_powerState+", hostMoRef="+_hostMoRef;
+      }
+
       @Override
       public String toString() {
-         return "VMVariableData{name="+_myName+", vCPUs="+_vCPUs+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", powerState="+_powerState+", hostMoRef="+_hostMoRef+"}";
+         return "VMVariableData{"+getVariableValues()+"}";
       }
    }
 

@@ -41,7 +41,8 @@ import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 
 public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer {
-   private static final Logger _log = Logger.getLogger("com.vmware.vhadoop.vhm.ChangeListener");
+   private static final Logger _log = Logger.getLogger(ClusterStateChangeListenerImpl.class.getName());
+
    private final int backoffPeriodMS = 5000;
 
    EventConsumer _eventConsumer;
@@ -61,6 +62,15 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    class CachedVMConstantData extends VMConstantData {
       Boolean _isElastic;
       String _masterUUID;
+      
+      protected String getVariableValues() {
+         return "isElastic="+_isElastic+", _masterUUID="+_masterUUID;
+      }
+      
+      @Override
+      public String toString() {
+         return "CachedVMConstantData{"+super.getVariableValues()+", "+getVariableValues()+"}";
+      }
    }
 
    class InterimVmData extends VmCreatedData {
@@ -69,6 +79,16 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       VMVariableData _vmVariableData;
       SerengetiClusterConstantData _clusterConstantData;
       SerengetiClusterVariableData _clusterVariableData;
+      
+      protected String getVariableValues() {
+         return "_clusterId="+_clusterId+", _vmConstantData="+_vmConstantData+", _vmVariableData="+_vmVariableData+
+               ", _clusterConstantData="+_clusterConstantData+", _clusterVariableData="+_clusterVariableData;
+      }
+      
+      @Override
+      public String toString() {
+         return "InterimVmData{"+getVariableValues()+"}";
+      }
    }
 
    @SuppressWarnings("unused")
@@ -181,6 +201,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if ((result._isElastic != null) && (isMaster != null)) {
          result._vmType = result._isElastic ? VmType.COMPUTE : (isMaster ? VmType.MASTER : VmType.OTHER);
       }
+      _log.fine("Returning new CachedVMConstantData: "+result+"; cachedConstant: "+cachedConstant);
       return result;
    }
 
@@ -212,6 +233,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if (rawData._vCPUs != null) {
          result._vCPUs = rawData._vCPUs;
       }
+      _log.fine("Returning new VMVariableData: "+result+"; cachedVariable: "+cachedVariable);
       return result;
    }
 
@@ -224,8 +246,10 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          if (rawData._serengetiFolder != null) {
             result._serengetiFolder = rawData._serengetiFolder;
          }
+         _log.fine("Returning new SerengetiClusterConstantData: "+result+"; cachedConstant: "+cachedConstant);
          return result;
       }
+      _log.finest("Returning null. rawData: "+rawData+" ");
       return null;
    }
 
@@ -242,8 +266,10 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          if (mved._minInstances != null) {
             result._minInstances = mved._minInstances;
          }
+         _log.fine("Returning new SerengetiClusterVariableData: "+result+"; cachedConstant: "+cachedVariable);
          return result;
       }
+      _log.finest("Returning null. rawData: "+rawData+" ");
       return null;
    }
 
@@ -251,10 +277,14 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       VmCreatedData nullData = _interimVMData.get(vmId);
       InterimVmData interimVmData = null;
       if (nullData == null) {
+         /* Otherwise if this is the first time we've heard about this VM, create a new InterimVmData and stash it */
          interimVmData = new InterimVmData();
          _interimVMData.put(vmId, interimVmData);
       } else if (nullData instanceof InterimVmData) {
+         /* If this is not the first time we've heard about it, but we already have some interim data, just retrieve what we have and update it */
          interimVmData = (InterimVmData)nullData;
+      } else {
+         /* Returns null for a VM which the system already knows about - one which doesn't have "interim" data associated with it */
       }
       if (interimVmData != null) {
          interimVmData._vmConstantData = getVmConstantData(rawData, interimVmData._vmConstantData);
@@ -270,6 +300,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
             }
          }
       }
+      _log.finer("Processed interim VM data: "+interimVmData);
       return interimVmData;
    }
 
@@ -286,17 +317,18 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
       if (vmBeingRemoved) {
          /* Replace any interim data or place-holder */
+         _log.finer("Generating VmRemovedFromClusterEvent for VM <%V"+vmId);
          _interimVMData.remove(vmId);
          return new VmRemovedFromClusterEvent(vmId);
       }
 
       InterimVmData interimData = processInterimVmData(vmId, rawData);
-
+      /* There is interim data for this VM which may now be enough to generate a NewVmEvent */
       if (interimData != null) {
          String clusterId = interimData._clusterId;
          VMConstantData vmConstantData = interimData._vmConstantData;
          VMVariableData vmVariableData = interimData._vmVariableData;
-
+         /* VMConstantData being complete is enough for us to create a NewVmEvent or NewMasterVmEvent */
          if ((vmConstantData != null) && (vmConstantData.isComplete())) {
             if (vmConstantData._vmType.equals(VmType.MASTER)) {
                SerengetiClusterConstantData clusterConstantData = interimData._clusterConstantData;
@@ -304,31 +336,38 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
                if ((clusterConstantData != null) && (clusterConstantData.isComplete()) &&
                      (clusterVariableData != null) && (clusterVariableData.isComplete())) {
+                  _log.finer("Generating NewMasterVMEvent for VM <%V"+vmId+"%V> in cluster <%C"+clusterId);
                   result = new NewMasterVMEvent(vmId, clusterId, vmConstantData, vmVariableData, clusterConstantData, clusterVariableData);
                }
             } else {
+               _log.finer("Generating NewVmEvent for VM <%V"+vmId+"%V> in cluster <%C"+clusterId);
                result = new NewVmEvent(vmId, clusterId, vmConstantData, vmVariableData);
             }
          }
          if (result != null) {
-            /* Replace the interim data with a place-holder */
+            /* Replace the interim data with a place-holder which indicates that the VM event has now been created */
             _interimVMData.put(vmId, new VmCreatedData());
             return result;
          }
+      /* We already know about this VM and this therefore must be an update to its variable state */
       } else {
          VMVariableData vmVariableData = getVmVariableData(rawData, null);
          SerengetiClusterVariableData clusterVariableData = getClusterVariableData(rawData, null);
 
          if (vmVariableData != null) {
             if (clusterVariableData != null) {
+               _log.finer("Generating MasterVmUpdateEvent for VM <%V"+vmId);
                return new MasterVmUpdateEvent(vmId, vmVariableData, clusterVariableData);
             } else {
+               _log.finer("Generating VmUpdateEvent for VM <%V"+vmId);
                return new VmUpdateEvent(vmId, vmVariableData);
             }
          } else if (clusterVariableData != null) {
+            _log.finer("Generating ClusterUpdateEvent for VM <%V"+vmId);
             return new ClusterUpdateEvent(vmId, clusterVariableData);
          }
       }
+      _log.finer("Returning null");
       return null;
    }
 
