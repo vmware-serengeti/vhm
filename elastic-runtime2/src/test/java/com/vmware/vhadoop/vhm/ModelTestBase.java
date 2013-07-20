@@ -403,8 +403,8 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
          vms = map.listComputeVMsForClusterAndPowerState(clusterId, power);
          unlockClusterMap(map);
       } while (
-            (vms == null && number != 0) ||
-            (vms != null && vms.size() != number) &&
+            ((vms == null && number != 0) ||
+            (vms != null && vms.size() != number)) &&
             System.currentTimeMillis() < deadline);
 
       assertEquals(msg+" - incorrect number of VMs show as powered "+(power ? "on" : "off")+" in cluster map for cluster"+clusterId , number, vms != null ? vms.size() : 0);
@@ -423,10 +423,9 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
    }
 
    /**
-    * This inspects the cluster map for VMs in the specified state
+    * This inspects the cluster map to ensure that a scale strategy has been set, any strategy. This is an initialization check.
     * @param clusterId
     * @param number
-    * @param power
     * @param timeout
     */
    public void assertScaleStrategySet(String msg, String clusterId, long timeout) {
