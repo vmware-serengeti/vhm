@@ -36,7 +36,7 @@ public interface ClusterMap {
       /* Allows for the addition of contextual data to be added to a cluster and retrieved through ClusterMap */
       Map<String, String> parseExtraInfo(SerengetiClusterVariableData clusterData, String clusterId);
 
-      /* Allows for the creation of new scale events based on cluster state change */
+      /* Allows for the creation of new scale events based on cluster state change - order is preserved of the returned set */
       Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData clusterData, String clusterId, boolean isNewCluster);
    }
 

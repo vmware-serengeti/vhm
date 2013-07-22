@@ -118,7 +118,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
          @Override
          public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData cvd, String clusterId, boolean isNewCluster) {
             _isNewClusterResult.add(isNewCluster);
-            Set<ClusterScaleEvent> newEvents = new HashSet<ClusterScaleEvent>();
+            Set<ClusterScaleEvent> newEvents = new LinkedHashSet<ClusterScaleEvent>();
             if ((cvd != null) && (cvd._enableAutomation != null)) {
                if (cvd._enableAutomation) {
                   newEvents.add(new ClusterScaleStrategyNotManualEvent(clusterId, isNewCluster));

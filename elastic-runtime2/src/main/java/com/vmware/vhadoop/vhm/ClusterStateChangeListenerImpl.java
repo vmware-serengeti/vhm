@@ -63,6 +63,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       Boolean _isElastic;
       String _masterUUID;
       
+      @Override
       protected String getVariableValues() {
          return "isElastic="+_isElastic+", _masterUUID="+_masterUUID;
       }
@@ -307,6 +308,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    /* Turn the raw data from VcVlsi into a rich event hierarchy.
     * Data may come in from VcVlsi in bits and pieces, particularly when a new cluster is created,
     *   therefore there are clear data-completeness requirements for when we create certain event types
+    * In most cases, data in VMEventData will be a delta, making it unlikely that we'll see the same thing set twice
+    *   however, we should not assume this. This is why ordering of event processing is important.
     */
    protected ClusterStateChangeEvent translateVMEventData(VMEventData rawData) {
       boolean vmBeingRemoved = (rawData._isLeaving);  /* Should not be null */

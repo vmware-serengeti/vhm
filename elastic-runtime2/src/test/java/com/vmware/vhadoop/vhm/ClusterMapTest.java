@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -101,7 +102,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
             if (!isNewCluster && (scvd != null) && (scvd._minInstances != null)) {
                int minInstances = scvd._minInstances;
                if (minInstances >= 0) {
-                  Set<ClusterScaleEvent> newSet = new HashSet<ClusterScaleEvent>();
+                  Set<ClusterScaleEvent> newSet = new LinkedHashSet<ClusterScaleEvent>();
                   newSet.add(new ImpliedScaleEvent(clusterId, minInstances));
                   return newSet;
                }

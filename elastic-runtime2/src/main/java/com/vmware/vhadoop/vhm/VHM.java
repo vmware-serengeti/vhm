@@ -179,7 +179,7 @@ public class VHM implements EventConsumer {
    }
 
    public Set<NotificationEvent> pollForEvents() {
-      HashSet<NotificationEvent> results = null;
+      Set<NotificationEvent> results = null;
       synchronized(_eventQueue) {
          while (_eventQueue.peek() == null) {
             try {
@@ -257,26 +257,31 @@ public class VHM implements EventConsumer {
       return clusterId;
    }
 
-   private void getQueuedScaleEventsForCluster(Set<NotificationEvent> events, Map<String, Set<ClusterScaleEvent>> results) {
-      if (results != null) {
+   private void updateOrCreateClusterScaleEventSet(String clusterId, ClusterScaleEvent newEvent,
+         Map<String, Set<ClusterScaleEvent>> clusterScaleEventMap) {
+      Set<ClusterScaleEvent> clusterScaleEvents = clusterScaleEventMap.get(clusterId);
+      if (clusterScaleEvents == null) {
+         clusterScaleEvents = new LinkedHashSet<ClusterScaleEvent>();      /* Preserve order */
+         clusterScaleEventMap.put(clusterId, clusterScaleEvents);
+      }
+      clusterScaleEvents.add(newEvent);
+   }
+   
+   /* The method takes all new events polled from the event queue, pulls out any ClsuterScaleEvents and organizes them by Cluster */
+   private void getQueuedScaleEventsForCluster(Set<NotificationEvent> events, Map<String, Set<ClusterScaleEvent>> clusterScaleEventMap) {
+      if (clusterScaleEventMap != null) {
          for (NotificationEvent event : events) {
             if (event instanceof AbstractClusterScaleEvent) {
+               /* Derive the cluster ID and other details if the event does not already have it */
                String clusterId = completeClusterScaleEventDetails((AbstractClusterScaleEvent)event);
-               if (clusterId != null) {
-                  Set<ClusterScaleEvent> clusterScaleEvents = results.get(clusterId);
-                  if (clusterScaleEvents == null) {
-                     clusterScaleEvents = new LinkedHashSet<ClusterScaleEvent>();
-                     results.put(clusterId, clusterScaleEvents);
-                  }
-                  clusterScaleEvents.add((ClusterScaleEvent)event);
-               }
+               updateOrCreateClusterScaleEventSet(clusterId, (ClusterScaleEvent)event, clusterScaleEventMap);
             }
          }
       }
    }
 
    private Set<ClusterStateChangeEvent> getClusterAddRemoveEvents(Set<NotificationEvent> events) {
-      Set<ClusterStateChangeEvent> results = new LinkedHashSet<ClusterStateChangeEvent>();
+      Set<ClusterStateChangeEvent> results = new LinkedHashSet<ClusterStateChangeEvent>();      /* Preserve order */
       for (NotificationEvent event : events) {
          if ((event instanceof NewVmEvent) || (event instanceof VmRemovedFromClusterEvent)) {
             results.add((ClusterStateChangeEvent)event);
@@ -286,7 +291,7 @@ public class VHM implements EventConsumer {
    }
 
    private Set<ClusterStateChangeEvent> getClusterUpdateEvents(Set<NotificationEvent> events) {
-      Set<ClusterStateChangeEvent> results = new LinkedHashSet<ClusterStateChangeEvent>();
+      Set<ClusterStateChangeEvent> results = new LinkedHashSet<ClusterStateChangeEvent>();      /* Preserve order */
       for (NotificationEvent event : events) {
          if ((event instanceof VmUpdateEvent) || (event instanceof ClusterUpdateEvent)) {
             results.add((ClusterStateChangeEvent)event);
@@ -296,7 +301,7 @@ public class VHM implements EventConsumer {
    }
 
    private Set<ClusterScaleCompletionEvent> getClusterScaleCompletionEvents(Set<NotificationEvent> events) {
-      Set<ClusterScaleCompletionEvent> results = new LinkedHashSet<ClusterScaleCompletionEvent>();
+      Set<ClusterScaleCompletionEvent> results = new LinkedHashSet<ClusterScaleCompletionEvent>();      /* Preserve order */
       for (NotificationEvent event : events) {
          if (event instanceof ClusterScaleCompletionEvent) {
             results.add((ClusterScaleCompletionEvent)event);
@@ -384,38 +389,59 @@ public class VHM implements EventConsumer {
       return null;
    }
 
-   private void handleClusterStateChangeEvents(Set<ClusterStateChangeEvent> eventsToProcess, Map<String, Set<ClusterScaleEvent>> clusterScaleEvents) {
-      Set<ClusterScaleEvent> impliedScaleEvents = new HashSet<ClusterScaleEvent>();
+   /* Process new cluster state change events received from the ClusterStateChangeListener
+    * The impliedScaleEventsMap allows any clusterScaleEvents implied by cluster state changes to be added */
+   private void handleClusterStateChangeEvents(Set<ClusterStateChangeEvent> eventsToProcess, 
+         Map<String, Set<ClusterScaleEvent>> impliedScaleEventsMap) {
+      Set<ClusterScaleEvent> impliedScaleEventsForCluster = new LinkedHashSet<ClusterScaleEvent>();    /* Preserve order */
+      
       for (ClusterStateChangeEvent event : eventsToProcess) {
          _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
-         String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEvents);
+         
+         /* ClusterMap will process the event and may add an implied scale event (see ExtraInfoToClusterMapper) */
+         String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEventsForCluster);
          if (clusterId != null) {
-            if (impliedScaleEvents.size() > 0) {
-               if (clusterScaleEvents.get(clusterId) == null) {
-                  clusterScaleEvents.put(clusterId, impliedScaleEvents);
-                  impliedScaleEvents = new HashSet<ClusterScaleEvent>();
+            
+            /* If there are new scale events, create or update the Set in the impliedScaleEventsMap */
+            if (impliedScaleEventsForCluster.size() > 0) {
+               if (impliedScaleEventsMap.get(clusterId) == null) {
+                  impliedScaleEventsMap.put(clusterId, impliedScaleEventsForCluster);
+                  impliedScaleEventsForCluster = new LinkedHashSet<ClusterScaleEvent>();
                } else {
-                  clusterScaleEvents.get(clusterId).addAll(impliedScaleEvents);
-                  impliedScaleEvents.clear();
+                  impliedScaleEventsMap.get(clusterId).addAll(impliedScaleEventsForCluster);
+                  impliedScaleEventsForCluster.clear();
                }
             }
          }
       }
    }
 
+   /* When events are polled, this is the first method that gets the opportunity to triage them */
    private void handleEvents(Set<NotificationEvent> events) {
+      /* addRemoveEvents are events that affect the shape of a cluster */
       final Set<ClusterStateChangeEvent> addRemoveEvents = getClusterAddRemoveEvents(events);
+
+      /* updateEvents are events that change the state of a cluster */
       final Set<ClusterStateChangeEvent> updateEvents = getClusterUpdateEvents(events);
+
+      /* completionEvents are received when a cluster scale thread has finished executing */
       final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
+      /* clusterScaleEvents are events suggesting the scaling up or down of a cluster */
       final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
 
-      /* Update ClusterMap first */
+      /* ClusterMap is updated by VHM based on events that come in from the ClusterStateChangeListener
+       * The first thing we do here is update ClusterMap to ensure that the latest state is reflected ASAP 
+       * Note that clusterScaleEvents can be implied by cluster state changes, so new clusterScaleEvents can be added here */
       if ((addRemoveEvents.size() + updateEvents.size() + completionEvents.size()) > 0) {
          _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
+
+               /* Add/remove events are handled first as these will have the most significant impact */
                handleClusterStateChangeEvents(addRemoveEvents, clusterScaleEvents);
+
+               /* Note that the scale strategy key may be updated here so any subsequent call to getScaleStrategyForCluster will reflect the change */
                handleClusterStateChangeEvents(updateEvents, clusterScaleEvents);
                for (ClusterScaleCompletionEvent event : completionEvents) {
                   _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
@@ -426,8 +452,11 @@ public class VHM implements EventConsumer {
          });
       }
 
+      /* Now that we may have some implied scale events from above, add any additional scale events from the event queue */
       getQueuedScaleEventsForCluster(events, clusterScaleEvents);
 
+      /* If there are scale events to handle, we need to invoke the scale strategies for each cluster 
+       * The ordering in which we process the clusters doesn't matter as they will be done concurrently */
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
             Set<ClusterScaleEvent> unconsolidatedEvents = clusterScaleEvents.get(clusterId);
@@ -442,32 +471,37 @@ public class VHM implements EventConsumer {
                }
                continue;
             }
+            
+            /* Note that any update to the scale strategy will already have been processed above in handleClusterStateChangeEvents */
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
-            /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
+            if (scaleStrategy == null) {
+               _log.severe("There is no scaleStrategy set for cluster <%C"+clusterId);
+               continue;
+            }
+            
             _log.finer("Using "+scaleStrategy.getKey()+" scale strategy to filter events for cluster "+clusterId);
+
+            /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
             if (consolidatedEvents.size() > 0) {
-               if (scaleStrategy != null) {
-                  /* If there is an instruction from Serengeti to switch to manual, strip out that one event and dump the others */
-                  SerengetiLimitInstruction switchToManualEvent = pendingBlockingSwitchToManual(consolidatedEvents);
-                  if (switchToManualEvent != null) {
-                     /* If Serengeti has made the necessary change to extraInfo AND any other scaling has completed, inform completion */
-                     boolean extraInfoChanged = _clusterMap.getScaleStrategyKey(clusterId).equals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY);
-                     boolean scalingCompleted = !_executionStrategy.isClusterScaleInProgress(clusterId);
-                     if (extraInfoChanged && scalingCompleted) {
-                        _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"%C> is now complete. Reporting back to Serengeti");
-                        switchToManualEvent.reportCompletion();
-                     } else {
-                        /* Continue to block Serengeti CLI by putting the event back on the queue */
-                        placeEventCollectionOnQueue(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
-                     }
-                  } else if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
-                     /* If we couldn't schedule handling of the events, put them back on the queue in their un-consolidated form */
-                     _log.finest("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
-                     placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+               /* If there is an instruction from Serengeti to switch to manual, strip out that one event and dump the others */
+               SerengetiLimitInstruction switchToManualEvent = pendingBlockingSwitchToManual(consolidatedEvents);
+               if (switchToManualEvent != null) {
+                  /* If Serengeti has made the necessary change to extraInfo AND any other scaling has completed, inform completion */
+                  boolean extraInfoChanged = _clusterMap.getScaleStrategyKey(clusterId).equals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY);
+                  boolean scalingCompleted = !_executionStrategy.isClusterScaleInProgress(clusterId);
+                  if (extraInfoChanged && scalingCompleted) {
+                     _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"%C> is now complete. Reporting back to Serengeti");
+                     switchToManualEvent.reportCompletion();
+                  } else {
+                     /* Continue to block Serengeti CLI by putting the event back on the queue */
+                     placeEventCollectionOnQueue(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
                   }
-               } else {
-                  _log.severe("No scale strategy associated with cluster "+clusterId);
+               /* Call out to the execution strategy to handle the scale events for the cluster - non blocking */
+               } else if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
+                  /* If we couldn't schedule handling of the events, put them back on the queue in their un-consolidated form */
+                  _log.finest("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
+                  placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
                }
             }
          }

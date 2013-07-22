@@ -151,7 +151,7 @@ public class ClusterMapImpl implements ClusterMap {
       return clusterId;
    }
 
-   /* Returns clusterId of the cluster affected */
+   /* Returns clusterId of the cluster affected or null if no update occurred (possibly an error) */
    /* May also return any implied scale events of the cluster state change */
    public String handleClusterEvent(ClusterStateChangeEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
       String clusterId = null;
@@ -278,6 +278,8 @@ public class ClusterMapImpl implements ClusterMap {
       return clusterId;
    }
 
+   /* Note that in most cases, the information in variableData will represent deltas - real changes to state. 
+    * However, this may not always be the case, so this should not be assumed - note testForUpdate methods */
    private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData,
          Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
       boolean variableDataChanged = false;
