@@ -78,7 +78,7 @@ public class BootstrapMain
          configFile = DEFAULT_VHM_CONFIG_FILENAME;
       }
 
-      _properties = readPropertiesFile(configFileName);
+      _properties = readPropertiesFile(configFile);
       if (_properties == null) {
          _properties = new Properties();
       }
