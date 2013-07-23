@@ -47,9 +47,9 @@ import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
  *
  */
 public class RabbitAdaptor implements MQClient {
-   private RabbitConnection _connection;
+   private final RabbitConnection _connection;
    private EventConsumer _eventConsumer;
-   private boolean _started;
+   private volatile boolean _started;
    private Thread _mainThread;
 
    long _startTime = System.currentTimeMillis();
