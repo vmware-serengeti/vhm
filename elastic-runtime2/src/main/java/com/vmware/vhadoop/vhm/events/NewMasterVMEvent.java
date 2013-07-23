@@ -16,8 +16,8 @@
 package com.vmware.vhadoop.vhm.events;
 
 public class NewMasterVMEvent extends NewVmEvent {
-   private SerengetiClusterConstantData _clusterConstantData;
-   private SerengetiClusterVariableData _clusterVariableData;
+   private final SerengetiClusterConstantData _clusterConstantData;
+   private final SerengetiClusterVariableData _clusterVariableData;
 
    public NewMasterVMEvent(String vmId, String clusterId, VMConstantData constantData, VMVariableData vmVariableData, 
          SerengetiClusterConstantData clusterConstantData, SerengetiClusterVariableData clusterVariableData) {

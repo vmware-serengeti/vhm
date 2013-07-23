@@ -70,13 +70,13 @@ public class HadoopAdaptor implements HadoopActions {
 
    private static final Logger _log = Logger.getLogger(HadoopAdaptor.class.getName());
 
-   private Map<String, HadoopConnection> _connections;
-   private HadoopErrorCodes _errorCodes;
-   private HadoopCredentials _credentials;
-   private JTConfigInfo _jtConfig;
-   private HadoopConnectionProperties _connectionProperties;        /* TODO: Provide setter? If not, make local */
-   private Map<String, Map<ParamTypes, String>> _errorParamValues;               /* TODO: Will need one per connection/cluster */
-   private ThreadLocalCompoundStatus _threadLocalStatus;
+   private final Map<String, HadoopConnection> _connections;
+   private final HadoopErrorCodes _errorCodes;
+   private final HadoopCredentials _credentials;
+   private final JTConfigInfo _jtConfig;
+   private final HadoopConnectionProperties _connectionProperties;        /* TODO: Provide setter? If not, make local */
+   private final Map<String, Map<ParamTypes, String>> _errorParamValues;  /* TODO: Will need one per connection/cluster */
+   private final ThreadLocalCompoundStatus _threadLocalStatus;
 
    /* TODO: I think it's ok that these are all constants for now. Easy to externalize in future though */
 
@@ -108,7 +108,7 @@ public class HadoopAdaptor implements HadoopActions {
       _threadLocalStatus = tlcs;
    }
 
-   CompoundStatus getCompoundStatus() {
+   private CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
          return new CompoundStatus("DUMMY_STATUS");
       }

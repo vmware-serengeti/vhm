@@ -18,8 +18,8 @@ package com.vmware.vhadoop.vhm.events;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 
 public class VmUpdateEvent extends AbstractNotificationEvent implements ClusterStateChangeEvent {
-   private String _vmId;
-   private VMVariableData _variableData;
+   private final String _vmId;
+   private final VMVariableData _variableData;
 
    public VmUpdateEvent(String vmId, VMVariableData variableData) {
       super(false, false);

@@ -44,12 +44,12 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       ScaleStrategyContext _scaleStrategyContext;
    }
    
-   private ExecutorService _threadPool;
-   private Map<String, ClusterTaskContext> _clusterTaskContexts;
+   private final ExecutorService _threadPool;
+   private final Map<String, ClusterTaskContext> _clusterTaskContexts;
    private static int _threadCounter = 0;
    private EventConsumer _consumer;
    private Thread _mainThread;
-   private boolean _started;
+   private volatile boolean _started;
 
    long _startTime = System.currentTimeMillis();
    boolean _deliberateFailureTriggered = false;

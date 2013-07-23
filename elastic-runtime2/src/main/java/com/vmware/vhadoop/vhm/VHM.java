@@ -51,20 +51,20 @@ import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHM implements EventConsumer {
-   private Set<EventProducer> _eventProducers;
-   private Queue<NotificationEvent> _eventQueue;
+   private final Set<EventProducer> _eventProducers;
+   private final Queue<NotificationEvent> _eventQueue;
    private boolean _initialized;
-   private ClusterMapImpl _clusterMap;
-   private ExecutionStrategy _executionStrategy;
-   private VCActions _vcActions;
-   private MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
-   private ClusterMapReader _parentClusterMapReader;
-   private boolean _started = false;
-   private EventProducer.EventProducerStoppingCallback _fatalStoppingHandler;
+   private final ClusterMapImpl _clusterMap;
+   private final ExecutionStrategy _executionStrategy;
+   private final VCActions _vcActions;
+   private final MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
+   private final ClusterMapReader _parentClusterMapReader;
+   private volatile boolean _started = false;
+   private final EventProducer.EventProducerStoppingCallback _fatalStoppingHandler;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
-   public VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
+   VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
          ExtraInfoToClusterMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
       _eventProducers = new HashSet<EventProducer>();
       _eventQueue = new LinkedList<NotificationEvent>();

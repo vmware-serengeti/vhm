@@ -57,7 +57,7 @@ import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.SshUtils;
 public class NonThreadSafeSshUtils implements SshUtils
 {
 
-   private JSch _jsch = new JSch();
+   private final JSch _jsch = new JSch();
 
    private static final String SCP_COMMAND = "scp  -t  ";
    private static final int INPUTSTREAM_TIMEOUT = 100;

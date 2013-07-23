@@ -69,6 +69,7 @@ import com.vmware.vim.binding.vim.view.ViewManager;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
+import com.vmware.vim.binding.vmodl.fault.RequestCanceled;
 import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.Change;
@@ -684,6 +685,8 @@ public class VcVlsi {
             result = pcVMsInFolder(vcClient, f, version, vmDataList);
          }
          status.registerTaskSucceeded();
+      } catch (com.vmware.vim.binding.vmodl.fault.RequestCanceled e) {
+         _log.info("waitForUpdates request has been canceled");
       } catch (Exception e) {
          reportException("Unexpected exception waiting for updates", e, status);
       }
@@ -707,6 +710,8 @@ public class VcVlsi {
             }
          }
          status.registerTaskSucceeded();
+      } catch (com.vmware.vim.binding.vmodl.fault.RequestCanceled e) {
+         _log.info("getVMsInFolder has been canceled");
       } catch (Exception e) {
          reportException("Unexpected exception in getVMsInFolder", e, status);
       }

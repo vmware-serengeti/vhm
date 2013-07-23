@@ -22,8 +22,8 @@ import java.util.Set;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 
 public class ClusterScaleDecision extends AbstractNotificationEvent implements ClusterScaleCompletionEvent {
-   String _clusterId;
-   Map<String, Decision> _decisions;
+   private final String _clusterId;
+   private final Map<String, Decision> _decisions;
    
    public ClusterScaleDecision(String clusterId) {
       super(false, true);

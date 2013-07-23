@@ -25,7 +25,7 @@ import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 public class DumbEDPolicy extends AbstractClusterMapReader implements EDPolicy {
    private static final Logger _log = Logger.getLogger(DumbEDPolicy.class.getName());
 
-   final VCActions _vcActions;
+   private final VCActions _vcActions;
    
    public DumbEDPolicy(VCActions vcActions) {
       _vcActions = vcActions;

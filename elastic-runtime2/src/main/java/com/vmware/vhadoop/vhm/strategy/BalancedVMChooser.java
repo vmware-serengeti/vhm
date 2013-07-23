@@ -33,7 +33,7 @@ import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 public class BalancedVMChooser extends AbstractClusterMapReader implements VMChooser {
    private static final Logger _log = Logger.getLogger(BalancedVMChooser.class.getName());
 
-   class Host {
+   private class Host {
       Set<String> candidates;
       int on;
    }

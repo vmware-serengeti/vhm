@@ -68,9 +68,9 @@ public class HadoopConnection {
       void cleanup(Logger logger, OutputStream out, ChannelExec channel);
    }
 
-   private HadoopConnectionProperties _connectionProperties;
-   private HadoopClusterInfo _hadoopCluster;
-   private SshUtils _sshUtils;
+   private final HadoopConnectionProperties _connectionProperties;
+   private final HadoopClusterInfo _hadoopCluster;
+   private final SshUtils _sshUtils;
 
    /* These may all be optional, so all set using setters, not constructor */
    private HadoopCredentials _credentials;

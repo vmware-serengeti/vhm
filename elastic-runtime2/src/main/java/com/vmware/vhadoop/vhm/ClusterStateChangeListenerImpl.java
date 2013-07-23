@@ -45,23 +45,23 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
    private final int backoffPeriodMS = 5000;
 
-   EventConsumer _eventConsumer;
-   VCActions _vcActions;
-   String _serengetiFolderName;
-   boolean _started;
-   HashMap<String, VmCreatedData> _interimVMData;
-   Thread _mainThread;
+   private EventConsumer _eventConsumer;
+   private final VCActions _vcActions;
+   private final String _serengetiFolderName;
+   private volatile boolean _started;
+   private final HashMap<String, VmCreatedData> _interimVMData;
+   private Thread _mainThread;
 
-   long _startTime = System.currentTimeMillis();
-   boolean _deliberateFailureTriggered = false;
+   private final long _startTime = System.currentTimeMillis();
+   private boolean _deliberateFailureTriggered = false;
 
    /* Place-holder that indicates that a VM has been created, so any further data about it will be an update */
-   class VmCreatedData {
+   private class VmCreatedData {
    }
 
-   class CachedVMConstantData extends VMConstantData {
-      Boolean _isElastic;
-      String _masterUUID;
+   private class CachedVMConstantData extends VMConstantData {
+      private Boolean _isElastic;
+      private String _masterUUID;
       
       @Override
       protected String getVariableValues() {
@@ -74,12 +74,12 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       }
    }
 
-   class InterimVmData extends VmCreatedData {
-      String _clusterId;
-      CachedVMConstantData _vmConstantData;
-      VMVariableData _vmVariableData;
-      SerengetiClusterConstantData _clusterConstantData;
-      SerengetiClusterVariableData _clusterVariableData;
+   private class InterimVmData extends VmCreatedData {
+      private String _clusterId;
+      private CachedVMConstantData _vmConstantData;
+      private VMVariableData _vmVariableData;
+      private SerengetiClusterConstantData _clusterConstantData;
+      private SerengetiClusterVariableData _clusterVariableData;
       
       protected String getVariableValues() {
          return "_clusterId="+_clusterId+", _vmConstantData="+_vmConstantData+", _vmVariableData="+_vmVariableData+

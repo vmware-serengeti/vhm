@@ -50,25 +50,17 @@ import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 public class ClusterMapImpl implements ClusterMap {
    private static final Logger _log = Logger.getLogger(ClusterMap.class.getName());
 
-   Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
-   Map<String, HostInfo> _hosts = new HashMap<String, HostInfo>();
-   Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
-   Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
+   private final Map<String, ClusterInfo> _clusters = new HashMap<String, ClusterInfo>();
+   private final Map<String, VMInfo> _vms = new HashMap<String, VMInfo>();
+   private final Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
 
-   final ExtraInfoToClusterMapper _extraInfoMapper;
+   private final ExtraInfoToClusterMapper _extraInfoMapper;
 
-   public ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
+   ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
       _extraInfoMapper = mapper;
    }
 
-   class HostInfo {
-      public HostInfo(String moRef) {
-         this._moRef = moRef;
-      }
-      final String _moRef;
-   }
-
-   class VMInfo {
+   private class VMInfo {
       final String _moRef;
       final VMConstantData _constantData;
       final VMVariableData _variableData;

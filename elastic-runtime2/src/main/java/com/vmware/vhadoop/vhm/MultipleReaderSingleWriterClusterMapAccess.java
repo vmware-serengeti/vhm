@@ -25,14 +25,14 @@ import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader.ClusterMapAccess;
 
 public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAccess {
-   private Set<Thread> _readerThreads = Collections.synchronizedSet(new HashSet<Thread>());
-   private Object _clusterMapWriteLock = new Object();
-   private ClusterMap _clusterMap;
+   private final Set<Thread> _readerThreads = Collections.synchronizedSet(new HashSet<Thread>());
+   private final Object _clusterMapWriteLock = new Object();
+   private final ClusterMap _clusterMap;
    private static MultipleReaderSingleWriterClusterMapAccess _singleton;
 
    private static final Logger _log = Logger.getLogger(MultipleReaderSingleWriterClusterMapAccess.class.getName());
 
-   public static MultipleReaderSingleWriterClusterMapAccess getClusterMapAccess(ClusterMap clusterMap) {
+   static MultipleReaderSingleWriterClusterMapAccess getClusterMapAccess(ClusterMap clusterMap) {
       if (_singleton == null) {
          _singleton = new MultipleReaderSingleWriterClusterMapAccess(clusterMap);
       }

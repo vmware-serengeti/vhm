@@ -25,10 +25,10 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    public static final String actionUnlimit = "Unlimit";
    public static final String actionWaitForManual = "WaitForManual";
 
-   String _action;
-   String _clusterFolderName;
-   int _toSize;
-   QueueClient _messageCallback;
+   private final String _action;
+   private final String _clusterFolderName;
+   private final int _toSize;
+   private final QueueClient _messageCallback;
 
    private static final Logger _log = Logger.getLogger(SerengetiLimitInstruction.class.getName());
 

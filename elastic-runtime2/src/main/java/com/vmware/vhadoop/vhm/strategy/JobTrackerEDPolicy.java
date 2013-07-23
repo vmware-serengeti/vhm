@@ -28,8 +28,8 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
 public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPolicy {
-   final HadoopActions _hadoopActions;
-   final VCActions _vcActions;
+   private final HadoopActions _hadoopActions;
+   private final VCActions _vcActions;
 
    public JobTrackerEDPolicy(HadoopActions hadoopActions, VCActions vcActions) {
       _hadoopActions = hadoopActions;

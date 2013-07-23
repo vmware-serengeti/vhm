@@ -34,8 +34,8 @@ import java.util.logging.Logger;
 
 public class ManualScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
    private static final Logger _log = Logger.getLogger(ManualScaleStrategy.class.getName());
-   final VMChooser _vmChooser;
-   final EDPolicy _enableDisablePolicy;
+   private final VMChooser _vmChooser;
+   private final EDPolicy _enableDisablePolicy;
    
    public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
    

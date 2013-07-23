@@ -38,8 +38,8 @@ public class VcAdapter implements VCActions {
    private Client _cloneClient;   // used for stats polling and the main waitForPropertyChange loop
    private Client _defaultClient; // used for rest of VC operations
    private VcVlsi _vcVlsi;
-   private VcCredentials _vcCreds;
-   private String _rootFolderName; // root folder for this VHM instance
+   private final VcCredentials _vcCreds;
+   private final String _rootFolderName; // root folder for this VHM instance
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
 

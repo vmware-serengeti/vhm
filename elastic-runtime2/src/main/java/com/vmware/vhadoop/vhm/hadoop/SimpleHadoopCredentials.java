@@ -34,9 +34,9 @@ import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopCredentials;
 
 public class SimpleHadoopCredentials implements HadoopCredentials {
 
-   private String _sshUsername;
-   private String _sshPassword;
-   private String _sshPrvkeyFile;
+   private final String _sshUsername;
+   private final String _sshPassword;
+   private final String _sshPrvkeyFile;
 
    public SimpleHadoopCredentials(String sshUsername, String sshPassword, String sshPrvkeyFile) {
       _sshUsername = sshUsername;
