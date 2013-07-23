@@ -70,7 +70,7 @@ public class SerengetiTest extends AbstractSerengetiTestBase
       for (Compute node : nodes) {
          _log.info("Powering on node "+node.name());
          node.powerOn();
-         cluster.enable(node.getHostname());
+         getApplication(cluster).enable(node.getHostname());
       }
 
       /* hard cycle vms */

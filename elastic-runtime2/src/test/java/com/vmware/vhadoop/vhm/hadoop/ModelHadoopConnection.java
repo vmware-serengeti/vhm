@@ -17,7 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
-import com.vmware.vhadoop.vhm.model.scenarios.Compute;
+import com.vmware.vhadoop.vhm.model.hadoop.JobTracker;
+import com.vmware.vhadoop.vhm.model.hadoop.TaskTracker;
 import com.vmware.vhadoop.vhm.model.scenarios.Master;
 import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
@@ -26,17 +27,17 @@ import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenterEntity;
 public class ModelHadoopConnection extends HadoopConnection
 {
    VirtualCenter vCenter;
-   Master master;
+   JobTracker jobTracker;
    Map<String,String> files = new HashMap<String,String>();
 
    public ModelHadoopConnection(VirtualCenter vCenter, HadoopClusterInfo cluster, HadoopConnectionProperties props) {
       super(cluster, props, null);
       this.vCenter = vCenter;
 
-      master = getJobTracker(cluster);
+      jobTracker = getJobTracker(cluster);
    }
 
-   protected Master getJobTracker(HadoopClusterInfo cluster) {
+   protected JobTracker getJobTracker(HadoopClusterInfo cluster) {
       String clusterId = cluster.getClusterId();
       VirtualCenterEntity vm = vCenter.get(clusterId);
 
@@ -46,7 +47,10 @@ public class ModelHadoopConnection extends HadoopConnection
          return null;
       }
 
-      return (Master)vm;
+      Master master = (Master)vm;
+
+      String port = master.getExtraInfo().get("vhmInfo.jobtracker.port");
+      return (JobTracker)master.getOS().connect(port);
    }
 
    /**
@@ -54,7 +58,7 @@ public class ModelHadoopConnection extends HadoopConnection
     */
    @Override
    public int copyDataToJobTracker(byte[] inputData, String remotePath, String remoteFileName, boolean isExecutable) {
-      if (master == null) {
+      if (jobTracker == null) {
          return ERROR_JT_CONNECTION;
       }
 
@@ -90,8 +94,8 @@ public class ModelHadoopConnection extends HadoopConnection
     */
    protected int shCheckTargetTTsSuccess(String args[], OutputStream out) throws IOException {
       int target = Integer.valueOf(args[0]);
-      Collection<Compute> enabled = master.getComputeNodesInState(true);
-      for (Compute node : enabled) {
+      Collection<TaskTracker> enabled = jobTracker.getAliveTaskTrackers();
+      for (TaskTracker node : enabled) {
          out.write(node.getHostname().getBytes());
          out.write("\n".getBytes());
       }
@@ -124,7 +128,7 @@ public class ModelHadoopConnection extends HadoopConnection
 
       String hostnames[] = list.split("\n");
       for (String hostname : hostnames) {
-         String result = enable ? master.enable(hostname.trim()) : master.disable(hostname.trim());
+         String result = enable ? jobTracker.enable(hostname.trim()) : jobTracker.disable(hostname.trim());
          if (result == null) {
             /* success */
             continue;
