@@ -80,23 +80,24 @@ public class HadoopAdaptor implements HadoopActions {
 
    /* TODO: I think it's ok that these are all constants for now. Easy to externalize in future though */
 
-   public static final int DEFAULT_SSH_PORT = 22;
-   public static final String DEFAULT_SCP_READ_PERMS = "644";
-   public static final String DEFAULT_SCP_EXECUTE_PERMS = "755";
+   private static final int DEFAULT_SSH_PORT = 22;
+   private static final String DEFAULT_SCP_READ_PERMS = "644";
+   private static final String DEFAULT_SCP_EXECUTE_PERMS = "755";
 
-   public static final String DECOM_LIST_FILE_NAME = "dlist.txt";
-   public static final String DECOM_SCRIPT_FILE_NAME = "decommissionTTs.sh";
-   public static final String RECOM_LIST_FILE_NAME = "rlist.txt";
-   public static final String RECOM_SCRIPT_FILE_NAME = "recommissionTTs.sh";
-   public static final String CHECK_SCRIPT_FILE_NAME = "checkTargetTTsSuccess.sh";
+   private static final String DECOM_LIST_FILE_NAME = "dlist.txt";
+   private static final String DECOM_SCRIPT_FILE_NAME = "decommissionTTs.sh";
+   private static final String RECOM_LIST_FILE_NAME = "rlist.txt";
+   private static final String RECOM_SCRIPT_FILE_NAME = "recommissionTTs.sh";
+   private static final String CHECK_SCRIPT_FILE_NAME = "checkTargetTTsSuccess.sh";
 
    /* TODO: Option to change the default values? */
-   public static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
-   public static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
+   private static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
+   private static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
 
-   public static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
+   static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
-   public static final int MAX_CHECK_RETRY_ITERATIONS = 8;
+   private static final int MAX_CHECK_RETRY_ITERATIONS = 8;
+   private static final long MIN_ACTIVE_TT_POLL_TIME_MILLIS = 1000;
 
    public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
@@ -330,12 +331,12 @@ public class HadoopAdaptor implements HadoopActions {
 
    @Override
    public Set<String> checkTargetTTsSuccess(String opType, Map<String, String> affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
-      String[] dnsNameArray = affectedTTs.values().toArray(new String[0]);
+      Set<String> patients = new HashSet<String>(affectedTTs.values());
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
 
-	   _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(dnsNameArray));
+	   _log.log(Level.INFO, "Affected TTs:"+patients);
 
       setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
 
@@ -343,15 +344,19 @@ public class HadoopAdaptor implements HadoopActions {
       CompoundStatus getActiveStatus = null;
       int rc = 0;
       Set<String> allActiveTTs = null;
-      Set<String> patients = new HashSet<String>(affectedTTs.values());
+      boolean retryTest;
       do {
     	   if (iterations > 0) {
        	   _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
-       	   _log.log(Level.INFO, "Affected TTs:"+Arrays.asList(dnsNameArray));
+       	   _log.log(Level.INFO, "Affected TTs:"+patients);
          }
 
          getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
+         
+         /* Time the invocation to ensure that we don't zoom round the retry loop if it completes too quickly */
+         long activeTTsStartTime = System.currentTimeMillis();
     	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
+    	   long activeTTsElapsedTime = System.currentTimeMillis() - activeTTsStartTime;
 
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
     	   if ((opType.equals("Recommission") && allActiveTTs.containsAll(patients)) || (opType.equals("Decommission") && patients.retainAll(allActiveTTs) && patients.isEmpty())) {
@@ -373,7 +378,17 @@ public class HadoopAdaptor implements HadoopActions {
              * */
             rc = SUCCESS;
          }
-      } while ((rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS));
+         retryTest = (rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS);
+
+         if (retryTest) {
+            if (activeTTsElapsedTime < MIN_ACTIVE_TT_POLL_TIME_MILLIS) {
+               try {
+                  Thread.sleep(MIN_ACTIVE_TT_POLL_TIME_MILLIS - activeTTsElapsedTime);
+               } catch (InterruptedException e) {}
+            }
+         }
+
+      } while (retryTest);
 
       getCompoundStatus().addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       if (rc != SUCCESS) {
