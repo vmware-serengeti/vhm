@@ -298,7 +298,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
     */
    public void assertActualVMsInPowerState(String msg, Master master, int number, boolean power, long timeout) {
       long deadline = System.currentTimeMillis() + timeout;
-      _log.info(msg+" - waiting for "+number+" VMs to show as powered "+(power?"on":"off")+" in cluster "+master.getClusterId());
+      _log.info(msg+" - waiting for "+number+" VMs to show as powered "+(power?"on":"off")+" in cluster "+master.getClusterId()+", timeout "+(timeout/1000)+"s");
       int current;
       do {
          long timestamp = _vCenter.getConfigurationTimestamp();
@@ -359,7 +359,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       long deadline = System.currentTimeMillis() + timeout;
       boolean firstTime = true;
 
-      _log.info(msg+" - waiting for "+number+" VMs to show in cluster map for cluster"+master.getClusterId()+", timeout "+(timeout/1000));
+      _log.info(msg+" - waiting for "+number+" VMs to show in cluster map for cluster"+master.getClusterId()+", timeout "+(timeout/1000)+"s");
       Set<String> vms;
       do {
          if (!firstTime) {

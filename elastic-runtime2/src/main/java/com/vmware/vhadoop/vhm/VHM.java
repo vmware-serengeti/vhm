@@ -60,7 +60,8 @@ public class VHM implements EventConsumer {
    private final VCActions _vcActions;
    private final MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
    private final ClusterMapReader _parentClusterMapReader;
-   private volatile boolean _started = false;
+   private volatile boolean _running = false;
+   private volatile boolean _stopped = true;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
    private static final long CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS = 10000;
@@ -615,12 +616,13 @@ public class VHM implements EventConsumer {
    }
 
    public Thread start() {
-      _started = true;
+      _stopped = false;
       Thread t = new Thread(new Runnable() {
          @Override
          public void run() {
             try {
-               while (_started) {
+               _running = true;
+               while (_running) {
                   Set<NotificationEvent> events = pollForEvents();
                   if (checkForProducerReset(events)) {
                      if (!_eventProducers.reset()) {
@@ -635,20 +637,21 @@ public class VHM implements EventConsumer {
                _log.log(Level.WARNING, "VHM stopping due to exception ", e);
             }
             _log.info("VHM stopping...");
+            _stopped = true;
          }}, "VHM_Main_Thread");
       t.start();
       return t;
    }
 
    public void stop(boolean hardStop) {
-      _started = false;
+      _running = false;
       _eventProducers.stop();
       placeEventOnQueue(new AbstractNotificationEvent(hardStop, false) {});
    }
 
 
    public boolean isStopped() {
-      return _eventProducers.isAllStopped();
+      return (_stopped && _eventProducers.isAllStopped());
    }
 
    VCActions getVCActions() {
