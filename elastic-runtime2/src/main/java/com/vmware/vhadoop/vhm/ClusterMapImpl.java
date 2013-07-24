@@ -88,7 +88,7 @@ public class ClusterMapImpl implements ClusterMap {
    class ClusterInfo {
       final String _masterUUID;
       final SerengetiClusterConstantData _constantData;
-
+      
       public ClusterInfo(String clusterId, SerengetiClusterConstantData constantData) {
          this._masterUUID = clusterId;
          this._constantData = constantData;
@@ -101,6 +101,7 @@ public class ClusterMapImpl implements ClusterMap {
       String _discoveredFolderName;        /* Note this field is only set by SerengetiLimitEvents */
       String _scaleStrategyKey;
       LinkedList<ClusterScaleCompletionEvent> _completionEvents;
+      Long _incompleteSince;
       Map<String, String> _extraInfo;
    }
 
@@ -465,13 +466,42 @@ public class ClusterMapImpl implements ClusterMap {
       return clusterId;
    }
 
-   boolean validateClusterCompleteness(String clusterId) {
+   /* Returns true, false or null
+    * - True == is complete
+    * - False == is not complete, but has become incomplete since graceTimeMillis
+    * - Null == is not complete and has been not complete for longer than graceTimeMillis - cluster is possibly broken or invalid
+    * -      == clusterId not found
+    * If graceTimeMillis == 0 this implies infinite time
+    */
+   Boolean validateClusterCompleteness(String clusterId, long graceTimeMillis) {
+      boolean isComplete = true;
+      Boolean result = null;
       ClusterInfo ci = getCluster(clusterId);
-      if ((ci == null) || (ci._jobTrackerPort == null) || (ci._masterUUID == null) || (ci._scaleStrategyKey == null)) {
-         return false;
+      if (ci == null) {
+         return null;
       }
-      Set<String> computeVMs = listComputeVMsForCluster(clusterId);
-      return ((computeVMs != null) && (computeVMs.size() > 0));
+      if ((ci._jobTrackerPort == null) || (ci._masterUUID == null) || (ci._scaleStrategyKey == null)) {
+         isComplete = false;
+      }
+      if (isComplete) {
+         Set<String> computeVMs = listComputeVMsForCluster(clusterId);
+         isComplete = ((computeVMs != null) && (computeVMs.size() > 0));
+      }
+      if (isComplete) {
+         if (ci._incompleteSince != null) {
+            ci._incompleteSince = null;
+         }
+         result = true;
+      } else {
+         long currentTime = System.currentTimeMillis();
+         if (ci._incompleteSince == null) {
+            ci._incompleteSince = currentTime;
+            result = false;
+         } else if ((ci._incompleteSince > (currentTime - graceTimeMillis) || (graceTimeMillis == 0))) {
+            result = false;
+         }
+      }
+      return result;
    }
 
    @Override

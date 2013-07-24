@@ -516,6 +516,49 @@ public class ClusterMapTest extends AbstractJUnitTest {
    }
    
    @Test
+   public void validateClusterCompleteness() {
+      String hostName = "DEFAULT_HOST1";
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+0, hostName, 4, false, false, 0, null);      /* Complete cluster, powered off */
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+1, hostName, 4, true, false, 0, null);       /* Complete cluster, powered on */
+      populateClusterSameHost(CLUSTER_NAME_PREFIX+2, hostName, 1, false, false, 0, null);   /* Incomplete cluster - no compute VMs */
+      
+      String clusterId0 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+0);
+      assertTrue(_clusterMap.validateClusterCompleteness(clusterId0, 0));
+      assertTrue(_clusterMap.validateClusterCompleteness(clusterId0, 500));
+      
+      String clusterId1 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+1);
+      assertTrue(_clusterMap.validateClusterCompleteness(clusterId1, 0));
+      assertTrue(_clusterMap.validateClusterCompleteness(clusterId1, 500));
+
+      String clusterId2 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+2);
+      assertFalse(_clusterMap.validateClusterCompleteness(clusterId2, 0));
+      assertFalse(_clusterMap.validateClusterCompleteness(clusterId2, 500));
+
+      try {
+         Thread.sleep(1000);
+      } catch (InterruptedException e) {
+         e.printStackTrace();
+      }
+      
+      assertFalse(_clusterMap.validateClusterCompleteness(clusterId2, 0));
+      /* This should return null as the window has elapsed */
+      assertNull(_clusterMap.validateClusterCompleteness(clusterId2, 500));
+      
+      /* Add a compute VM to cluster2 to make it complete */
+      String clusterName2 = CLUSTER_NAME_PREFIX+2;
+      VMEventData eventData = createEventData(clusterName2, clusterName2+"_"+VM_NAME_PREFIX+1, false, true, hostName, 
+            getMasterVmNameForCluster(clusterName2), false, 0, true);
+      processNewEventData(eventData, clusterId2, null);
+
+      /* Assert that it is now complete */
+      assertTrue(_clusterMap.validateClusterCompleteness(clusterId2, 0));
+      assertTrue(_clusterMap.validateClusterCompleteness(clusterId2, 500));
+      
+      assertNull(_clusterMap.validateClusterCompleteness("bogus", 0));
+      assertNull(_clusterMap.validateClusterCompleteness("bogus", 1000));
+   }
+   
+   @Test
    public void invokeGettersOnEmptyClusterMap() {
       Set<String> emptySet = new HashSet<String>();
       emptySet.add("foo");
@@ -541,5 +584,6 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getPowerOnTimeForVm("foo"));
       assertNull(_clusterMap.getExtraInfo("foo", "bar"));
       assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey("foo"));
+      assertNull(_clusterMap.validateClusterCompleteness("foo", 0));
    }
 }

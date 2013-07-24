@@ -63,6 +63,7 @@ public class VHM implements EventConsumer {
    private volatile boolean _started = false;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
+   private static final long CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS = 10000;
 
    private static long EVENT_PRODUCER_START_GRACE_TIME_MILLIS = 5000;
    private static long EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS = 5000;
@@ -562,11 +563,18 @@ public class VHM implements EventConsumer {
                continue;
             }
             /* If ClusterMap has not yet been fully updated with information about a cluster, defer this operation */
-            if (!_clusterMap.validateClusterCompleteness(clusterId)) {
-               if (unconsolidatedEvents.size() > 0) {
-                  _log.info("ClusterInfo not yet complete. Putting event collection back on queue for cluster <%C"+clusterId);
-                  placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+            Boolean clusterCompleteness = _clusterMap.validateClusterCompleteness(clusterId, CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS);
+            if (clusterCompleteness != null) {
+               if (!clusterCompleteness) {
+                  if (unconsolidatedEvents.size() > 0) {
+                     _log.info("ClusterInfo not yet complete. Putting event collection back on queue for cluster <%C"+clusterId);
+                     placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+                  }
+                  continue;
                }
+            } else {
+               _log.warning("Cluster <%C"+clusterId+"%C> has been incomplete for longer than the grace period of "
+                                                      +CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS+"ms. Dumping queued events for it");
                continue;
             }
             
