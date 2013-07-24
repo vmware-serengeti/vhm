@@ -20,7 +20,6 @@ import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.vhm.model.hadoop.JobTracker;
 import com.vmware.vhadoop.vhm.model.hadoop.TaskTracker;
 import com.vmware.vhadoop.vhm.model.scenarios.Master;
-import com.vmware.vhadoop.vhm.model.scenarios.Serengeti;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenterEntity;
 
@@ -132,11 +131,16 @@ public class ModelHadoopConnection extends HadoopConnection
          if (result == null) {
             /* success */
             continue;
-         } else if (result.equals(Serengeti.UNKNOWN_HOSTNAME_FOR_COMPUTE_NODE)) {
+         } else if (result.equals(JobTracker.UNKNOWN_HOSTNAME_FOR_TASK_TRACKER)) {
+            if (enable) {
+               /* we expect not to know about new task trackers */
+               continue;
+            }
+
             return UNKNOWN_ERROR;
-         } else if (result.equals(Serengeti.COMPUTE_NODE_ALREADY_IN_TARGET_STATE)) {
+         } else if (result.equals(JobTracker.TASK_TRACKER_ALREADY_IN_TARGET_STATE)) {
             returnVal = enable ? WARN_TT_ACTIVE : WARN_TT_EXCLUDESFILE;
-         } else if (result.equals(Serengeti.COMPUTE_NODE_IN_UNDETERMINED_STATE)) {
+         } else if (result.equals(JobTracker.TASK_TRACKER_IN_UNDETERMINED_STATE)) {
             return UNKNOWN_ERROR;
          } else {
             /* try turning it into a return code */

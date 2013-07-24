@@ -150,7 +150,7 @@ public class Master extends VM
 
    /**
     * ensure that we're meeting our obligation for compute nodes
-    * @return the msgId for the message under which we will see replies
+    * @return the msgId for the message under which we will see replies, or null if the message could not be queued
     */
    protected String applyTarget() {
       String id = null;
@@ -161,7 +161,7 @@ public class Master extends VM
 
       _log.info(clusterId+": dispatching SerengetiLimitInstruction ("+targetComputeNodeNum+")");
       String currentId = Integer.toString(msgId);
-      if (serengeti.generateLimitInstruction(clusterId, id, SerengetiLimitInstruction.actionSetTarget, targetComputeNodeNum)) {
+      if (serengeti.generateLimitInstruction(clusterId, currentId, SerengetiLimitInstruction.actionSetTarget, targetComputeNodeNum)) {
          msgId++;
          id = currentId;
       }
@@ -189,6 +189,7 @@ public class Master extends VM
       long timestamp2 = 0;
 
       do {
+         nodes=0;
          timestamp = this.vCenter.getConfigurationTimestamp();
          _log.fine("Comparing timestamps pre-lock: "+timestamp+" != "+timestamp2);
          synchronized(computeNodes) {
@@ -200,6 +201,8 @@ public class Master extends VM
                }
             }
          }
+         _log.info("Exited synchronized block");
+
          /* check to see if state changed under our accounting */
          timestamp2 = vCenter.getConfigurationTimestamp();
       } while (timestamp != timestamp2);
