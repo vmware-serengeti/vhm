@@ -32,6 +32,7 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
 
    private static final Logger _log = Logger.getLogger(MultipleReaderSingleWriterClusterMapAccess.class.getName());
 
+   /* THREADING: Only accessed by single thread, so no need for synchronization */
    static MultipleReaderSingleWriterClusterMapAccess getClusterMapAccess(ClusterMap clusterMap) {
       if (_singleton == null) {
          _singleton = new MultipleReaderSingleWriterClusterMapAccess(clusterMap);

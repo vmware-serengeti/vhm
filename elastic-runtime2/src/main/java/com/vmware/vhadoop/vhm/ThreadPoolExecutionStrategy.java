@@ -127,16 +127,16 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
    }
 
    @Override
-   public void start(final EventProducerStoppingCallback stoppingCallback) {
+   public void start(final EventProducerStartStopCallback startStopCallback) {
       _started = true;
       _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
             List<ClusterScaleCompletionEvent> completedTasks = new ArrayList<ClusterScaleCompletionEvent>();
             synchronized(_clusterTaskContexts) {
-               boolean fatalError = false;
                try {
                   _log.info("ThreadPoolExecutionStrategy starting...");
+                  startStopCallback.notifyStarted(ThreadPoolExecutionStrategy.this);
                   while (_started) {
                      for (String clusterId : _clusterTaskContexts.keySet()) {
                         ClusterTaskContext ctc = _clusterTaskContexts.get(clusterId);
@@ -171,12 +171,10 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                   }
                } catch (Throwable t) {
                   _log.log(Level.SEVERE, "Unexpected exception in ThreadPoolExecutionStrategy", t);
-                  fatalError = true;
+                  startStopCallback.notifyFailed(ThreadPoolExecutionStrategy.this);
                }
                _log.info("ThreadPoolExecutionStrategy stopping...");
-               if (stoppingCallback != null) {
-                  stoppingCallback.notifyStopping(ThreadPoolExecutionStrategy.this, fatalError);
-               }
+               startStopCallback.notifyStopped(ThreadPoolExecutionStrategy.this);
             }
          }
       }, "ScaleStrategyCompletionListener");

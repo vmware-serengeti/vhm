@@ -46,7 +46,7 @@ public class Serengeti extends Folder implements EventProducer
 
    /** This is a record of whether VHM has asked us, as an event producer, to stop */
    boolean _stopped = false;
-   EventProducerStoppingCallback _callback;
+   EventProducerStartStopCallback _callback;
    EventConsumer eventConsumer;
 
    /**
@@ -203,8 +203,11 @@ public class Serengeti extends Folder implements EventProducer
     * receive responses.
     */
    @Override
-   public void start(EventProducerStoppingCallback callback) {
+   public void start(EventProducerStartStopCallback callback) {
       _callback = callback;
+      if (_callback != null) {
+         _callback.notifyStarted(this);
+      }
       _stopped = false;
    }
 
@@ -214,7 +217,7 @@ public class Serengeti extends Folder implements EventProducer
    @Override
    public void stop() {
       if (_callback != null && _stopped == false) {
-         _callback.notifyStopping(this, false);
+         _callback.notifyStopped(this);
       }
 
       _stopped = true;

@@ -55,6 +55,8 @@ public class RabbitAdaptor implements MQClient {
    long _startTime = System.currentTimeMillis();
    boolean _deliberateFailureTriggered = false;
 
+   private static long CONNECTION_SHUTDOWN_TIMEOUT_MILLIS = 5000;
+   
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
    @SuppressWarnings("unused")
@@ -99,12 +101,13 @@ public class RabbitAdaptor implements MQClient {
    }
 
    @Override
-   public void start(final EventProducerStoppingCallback stoppingCallback) {
+   public void start(final EventProducerStartStopCallback startStopCallback) {
       _started = true;
       _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
-            boolean fatalError = false;
+            _log.info("RabbitAdaptor starting...");
+            startStopCallback.notifyStarted(RabbitAdaptor.this);
             while (_started) {
                /* wait for a rabbit instance to talk to */
                while (!_connection.connect()) {
@@ -136,15 +139,24 @@ public class RabbitAdaptor implements MQClient {
                   /* This is not fatal, this is an expected expection when shutting down */
                } catch (Throwable t) {
                   _log.log(Level.SEVERE, "Unexpected exception from Rabbit queue ", t);
-                  fatalError = true;
+                  startStopCallback.notifyFailed(RabbitAdaptor.this);
                }
             }
             _log.info("RabbitAdaptor stopping...");
-            if (stoppingCallback != null) {
-               stoppingCallback.notifyStopping(RabbitAdaptor.this, fatalError);
-            }
+            waitForConnectionShutdown(CONNECTION_SHUTDOWN_TIMEOUT_MILLIS);
+            startStopCallback.notifyStopped(RabbitAdaptor.this);
          }}, "MQClientImpl");
       _mainThread.start();
+   }
+
+   private void waitForConnectionShutdown(long timeoutMillis) {
+      int timeoutCountdown = (int)timeoutMillis;
+      final int sleepTimeMillis = 100;
+      do {
+         try {
+            Thread.sleep(sleepTimeMillis);
+         } catch (InterruptedException e) {}
+      } while (!_connection.isShutdown() && ((timeoutCountdown -= sleepTimeMillis) > 0));
    }
 
    @Override

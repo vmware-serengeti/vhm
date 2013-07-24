@@ -17,6 +17,7 @@ package com.vmware.vhadoop.vhm;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.HashSet;
 import java.util.List;
@@ -56,7 +57,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
 
    /** This is a record of whether VHM has asked us, as an event producer, to stop */
    boolean _stopped = false;
-   EventProducerStoppingCallback _callback;
+   EventProducerStartStopCallback _callback;
 
    long startTime;
    /** default timeout is two decision cycles plus warm up/cool down */
@@ -88,7 +89,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
 
    protected void startVHM() {
       _vhm = init();
-      _vhm.registerEventProducer(this);
+      assertTrue(_vhm.registerEventProducer(this));
       _vhm.start();
    }
 
@@ -122,15 +123,18 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
    }
 
    @Override
-   public void start(EventProducerStoppingCallback callback) {
+   public void start(EventProducerStartStopCallback callback) {
       _callback = callback;
+      if (_callback != null) {
+         _callback.notifyStarted(this);
+      }
       _stopped = false;
    }
 
    @Override
    public void stop() {
       if (_callback != null && _stopped == false) {
-         _callback.notifyStopping(this, false);
+         _callback.notifyStopped(this);
       }
 
       _stopped = true;
@@ -224,7 +228,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       startVHM();
 
       /* register Serengeti as an event producer */
-      _vhm.registerEventProducer(_serengeti);
+      assertTrue(_vhm.registerEventProducer(_serengeti));
 
       return _serengeti;
    }

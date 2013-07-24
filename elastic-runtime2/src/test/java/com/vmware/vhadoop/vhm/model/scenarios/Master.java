@@ -185,21 +185,26 @@ public class Master extends VM
 
    public int numberComputeNodesInPowerState(boolean power) {
       int nodes = 0;
-      long timestamp = this.vCenter.getConfigurationTimestamp();
+      long timestamp = 0;
       long timestamp2 = 0;
 
-      while (timestamp != timestamp2) {
+      do {
+         timestamp = this.vCenter.getConfigurationTimestamp();
+         _log.fine("Comparing timestamps pre-lock: "+timestamp+" != "+timestamp2);
          synchronized(computeNodes) {
+            _log.info("Entered synchronized block");
             for (Compute compute : computeNodes) {
                if (compute.powerState() == power) {
+                  _log.finer("Incrementing nodes to "+nodes);
                   nodes++;
                }
             }
          }
          /* check to see if state changed under our accounting */
          timestamp2 = vCenter.getConfigurationTimestamp();
-      }
+      } while (timestamp != timestamp2);
 
+      _log.fine("Done comparing timestamps - nodes = "+nodes);
       return nodes;
    }
 

@@ -107,8 +107,7 @@ public class ModelVcAdapter implements VCActions {
          vmDataList.add(vmData);
       }
 
-      /* TODO: figure out whether this value is ever actually returned by VC and when we should return it */
-      if (result.equals("Some special value")) {
+      if (result.equals(VcVlsi.WAIT_FOR_UPDATES_CANCELED_STATUS)) {
          throw new InterruptedException();
       }
       return result;

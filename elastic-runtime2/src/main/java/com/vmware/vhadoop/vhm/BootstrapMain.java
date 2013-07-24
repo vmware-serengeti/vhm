@@ -223,7 +223,9 @@ public class BootstrapMain
       BootstrapMain bm = new BootstrapMain();
       ThreadLocalCompoundStatus tlcs = new ThreadLocalCompoundStatus();
       VHM vhm = bm.initVHM(tlcs);
-      vhm.start();
+      if (vhm != null) {
+         vhm.start();
+      }
    }
 
    public VCActions getVCInterface(final ThreadLocalCompoundStatus tlcs) {
@@ -298,8 +300,14 @@ public class BootstrapMain
       vhm = new VHM(getVCInterface(tlcs), getScaleStrategies(tlcs), getStrategyMapper(), tlcs);
       ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
 
-      vhm.registerEventProducer(cscl);
-      vhm.registerEventProducer(mqClient);
+      if (!vhm.registerEventProducer(cscl)) {
+         _log.severe("Fatal error registering ClusterStateChangeListenerImpl as an event producer");
+         return null;
+      }
+      if (!vhm.registerEventProducer(mqClient)) {
+         _log.severe("Fatal error registering MQClient as an event producer");
+         return null;
+      }
 
       return vhm;
    }

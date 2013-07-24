@@ -17,6 +17,7 @@ package com.vmware.vhadoop.vhm;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -51,7 +52,7 @@ import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
 
 public class VHM implements EventConsumer {
-   private final Set<EventProducer> _eventProducers;
+   private final EventProducerActions _eventProducers;
    private final Queue<NotificationEvent> _eventQueue;
    private boolean _initialized;
    private final ClusterMapImpl _clusterMap;
@@ -60,13 +61,15 @@ public class VHM implements EventConsumer {
    private final MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
    private final ClusterMapReader _parentClusterMapReader;
    private volatile boolean _started = false;
-   private final EventProducer.EventProducerStoppingCallback _fatalStoppingHandler;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
 
+   private static long EVENT_PRODUCER_START_GRACE_TIME_MILLIS = 5000;
+   private static long EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS = 5000;
+   
    VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
          ExtraInfoToClusterMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
-      _eventProducers = new HashSet<EventProducer>();
+      _eventProducers = new EventProducerActions();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
       _clusterMap = new ClusterMapImpl(strategyMapper);
@@ -75,8 +78,9 @@ public class VHM implements EventConsumer {
       _parentClusterMapReader = new AbstractClusterMapReader(_clusterMapAccess, threadLocalStatus) {};
       initScaleStrategies(scaleStrategies);
       _executionStrategy = new ThreadPoolExecutionStrategy();
-      _fatalStoppingHandler = new EventProducerFatalStoppingHandler();
-      registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy);
+      if (!registerEventProducer((ThreadPoolExecutionStrategy)_executionStrategy)) {
+         throw new RuntimeException("Fatal error registering ThreadPoolExecutionStrategy as an event producer");
+      }
    }
 
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
@@ -92,14 +96,115 @@ public class VHM implements EventConsumer {
       }
    }
 
-   /* THREADING: Can be called by multiple threads, so access to _eventProducers is synchronized */
-   private class EventProducerFatalStoppingHandler implements EventProducer.EventProducerStoppingCallback {
-      @Override
-      public void notifyStopping(EventProducer thisProducer, boolean fatalError) {
-         if (fatalError) {
+   /* Threading Requirement:
+    *  - Protect _eventProducers collection from changing while another thread is iterating over it
+    *  - Treat stop() start() and reset() as blocking atomic operations
+    *  - Allow threads to figure out the state of the event producers without blocking
+    */
+   private class EventProducerActions {
+      private final Set<EventProducer> _eventProducers = new HashSet<EventProducer>();
+      private final Set<EventProducer> _startedProducers = Collections.synchronizedSet(new HashSet<EventProducer>());      /* DO NOT ITERATE */
+      private final EventProducer.EventProducerStartStopCallback _startStopHandler = new EventProducerStartStopHandler();
+
+      private class EventProducerStartStopHandler implements EventProducer.EventProducerStartStopCallback {
+         @Override
+         public void notifyFailed(EventProducer thisProducer) {
             _log.severe("EventProducer "+thisProducer.getClass().getName()+" has stopped unexpectedly, so resetting EventProducers");
             placeEventOnQueue(new EventProducerResetEvent());
          }
+         
+         @Override
+         public void notifyStarted(EventProducer thisProducer) {
+            _startedProducers.add(thisProducer);
+            _log.fine("Total started event producers = "+_startedProducers.size());
+         }
+
+         @Override
+         public void notifyStopped(EventProducer thisProducer) {
+            _startedProducers.remove(thisProducer);
+            _log.fine("Total started event producers = "+_startedProducers.size());
+         }
+      }
+
+      /* Block until the event producers to be started have actually stopped */
+      synchronized boolean stop() {
+         boolean result;
+         Set<EventProducer> waitForStop = new HashSet<EventProducer>();
+         for (EventProducer eventProducer : _eventProducers) {
+            if (_startedProducers.contains(eventProducer)) {
+               eventProducer.stop();
+               waitForStop.add(eventProducer);
+            }
+         }
+         result = waitForStateChange(waitForStop, false, EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS);
+         _log.fine("Event producers stop returning "+result);
+         return result;
+      }
+      
+      /* Block until the event producers to be started have actually started */
+      synchronized boolean start() {
+         boolean result;
+         Set<EventProducer> waitForStart = new HashSet<EventProducer>();
+         for (EventProducer eventProducer : _eventProducers) {
+            if (!_startedProducers.contains(eventProducer)) {
+               eventProducer.start(_startStopHandler);
+               waitForStart.add(eventProducer);
+            }
+         }
+         result = waitForStateChange(waitForStart, true, EVENT_PRODUCER_START_GRACE_TIME_MILLIS);
+         _log.fine("Event producers start returning "+result);
+         return result;
+      }
+      
+      private boolean waitForStateChange(Set<EventProducer> producers, boolean waitForStart, long timeoutMillis) {
+         boolean done;
+         int timeoutCountdown = (int)timeoutMillis;
+         final int sleepTimeMillis = 100;
+         do {
+            done = true;
+            for (EventProducer producer : producers) {
+               if (_startedProducers.contains(producer) != waitForStart) {
+                  done = false;
+                  break;
+               }
+            }
+            try {
+               Thread.sleep(sleepTimeMillis);
+            } catch (InterruptedException e) {}
+         } while (!done && ((timeoutCountdown -= sleepTimeMillis) > 0));
+         return (timeoutCountdown > 0);
+      }
+      
+      /* Block until the event producers to be started have restarted */
+      synchronized boolean reset() {
+         if (stop()) {
+            if (start()) {
+               _log.fine("Event producers successfully restarted");
+               return true;
+            } else {
+               _log.warning("Event producers start failed during reset");
+            }
+         }
+         _log.warning("Event producers stop failed during reset");
+         return false;
+      }
+
+      synchronized boolean registerNew(EventProducer eventProducer) {
+         boolean result = true;
+         _eventProducers.add(eventProducer);
+         eventProducer.registerEventConsumer(VHM.this);
+         if (eventProducer instanceof ClusterMapReader) {
+            ((ClusterMapReader)eventProducer).initialize(_parentClusterMapReader);
+         }
+         eventProducer.start(_startStopHandler);
+         Set<EventProducer> singleItemSet = new HashSet<EventProducer>();
+         result = waitForStateChange(singleItemSet, true, EVENT_PRODUCER_START_GRACE_TIME_MILLIS);
+         _log.fine("Event producer "+eventProducer.getClass().getName()+" registerd. Start result = "+result);
+         return result;
+      }
+      
+      boolean isAllStopped() {
+         return _startedProducers.isEmpty();
       }
    }
 
@@ -115,21 +220,14 @@ public class VHM implements EventConsumer {
       }
       if (toRemove != null) {
          _log.info("Event Producer reset requested...");
-         events.remove(toRemove);
+         events.removeAll(toRemove);
          return true;
       }
       return false;
    }
 
-   public void registerEventProducer(EventProducer eventProducer) {
-      synchronized(_eventProducers) {
-         _eventProducers.add(eventProducer);
-         eventProducer.registerEventConsumer(this);
-         if (eventProducer instanceof ClusterMapReader) {
-            ((ClusterMapReader)eventProducer).initialize(_parentClusterMapReader);
-         }
-         eventProducer.start(_fatalStoppingHandler);
-      }
+   public boolean registerEventProducer(EventProducer eventProducer) {
+      return _eventProducers.registerNew(eventProducer);
    }
 
    private void addEventToQueue(NotificationEvent event) {
@@ -517,7 +615,7 @@ public class VHM implements EventConsumer {
                while (_started) {
                   Set<NotificationEvent> events = pollForEvents();
                   if (checkForProducerReset(events)) {
-                     if (!resetEventProducers()) {
+                     if (!_eventProducers.reset()) {
                         _log.severe("Unable to reset Event Producers. Terminating VHM");
                         break;
                      }
@@ -534,116 +632,20 @@ public class VHM implements EventConsumer {
       return t;
    }
 
-   private void startEventProducers() {
-      synchronized(_eventProducers) {
-         for (EventProducer eventProducer : _eventProducers) {
-            eventProducer.start(_fatalStoppingHandler);
-         }
-      }
-   }
-
-   private void stopEventProducers() {
-      synchronized(_eventProducers) {
-         for (EventProducer eventProducer : _eventProducers) {
-            eventProducer.stop();
-         }
-      }
-   }
-
-   private boolean eventProducersStopped() {
-      boolean stopped = true;
-      synchronized(_eventProducers) {
-         for (EventProducer eventProducer : _eventProducers) {
-            if (!eventProducer.isStopped()) {
-               stopped = false;
-               break;
-            }
-         }
-      }
-
-      return stopped;
-   }
-
-   private boolean resetEventProducers() {
-      long graceTimeMillis = 10000;
-      long waitTimeMillis = 100;
-      synchronized(_eventProducers) {
-         _log.info("Stopping Event Producers...");
-         stopEventProducers();
-         boolean anyRunning = false;
-         do {
-            anyRunning = false;
-            for (EventProducer eventProducer : _eventProducers) {
-               if (!eventProducer.isStopped()) {
-                  anyRunning = true;
-                  try {
-                     _eventProducers.wait(waitTimeMillis);
-                  } catch (InterruptedException e) {
-                  }
-                  graceTimeMillis -= waitTimeMillis;
-                  break;
-               }
-            }
-         } while (anyRunning && (graceTimeMillis > 0));
-      }
-      if (graceTimeMillis > 0) {
-         _log.info("Event producers stopped. Restarting producers...");
-         startEventProducers();
-      }
-      return (graceTimeMillis > 0);
-   }
-
    public void stop(boolean hardStop) {
       _started = false;
-      stopEventProducers();
+      _eventProducers.stop();
       placeEventOnQueue(new AbstractNotificationEvent(hardStop, false) {});
    }
 
 
    public boolean isStopped() {
-      /* TODO: see if we need to wait for the queue to empty or similar */
-      return eventProducersStopped();
+      return _eventProducers.isAllStopped();
    }
 
    VCActions getVCActions() {
       return _vcActions;
    }
-
-
-   /**
-    * Returns the Json description for the named field if it exists, exception otherwise/
-    * @return
-    * @throws NoSuchFieldException
-    */
-//   public String dump(String fieldName) throws NoSuchFieldException {
-//      Field field;
-//      field = getClass().getDeclaredField(fieldName);
-//      Object target;
-//      try {
-//         target = field.get(this);
-//
-//         if (target == null) {
-//            return null;
-//         }
-//
-//         Gson gson = new Gson();
-//         return gson.toJson(target);
-//
-//      } catch (Exception e) {
-//         _log.log(Level.INFO, "Caught exception during dump", e);
-//      }
-//
-//      return null;
-//   }
-
-   /**
-    * Returns the Json description of VHM
-    * @return
-    */
-//   public String dump() {
-//      Gson gson = new Gson();
-//      return gson.toJson(this);
-//   }
 
    /**
     * Hack to specifically dump the cluster map instead of a more generic state of the world

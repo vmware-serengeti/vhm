@@ -48,7 +48,6 @@ import com.rabbitmq.client.ShutdownSignalException;
 public class RabbitConnection {
    private static final Logger _log = Logger.getLogger(RabbitConnection.class.getName());
 
-
    interface RabbitCredentials {
       public String getHostName();
       public String getExchangeName();
@@ -66,7 +65,8 @@ public class RabbitConnection {
    private String _queueName = null;
    private QueueingConsumer _consumer = null;
    private Object _consumerLock = new Object();
-
+   private volatile boolean _started = false;
+   
    /* For testing only */
    protected RabbitConnection() {
    }
@@ -92,8 +92,10 @@ public class RabbitConnection {
                      _channel = null;
                      _queueName = null;
                   }
+                  _started = false;
                }
             });
+            _started = true;
             _log.fine("Created new connection");
          }
 
@@ -117,6 +119,7 @@ public class RabbitConnection {
                      _channel = null;
                      _queueName = null;
                   }
+                  _started = false;
                }
             });
          }
@@ -191,5 +194,9 @@ public class RabbitConnection {
 
    protected void sendMessage(byte[] data) {
       sendMessage(_credentials.getRouteKeyStatus(), data);
+   }
+
+   public boolean isShutdown() {
+      return (_started == false);
    }
 }

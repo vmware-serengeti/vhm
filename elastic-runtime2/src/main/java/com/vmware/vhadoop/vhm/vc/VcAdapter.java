@@ -33,7 +33,7 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VcAdapter implements VCActions {
-   private static final Logger _log = Logger.getLogger("VcAdapter");
+   private static final Logger _log = Logger.getLogger(VcAdapter.class.getName());
 
    private Client _cloneClient;   // used for stats polling and the main waitForPropertyChange loop
    private Client _defaultClient; // used for rest of VC operations
@@ -169,7 +169,7 @@ public class VcAdapter implements VCActions {
          return null;
       }
       String result = _vcVlsi.waitForUpdates(_cloneClient, folderName, version, vmDataList);
-      if (result.equals("Some special value")) {         /* TODO: Figure out */
+      if (result.equals(VcVlsi.WAIT_FOR_UPDATES_CANCELED_STATUS)) {
          throw new InterruptedException();
       }
       return result;
@@ -188,7 +188,6 @@ public class VcAdapter implements VCActions {
       return _vcVlsi.getVMsInFolder(_rootFolderName, folderName);
    }
 
-   /* TODO: Test and make sure this works */
    @Override
    public void interruptWait() {
       _vcVlsi.cancelWaitForUpdates();

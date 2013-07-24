@@ -139,8 +139,8 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       ManualScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(_vcActions));
       _vhm = new VHM(_vcActions, new ScaleStrategy[]{_trivialScaleStrategy, manualScaleStrategy}, 
             _strategyMapper, new ThreadLocalCompoundStatus());
-      _vhm.registerEventProducer(_clusterStateChangeListener);
-      _vhm.registerEventProducer(this);
+      assertTrue(_vhm.registerEventProducer(_clusterStateChangeListener));
+      assertTrue(_vhm.registerEventProducer(this));
       _vhm.start();
    }
 
@@ -736,7 +736,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    }
 
    @Override
-   public void start(EventProducerStoppingCallback callback) {
+   public void start(EventProducerStartStopCallback callback) {
       /* No-op */
    }
 

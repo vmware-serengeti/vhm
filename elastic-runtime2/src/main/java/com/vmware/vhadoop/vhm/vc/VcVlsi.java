@@ -69,7 +69,6 @@ import com.vmware.vim.binding.vim.view.ViewManager;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
-import com.vmware.vim.binding.vmodl.fault.RequestCanceled;
 import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.Change;
@@ -100,7 +99,7 @@ public class VcVlsi {
 
    public static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master-";
 
-   private static final Logger _log = Logger.getLogger("VcVlsi");
+   private static final Logger _log = Logger.getLogger(VcVlsi.class.getName());
    private static final VmodlContext vmodlContext = VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
    private Client defaultClient;
    private String vcThumbprint = null;
@@ -135,6 +134,8 @@ public class VcVlsi {
    static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";
+
+   static final String WAIT_FOR_UPDATES_CANCELED_STATUS = "VC_WAIT_FOR_UPDATES_CANCELED";
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private PropertyCollector _waitingOnPc;
@@ -687,6 +688,7 @@ public class VcVlsi {
          status.registerTaskSucceeded();
       } catch (com.vmware.vim.binding.vmodl.fault.RequestCanceled e) {
          _log.info("waitForUpdates request has been canceled");
+         result = WAIT_FOR_UPDATES_CANCELED_STATUS;
       } catch (Exception e) {
          reportException("Unexpected exception waiting for updates", e, status);
       }

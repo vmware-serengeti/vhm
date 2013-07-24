@@ -51,6 +51,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    private volatile boolean _started;
    private final HashMap<String, VmCreatedData> _interimVMData;
    private Thread _mainThread;
+   private String _vcVlsiVersion = "";
 
    private final long _startTime = System.currentTimeMillis();
    private boolean _deliberateFailureTriggered = false;
@@ -112,35 +113,32 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    }
 
    @Override
-   public void start(final EventProducerStoppingCallback stoppingCallback) {
+   public void start(final EventProducerStartStopCallback startStopCallback) {
       _started = true;
       _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
-            String version = "";
             ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
-            boolean fatalError = false;
             try {
                _log.info("ClusterStateChangeListener starting...");
+               startStopCallback.notifyStarted(ClusterStateChangeListenerImpl.this);
                while (_started) {
                   try {
                      /* If version == null, this usually indicates a VC connection failure */
-                     version = _vcActions.waitForPropertyChange(_serengetiFolderName, version, vmDataList);
+                     _vcVlsiVersion = _vcActions.waitForPropertyChange(_serengetiFolderName, _vcVlsiVersion, vmDataList);
                   } catch (InterruptedException e) {
                      /* Almost certainly means that stop has been called */
                      continue;
                   }
-                  processRawVCUpdates(vmDataList, version);
+                  processRawVCUpdates(vmDataList, _vcVlsiVersion);
                   vmDataList.clear();
                }
             } catch (Throwable t) {
                _log.log(Level.SEVERE, "Unexpected exception in ClusterStateChangeListener", t);
-               fatalError = true;
+               startStopCallback.notifyFailed(ClusterStateChangeListenerImpl.this);
             }
             _log.info("ClusterStateChangeListener stopping...");
-            if (stoppingCallback != null) {
-               stoppingCallback.notifyStopping(ClusterStateChangeListenerImpl.this, fatalError);
-            }
+            startStopCallback.notifyStopped(ClusterStateChangeListenerImpl.this);
          }}, "ClusterSCL_Poll_Thread");
       _mainThread.start();
    }

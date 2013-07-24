@@ -54,7 +54,7 @@ public class ModelRabbitAdaptor implements MQClient {
    }
 
    @Override
-   public void start(final EventProducerStoppingCallback stoppingCallback) {
+   public void start(final EventProducerStartStopCallback stoppingCallback) {
       /* no-op */
       running = true;
    }
