@@ -187,6 +187,9 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       /* wait for VHM to register the VMs */
       assertClusterMapVMs("register VMs in cluster map", cluster, numberOfComputeNodes);
 
+      /* dump the cluster map so we can inspect the state in the log */
+      _vhm.dumpClusterMap(Level.INFO);
+
       return cluster;
    }
 
