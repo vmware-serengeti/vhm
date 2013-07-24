@@ -145,13 +145,14 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
    protected void processRawVCUpdates(ArrayList<VMEventData> vmDataList, String version) {
       if (vmDataList.isEmpty() && ((version == null) || version.equals(""))) {
-         try {
-            _log.info("Temporarily lost connection to VC... ");
-            Thread.sleep(backoffPeriodMS);
-         } catch (InterruptedException e) {
-            _log.warning("Unexpectedly interrupted waiting for VC");
+         if (_started) {
+            try {
+               _log.info("Temporarily lost connection to VC... ");
+               Thread.sleep(backoffPeriodMS);
+            } catch (InterruptedException e) {
+               _log.warning("Unexpectedly interrupted waiting for VC");
+            }
          }
-
       } else {
          for (VMEventData vmData : vmDataList) {
             _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
