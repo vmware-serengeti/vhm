@@ -185,7 +185,8 @@ public class SerengetiTest extends AbstractSerengetiTestBase
 
       /* rolling power on of the nodes, via target compute node num and expect not to need to explicitly enable the nodes here */
       for (int target = 1; target <= cluster.availableComputeNodes(); target++) {
-         cluster.setTargetComputeNodeNum(target);
+         String msgid = cluster.setTargetComputeNodeNum(target);
+         assertMessageResponse("waiting for target compute nodes to succeed", cluster, msgid);
 
          setTimeout(5000);
          assertVMsInPowerState("waiting for target compute node num ("+target+") to take effect", cluster, target, true);

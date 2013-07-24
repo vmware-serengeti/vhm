@@ -66,8 +66,9 @@ public class SerengetiFaultTest extends AbstractFaultInjectionSerengetiTestBase 
       /* set the general timeout for the faults */
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
 
-      cluster.setTargetComputeNodeNum(2);
+      String msgid = cluster.setTargetComputeNodeNum(2);
       assertVMsInPowerState("expected VMs to power on regardless", cluster, 2, true);
+      assertMessageResponse("waiting for target compute nodes to succeed", cluster, msgid);
 
       /* queue faults */
       Integer fault = HadoopErrorCodes.UNKNOWN_ERROR;

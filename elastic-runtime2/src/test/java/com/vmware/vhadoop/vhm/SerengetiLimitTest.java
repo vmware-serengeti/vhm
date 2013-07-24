@@ -39,11 +39,13 @@ public class SerengetiLimitTest extends AbstractSerengetiTestBase {
       setTimeout((computeNodesPerHost * LIMIT_CYCLE_TIME) + TEST_WARM_UP_TIME);
 
       /* power on the compute nodes */
-      cluster.setTargetComputeNodeNum(cluster.availableComputeNodes());
+      String msgid = cluster.setTargetComputeNodeNum(cluster.availableComputeNodes());
       assertVMsInPowerState("power on all VMs", cluster, cluster.availableComputeNodes(), true);
+      assertMessageResponse("waiting for target compute nodes to succeed", cluster, msgid);
 
       /* power off the compute nodes */
-      cluster.setTargetComputeNodeNum(0);
+      msgid = cluster.setTargetComputeNodeNum(0);
       assertVMsInPowerState("power off all VMs", cluster, cluster.availableComputeNodes(), false);
+      assertMessageResponse("waiting for target compute nodes to succeed", cluster, msgid);
    }
 }
