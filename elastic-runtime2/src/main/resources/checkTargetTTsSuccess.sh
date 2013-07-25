@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # This script checks if the active target TTs were reached
 # Prerequisites:
@@ -32,7 +32,7 @@ WARN_IGNORE=202
 checkArguments()
 {
     if [ $# -ne $EXPECTED_ARGS ]; then
-	    echo "USAGE: $ME <targetActiveTTs> <HadoopHome>"
+	    echo "USAGE: $ME <targetActiveTTs> <ExcludesFile> <HadoopHome>"
 	    exit $ERROR_BAD_ARGS
     fi
     
@@ -57,6 +57,8 @@ checkArguments()
 }
 
 # Parse the error file generated for JobTracker
+# Handling known issues/non-issues in different distributions
+# TODO: A little hacky for now; needs a long term fix
 
 parseJTErrFile()
 {
@@ -66,19 +68,29 @@ parseJTErrFile()
     numLines=`wc -l $file | awk '{print $1}'`
 
 # If first line says DEPRECATED use of "old" bin/hadoop and that is
-# the only warning, ignore it for now...
+# the only warning, ignore it for now...(seen in Cloudera's distro)
     if [[ "$firstWord" = "DEPRECATED:" && $numLines -eq 3 ]]; then
         echo "WARNING: Using a DEPRECATED command (e.g., bin/hadoop instead of bin/mapred)"
         return $WARN_IGNORE
     fi
+    
+    thirdWord=`head -1 $file | awk '{print $3}'`
+
+# If first line says INFO and this is the only line, its just some harmless logging
+# (seen in MapR 2.1.3)
+    
+    if [[ "$thirdWord" = "INFO" && $numLines -eq 1 ]]; then
+        echo "Just some harmless logging in JTERR file"
+        return $WARN_IGNORE
+    fi
 
 # If connection error is detected report it differently from an unknown error
-
+    
     connLine=`sed -n '11p' < $file`
 #   lastLine=`tail -1 $file` # We could use this only for "hadoop mradmin"
     echo "$connLine"
     arr=( $connLine )
-    lidx=${#arr[@]}
+    lidx=${#arr[@]} 
     if [[ $lidx -gt 0 && "${arr[$((lidx-1))]}" = "refused" && "${arr[$((lidx-1))]}" = "Connection" ]]; then
         echo "ERROR: Unable to connect to jobtracker"
         return $ERROR_JT_CONNECTION
@@ -194,19 +206,6 @@ main()
 # Determine if target TTs is reached
 	checkTargetActiveTTs $numTargetTTs $hadoopHome
 	retVal=$?
-
-# Clear excludes file
-        > $excludesFile
-
-        $hadoopHome/bin/hadoop mradmin -refreshNodes 2> $JTERRFILE
-
-        if [ -s $JTERRFILE ]; then
-            parseJTErrFile $JTERRFILE
-            returnVal=$?
-            if [ $returnVal -ne $WARN_IGNORE ]; then
-                exit $?
-            fi
-        fi
 
     } 200>$LOCKFILE
     

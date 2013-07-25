@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # This script recommissions a list of tasktrackers from the jobtracker
 # Prerequisites:
@@ -49,8 +49,9 @@ isActive()
     return 0
 }
 
-
 # Parse the error file generated for JobTracker
+# Handling known issues/non-issues in different distributions
+# TODO: A little hacky for now; needs a long term fix
 
 parseJTErrFile()
 {
@@ -60,19 +61,29 @@ parseJTErrFile()
     numLines=`wc -l $file | awk '{print $1}'`
 
 # If first line says DEPRECATED use of "old" bin/hadoop and that is
-# the only warning, ignore it for now...
+# the only warning, ignore it for now...(seen in Cloudera's distro)
     if [[ "$firstWord" = "DEPRECATED:" && $numLines -eq 3 ]]; then
         echo "WARNING: Using a DEPRECATED command (e.g., bin/hadoop instead of bin/mapred)"
         return $WARN_IGNORE
     fi
+    
+    thirdWord=`head -1 $file | awk '{print $3}'`
+
+# If first line says INFO and this is the only line, its just some harmless logging
+# (seen in MapR 2.1.3)
+    
+    if [[ "$thirdWord" = "INFO" && $numLines -eq 1 ]]; then
+        echo "Just some harmless logging in JTERR file"
+        return $WARN_IGNORE
+    fi
 
 # If connection error is detected report it differently from an unknown error
-
+    
     connLine=`sed -n '11p' < $file`
 #   lastLine=`tail -1 $file` # We could use this only for "hadoop mradmin"
     echo "$connLine"
     arr=( $connLine )
-    lidx=${#arr[@]}
+    lidx=${#arr[@]} 
     if [[ $lidx -gt 0 && "${arr[$((lidx-1))]}" = "refused" && "${arr[$((lidx-1))]}" = "Connection" ]]; then
         echo "ERROR: Unable to connect to jobtracker"
         return $ERROR_JT_CONNECTION
@@ -190,47 +201,64 @@ main()
 
 	arrActiveTTs=( $activeTTs )
 	
+# Commenting this out for now (22Jul13). We decided to clear the excludes file each time
+# to stop unneccessary complications related to dhcp/dns, etc.
 # Read and Update excludes file
 # Assumption: excludesFile does not have duplicates
-	excludesList=( `cat $excludesFile` )
-	
-	while read ttRecommission; do	    
+#	excludesList=( `cat $excludesFile` )
+#	
+#	while read ttRecommission; do	    
+#
+#	    for tt in ${excludesList[@]}; do
+#		if [ "$tt" = "$ttRecommission" ]; then
+#		    flagPresent=1
+#		    break
+#		fi
+#	    done 
+#	    
+#	    if [ $flagPresent -eq 1 ]; then
+#		flagPresent=0
+#
+#		echo "INFO: Removing $ttRecommission from excludes file"
+#		sed -i "/$ttRecommission/d" $excludesFile
+#		returnVal=$?
+#		if [ $returnVal -ne 0 ]; then
+#		    echo "ERROR: Error while trying to update excludes file"
+#		    exit $ERROR_EXCLUDES_FILE_UPDATE
+#		fi
+#		isActive arrActiveTTs[@] $ttRecommission
+#		returnVal=$?
+#		if [ $returnVal -eq 0 ]; then
+#		    numToRecommission=$((numToRecommission+1))
+#		else
+#		    echo "WARNING: $ttRecommission is currently active!"
+#		    numActiveTT=$((numActiveTT+1))
+#		fi
+#	    else
+#		echo "WARNING: $tt is missing in the excludes file: $excludesFile" 
+#		missingTT=$((missingTT+1))
+#	    fi
+#	    
+#	done < $rListFile
+#	
+#	echo "INFO: Successfully updated excludes file. Latest excludes file: " 
+#	cat $excludesFile 
 
-	    for tt in ${excludesList[@]}; do
-		if [ "$tt" = "$ttRecommission" ]; then
-		    flagPresent=1
-		    break
-		fi
-	    done 
-	    
-	    if [ $flagPresent -eq 1 ]; then
-		flagPresent=0
-
-		echo "INFO: Removing $ttRecommission from excludes file"
-		sed -i "/$ttRecommission/d" $excludesFile
-		returnVal=$?
-		if [ $returnVal -ne 0 ]; then
-		    echo "ERROR: Error while trying to update excludes file"
-		    exit $ERROR_EXCLUDES_FILE_UPDATE
-		fi
-		isActive arrActiveTTs[@] $ttRecommission
-		returnVal=$?
-		if [ $returnVal -eq 0 ]; then
-		    numToRecommission=$((numToRecommission+1))
-		else
-		    echo "WARNING: $ttRecommission is currently active!"
-		    numActiveTT=$((numActiveTT+1))
-		fi
-	    else
-		echo "WARNING: $tt is missing in the excludes file: $excludesFile" 
-		missingTT=$((missingTT+1))
-	    fi
-	    
+        while read ttRecommission; do
+               isActive arrActiveTTs[@] $ttRecommission
+               returnVal=$?
+               if [ $returnVal -eq 0 ]; then
+                   numToRecommission=$((numToRecommission+1))
+               else
+                   echo "WARNING: $ttRecommission is currently active!"
+                   numActiveTT=$((numActiveTT+1))
+               fi
 	done < $rListFile
-	
-	echo "INFO: Successfully updated excludes file. Latest excludes file: " 
-	cat $excludesFile 
-	
+		
+# Clear excludes file
+	echo "INFO: Clearing excludes file..." 
+        > $excludesFile
+
 # Run recommission script by refreshing hosts
 	$hadoopHome/bin/hadoop mradmin -refreshNodes 2> $JTERRFILE
 	
