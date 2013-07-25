@@ -78,6 +78,9 @@ public class BootstrapMain
          configFile = DEFAULT_VHM_CONFIG_FILENAME;
       }
 
+      /* set a temporary log formatter so we get consistency */
+      Logger.getLogger("").getHandlers()[0].setFormatter(new LogFormatter());
+
       _properties = readPropertiesFile(configFile);
       if (_properties == null) {
          _properties = new Properties();

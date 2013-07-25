@@ -55,6 +55,15 @@ public class LogFormatter extends Formatter {
    public static final String NEWLINE = System.getProperty("line.separator");
    private static final int NEWLINE_LENGTH = NEWLINE == null ? 0 : NEWLINE.length();
 
+   private boolean decorated;
+
+   protected LogFormatter(boolean decorated) {
+      this.decorated = decorated;
+   }
+
+   public LogFormatter() {
+   }
+
    @Override
    public String format(LogRecord record) {
       String name = record.getLoggerName();
@@ -69,16 +78,21 @@ public class LogFormatter extends Formatter {
       StringBuilder result = new StringBuilder();
 
       // timestamp prefix (e.g. 2012 Sep 17 17:20:20.852)
-      SimpleDateFormat sdf = new SimpleDateFormat("yyyy MMM dd HH:mm:ss.S");
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyy MMM dd HH:mm:ss.SSS");
       result.append(sdf.format(new Date()));
 
-      result.append(" [").append(Thread.currentThread().getName()).append("-").append(name);
-      /* Fine logging is for method entry/exit so we add the method name */
-      if (record.getLevel().equals(Level.FINE) || record.getLevel().equals(Level.FINER)
-            || record.getLevel().equals(Level.FINEST)) {
-         result.append(".").append(record.getSourceMethodName());
+      if (decorated) {
+         result.append(" [").append(Thread.currentThread().getName()).append("-").append(name);
+         /* Fine logging is for method entry/exit so we add the method name */
+         if (record.getLevel().equals(Level.FINE) || record.getLevel().equals(Level.FINER)
+               || record.getLevel().equals(Level.FINEST)) {
+            result.append(".").append(record.getSourceMethodName());
+         }
+         result.append("] ");
+      } else {
+         result.append("   ");
       }
-      result.append("] ");
+
       Object[] params = record.getParameters();
       String rawMessage = null;
       if ((params != null) && (params.length > 0)) {
