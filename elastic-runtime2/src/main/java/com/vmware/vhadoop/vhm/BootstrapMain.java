@@ -35,6 +35,7 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.DecoratedLogFormatter;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
@@ -109,7 +110,7 @@ public class BootstrapMain
          _log.severe("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
 
          /* We've not got a properties file controlling things so use LogFormatter for the console at INFO level */
-         LogFormatter formatter = new LogFormatter();
+         LogFormatter formatter = new DecoratedLogFormatter();
          Handler handlers[] = Logger.getLogger("").getHandlers();
          if (handlers.length == 0) {
             System.err.println("No log handlers defined, using default formatting");
