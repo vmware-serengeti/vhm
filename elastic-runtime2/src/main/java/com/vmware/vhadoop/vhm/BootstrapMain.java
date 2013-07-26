@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.vhm;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -35,7 +37,6 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
-import com.vmware.vhadoop.util.DecoratedLogFormatter;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
@@ -104,13 +105,32 @@ public class BootstrapMain
 
       InputStream is = null;
       try {
-         is = new FileInputStream(loggingProperties);
+         /* read the properties file */
+         Properties properties = readPropertiesFile(loggingProperties);
+         /* ensure that the output file can be created */
+         String key = "java.util.logging.FileHandler.pattern";
+         if (properties.containsKey(key)) {
+            File log = new File(properties.getProperty(key));
+            File logDir = log.getParentFile();
+            if (logDir != null && !logDir.canWrite()) {
+               /* we need to alter where this goes */
+               String file = buildVHMFilePath(DEFAULT_LOGS_SUBDIR, log.getName());
+               _log.warning("The parent directory for log file specified by java.util.logging.FileHandler.pattern cannot be written to, falling back to "+file);
+               properties.setProperty(key, file);
+            }
+         }
+
+         /* construct an input stream from it */
+         ByteArrayOutputStream output = new ByteArrayOutputStream();
+         properties.store(output, null);
+         is = new ByteArrayInputStream(output.toByteArray());
+
          LogManager.getLogManager().readConfiguration(is);
       } catch (Exception e) {
          _log.severe("The " + loggingFlavour + " logging properties file could not be read: " + loggingProperties);
 
          /* We've not got a properties file controlling things so use LogFormatter for the console at INFO level */
-         LogFormatter formatter = new DecoratedLogFormatter();
+         LogFormatter formatter = new LogFormatter();
          Handler handlers[] = Logger.getLogger("").getHandlers();
          if (handlers.length == 0) {
             System.err.println("No log handlers defined, using default formatting");
