@@ -18,10 +18,12 @@ package com.vmware.vhadoop.vhm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -492,7 +494,21 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       assertMessageResponse(msg, cluster, id, timeout());
    }
 
-   public boolean assertWaitEquals(String msg, Object expected, Object value, long sleep) {
+   /**
+    * This tests whether the provided values are equal. If they are it will return true immediately, if they are not it will sleep for the specified
+    * length of time before returning. This doesn't block until the values are equal because in many cases it is likely that it will be called with
+    * the outcome of an expression which we are unable to re-evaluate. The expectation is that in these circumstances this will be called in a while
+    * loop, in which the sleep time will prevent it from being a pure busy wait.
+    * If the overall test timeout expires then this method will actually assert equality which will cause the test to fail if the values are not equal
+    * at that time.
+    *
+    * @param msg description of the purpose of the assertion
+    * @param expected the value we expect
+    * @param value the value we've got
+    * @param delay how long to delay returning on failed comparison
+    * @return true if values are equal, false otherwise
+    */
+   public boolean assertWaitEquals(String msg, Object expected, Object value, long delay) {
       if (expected.equals(value)) {
          _log.info(msg+" - expected value "+expected.toString()+" matched");
          return true;
@@ -501,10 +517,15 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       long timeout = timeout();
       if (timeout > 0) {
          try {
-            long millis = Math.min(sleep, timeout);
+            long millis = Math.min(delay, timeout);
             _log.info(msg+" - expected ("+expected.toString()+") saw ("+value.toString()+"), sleeping for "+millis+"ms");
             Thread.sleep(millis);
          } catch (InterruptedException e) {}
+      }
+
+      if (expected.equals(value)) {
+         _log.info(msg+" - expected value "+expected.toString()+" matched");
+         return true;
       }
 
       /* there's still time to try again */
@@ -512,11 +533,29 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
          return false;
       }
 
-      /* we're out of time so one last chance */
+      /* we're out of time so assert */
       assertEquals(msg+" - failed to match expected values", expected, value);
 
       /* they matched at the last opportunity */
       _log.info(msg+" - expected value "+expected.toString()+" matched");
       return true;
+   }
+
+   public void assertRemainsTrue(String msg, Callable<Boolean> condition, long duration) {
+      boolean result = false;
+      long deadline = System.currentTimeMillis() + timeout;
+
+      _log.info(msg+" - ensuring that condition remains true for "+(duration/1000)+"s");
+      do {
+         try {
+            result = condition.call();
+         } catch (Exception e) {
+            _log.log(Level.SEVERE, msg+" - condition did not compute a result", e);
+            fail();
+         }
+
+         assertTrue(msg+" - condition did not remain true", result);
+      } while (System.currentTimeMillis() < deadline);
+      _log.info(msg+" - condition remained true for "+(duration/1000)+"s");
    }
 }
