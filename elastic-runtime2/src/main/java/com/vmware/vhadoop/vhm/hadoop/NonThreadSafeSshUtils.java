@@ -61,37 +61,53 @@ public class NonThreadSafeSshUtils implements SshUtils
 
    private static final String SCP_COMMAND = "scp  -t  ";
    private static final int INPUTSTREAM_TIMEOUT = 100;
+   private static final int NUM_SSH_RETRIES = 2;
 
    @Override
    public ChannelExec createChannel(Logger logger, final HadoopCredentials credentials, String host, int port) {
-      try {
-
-         Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
-
-         // If private key file is specified, use that as identity; else use password.
-         String prvkeyFile = credentials.getSshPrvkeyFile();
-         if (prvkeyFile != null) {
-            _jsch.addIdentity(prvkeyFile); // Setup SSH identity using private key file
-         } else {
-            session.setPassword(credentials.getSshPassword());
-            UserInfo ui = new SSHUserInfo(credentials.getSshPassword(), Logger.getLogger(logger.getName()));
-            session.setUserInfo(ui);
+      
+      /* Trying out ssh connection multiple times if it does not succeed first time around -- We see this behavior intermittently esp. 
+       * during periods of heavy load */
+      for (int i = 0; i < NUM_SSH_RETRIES; i++) {
+         try {
+   
+            Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
+   
+            // If private key file is specified, use that as identity; else use password.
+            String prvkeyFile = credentials.getSshPrvkeyFile();
+            if (prvkeyFile != null) {
+               _jsch.addIdentity(prvkeyFile); // Setup SSH identity using private key file
+            } else {
+               session.setPassword(credentials.getSshPassword());
+               UserInfo ui = new SSHUserInfo(credentials.getSshPassword(), Logger.getLogger(logger.getName()));
+               session.setUserInfo(ui);
+            }
+   
+            java.util.Properties config = new java.util.Properties();
+            config.put("StrictHostKeyChecking", "no"); /* TODO: Necessary? Hack? Security hole?? */
+            session.setConfig(config);
+   
+            // JG: Adding session timeout...
+            session.setTimeout(15000);
+   
+            session.connect();
+   
+            return (ChannelExec) session.openChannel("exec");
+         } catch (JSchException e) {
+            logger.log(Level.WARNING, "Could not create ssh channel on host " + host + " " + e.getMessage());
+            if (i < NUM_SSH_RETRIES - 1) {
+               try {
+                  logger.log(Level.WARNING, "Trying to create ssh channel again on host " + host + " ...");
+                  Thread.sleep(5000);
+               } catch (InterruptedException e1) {
+                  logger.log(Level.WARNING, "Unexpected interruption to sleep");
+               }
+            } 
          }
-
-         java.util.Properties config = new java.util.Properties();
-         config.put("StrictHostKeyChecking", "no"); /* TODO: Necessary? Hack? Security hole?? */
-         session.setConfig(config);
-
-         // JG: Adding session timeout...
-         session.setTimeout(15000);
-
-         session.connect();
-
-         return (ChannelExec) session.openChannel("exec");
-      } catch (JSchException e) {
-         logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password/prvkey) on host " + host, e);
-         return null;
       }
+
+      logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password/prvkey) on host " + host);
+      return null;
    }
 
    @Override
