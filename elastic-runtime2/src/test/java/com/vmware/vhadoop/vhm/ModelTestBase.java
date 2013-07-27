@@ -541,9 +541,18 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       return true;
    }
 
-   public void assertRemainsTrue(String msg, Callable<Boolean> condition, long duration) {
+   /**
+    * Repeatedly checks to ensure that the specified condition remains true for a given period of time
+    * @param msg description of the check
+    * @param condition the condition to check
+    * @param interval the interval at which to check the condition (ms)
+    * @param duration the duration the condition must remain true
+    */
+   public void assertRemainsTrue(String msg, Callable<Boolean> condition, long interval, long duration) {
       boolean result = false;
-      long deadline = System.currentTimeMillis() + timeout;
+      long deadline = System.currentTimeMillis() + duration;
+
+      assertTrue("Global test timeout would elapse before assertion completed", duration <= timeout());
 
       _log.info(msg+" - ensuring that condition remains true for "+(duration/1000)+"s");
       do {
@@ -555,6 +564,12 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
          }
 
          assertTrue(msg+" - condition did not remain true", result);
+
+         try {
+            Thread.sleep(interval);
+         } catch (InterruptedException e) {
+            /* squash */
+         }
       } while (System.currentTimeMillis() < deadline);
       _log.info(msg+" - condition remained true for "+(duration/1000)+"s");
    }

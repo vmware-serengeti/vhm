@@ -190,10 +190,12 @@ public class BootstrapMain
          String baseName;
          File file;
 
-         /* check for it in the conf directory if we've only got a base name, otherwise use the entire path */
-         if (!name.contains(System.getProperty("file.separator"))) {
+         /* check for it in the conf directory if we've only got a base name, otherwise use the entire path
+          * we have a specific check for '/' as it's a valid separator on windows, but is not the file.separator property.
+          */
+         if (!name.contains(System.getProperty("file.separator")) && !name.contains("/")) {
             file = new File(buildVHMFilePath(CONFIG_DIR, name));
-            baseName = name;
+            baseName = file.getName();
             if (file.canRead()) {
                is = new FileInputStream(file);
             }
