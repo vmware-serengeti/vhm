@@ -69,7 +69,7 @@ public class PopulateClusterMap {
          }
 
          @Override
-         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData vmd, String clusterId, boolean isNewCluster) {
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData vmd, String clusterId, boolean isNewCluster, boolean isClusterViable) {
             return null;
          }
       };

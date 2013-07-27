@@ -34,22 +34,31 @@ import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
+import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
+import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 
 public class ClusterMapTest extends AbstractJUnitTest {
    ClusterMapImpl _clusterMap;
    static final String EXTRA_INFO_KEY = "extraInfo1";
    List<Boolean> _isNewClusterResult;
+   List<Boolean> _isClusterViableResult;
    ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(new StandaloneSimpleVCActions(), null);
    
    @Override
    void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
       String clusterName = _clusterMap.handleClusterEvent(cscl.translateVMEventData(eventData), impliedScaleEvents);
       assertEquals(expectedClusterName, clusterName);
+   }
+   
+   private void changeMasterVmPowerStateForClusterName(String clusterName, boolean powerState) {
+      VMVariableData vmVariableData = new VMVariableData();
+      vmVariableData._powerState = powerState;
+      _clusterMap.handleClusterEvent(new VmUpdateEvent(getMasterVmIdForCluster(clusterName), vmVariableData), null);
    }
    
    @Override
@@ -74,6 +83,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
    @Before
    public void initialize() {
       _isNewClusterResult = new ArrayList<Boolean>();
+      _isClusterViableResult = new ArrayList<Boolean>();
       _clusterMap = new ClusterMapImpl(new ExtraInfoToClusterMapper() {
          @Override
          public String getStrategyKey(SerengetiClusterVariableData scvd, String clusterId) {
@@ -97,8 +107,10 @@ public class ClusterMapTest extends AbstractJUnitTest {
          }
 
          @Override
-         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData scvd, String clusterId, boolean isNewCluster) {
+         /* All new clusters will be non-viable, but not all non-viable clusters will be new */
+         public Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData scvd, String clusterId, boolean isNewCluster, boolean isClusterViable) {
             _isNewClusterResult.add(isNewCluster);
+            _isClusterViableResult.add(isClusterViable);
             if (!isNewCluster && (scvd != null) && (scvd._minInstances != null)) {
                int minInstances = scvd._minInstances;
                if (minInstances >= 0) {
@@ -220,6 +232,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       String masterDnsName = getDnsNameFromVmName(masterVmName);
       assertEquals(masterDnsName, hci.getJobTrackerDnsName());
       
+      changeMasterVmPowerStateForClusterName(clusterName1, false);
       clusterId = deriveClusterIdFromClusterName(clusterName1);
       hci = _clusterMap.getHadoopInfoForCluster(clusterId);
       assertNull(hci);        /* If the cluster is not powered on, we should get null */
@@ -489,10 +502,16 @@ public class ClusterMapTest extends AbstractJUnitTest {
    public void testImpliedScaleEvents() {
       String clusterName = CLUSTER_NAME_PREFIX+0;
       
-      /* Create new cluster */
-      populateClusterSameHost(clusterName, "DEFAULT_HOST1", 4, false, false, 0, null);
+      /* Create new non-viable cluster */
+      populateClusterSameHost("NonViableCluster", "DEFAULT_HOST1", 4, false, false, 0, null);
       assertEquals(1, _isNewClusterResult.size());
+      assertEquals(false, _isClusterViableResult.get(0));
       assertEquals(true, _isNewClusterResult.get(0));
+
+      populateClusterSameHost(clusterName, "DEFAULT_HOST1", 4, true, false, 0, null);
+      assertEquals(2, _isNewClusterResult.size());
+      assertEquals(false, _isClusterViableResult.get(1));
+      assertEquals(true, _isNewClusterResult.get(1));
       
       Integer newInstances = 3;
       /* This set will contain any implied events created by the cluster state change */
@@ -500,8 +519,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
       _clusterMap.handleClusterEvent(createNewMinInstancesUpdate(newInstances, clusterName), impliedScaleEventsResultSet);
       assertEquals(1, impliedScaleEventsResultSet.size());  /* We should have a new event */
-      assertEquals(2, _isNewClusterResult.size());          
-      assertEquals(false, _isNewClusterResult.get(1));      /* This is not a new cluster, rather an update to an existing cluster */
+      assertEquals(3, _isNewClusterResult.size());          
+      assertEquals(true, _isClusterViableResult.get(2));
+      assertEquals(false, _isNewClusterResult.get(2));      /* This is not a new cluster, rather an update to an existing cluster */
       
       /* Validate the contents of the generated event */
       ImpliedScaleEvent impliedScaleEvent = (ImpliedScaleEvent)impliedScaleEventsResultSet.iterator().next();
@@ -511,8 +531,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
       /* Create a new cluster map update, but one which our ExtraInfoToClusterMapper has been coded to ignore */
       _clusterMap.handleClusterEvent(createNewMinInstancesUpdate(-1, clusterName), impliedScaleEventsResultSet);
       assertEquals(0, impliedScaleEventsResultSet.size());    /* Verify that an event was not generated */
-      assertEquals(3, _isNewClusterResult.size());             /* Verify that getImpliedScaleEventsForUpdate was invoked */ 
-      assertEquals(false, _isNewClusterResult.get(2));
+      assertEquals(4, _isNewClusterResult.size());             /* Verify that getImpliedScaleEventsForUpdate was invoked */ 
+      assertEquals(true, _isClusterViableResult.get(3));
+      assertEquals(false, _isNewClusterResult.get(3));
    }
    
    @Test

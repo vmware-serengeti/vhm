@@ -96,7 +96,7 @@ public abstract class AbstractJUnitTest {
             masterVmName = vmName;
             _masterVmNames.add(masterVmName);
          }
-         VMEventData eventData = createEventData(clusterName, vmName, i==0, defaultPowerState, hostName, masterVmName, autoCluster, minInstances, true);
+         VMEventData eventData = createEventData(clusterName, vmName, i==0, (i==0 || defaultPowerState), hostName, masterVmName, autoCluster, minInstances, true);
          processNewEventData(eventData, deriveClusterIdFromClusterName(clusterName), impliedScaleEvents);
       }
       registerScaleStrategy(new TrivialScaleStrategy(DEFAULT_SCALE_STRATEGY_KEY));

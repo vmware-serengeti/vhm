@@ -37,7 +37,8 @@ public interface ClusterMap {
       Map<String, String> parseExtraInfo(SerengetiClusterVariableData clusterData, String clusterId);
 
       /* Allows for the creation of new scale events based on cluster state change - order is preserved of the returned set */
-      Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData clusterData, String clusterId, boolean isNewCluster);
+      /* Viability of cluster is whether jobs could currently be successfully run on it. Eg is the JobTracker powered on? */
+      Set<ClusterScaleEvent> getImpliedScaleEventsForUpdate(SerengetiClusterVariableData clusterData, String clusterId, boolean isNewCluster, boolean isClusterViable);
    }
 
    Set<String> listComputeVMsForCluster(String clusterId);

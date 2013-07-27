@@ -312,13 +312,43 @@ public class ClusterMapImpl implements ClusterMap {
                }
             }
          }
+         /* Don't try to generate implied events for existing clusters that are not viable */
          if (variableDataChanged) {
-            Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(variableData, clusterId, isNewVm);
+            Set<ClusterScaleEvent> impliedScaleEvents = _extraInfoMapper.getImpliedScaleEventsForUpdate(variableData, clusterId, isNewVm, isClusterViable(clusterId));
             if ((impliedScaleEvents != null) && (impliedScaleEventsResultSet != null)) {
                impliedScaleEventsResultSet.addAll(impliedScaleEvents);
             }
          }
       }
+   }
+
+   /* If the JobTracker is powered off, we may consider the cluster complete, but the cluster is obviously not viable */
+   private boolean isClusterViable(String clusterId) {
+      if (assertHasData(_clusters) && assertHasData(_vms)) {
+         Boolean clusterComplete = validateClusterCompleteness(clusterId, 0);
+         if ((clusterComplete == null) || !clusterComplete) {
+            return false;
+         }
+         ClusterInfo ci = _clusters.get(clusterId);
+         if (ci != null) {
+            VMInfo vi = getMasterVmForCluster(clusterId);
+            if ((vi == null) || !vi._variableData._powerState) {
+               return false;
+            }
+         }
+         return true;
+      }
+      return false;
+   }
+
+   private VMInfo getMasterVmForCluster(String clusterId) {
+      for (VMInfo vmInfo : _vms.values()) {
+         if (vmInfo._constantData._vmType.equals(VmType.MASTER) 
+               && vmInfo._clusterId.equals(clusterId)) {
+            return vmInfo;
+         }
+      }
+      return null;
    }
 
    private String updateClusterState(ClusterUpdateEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
@@ -340,19 +370,24 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
+   /* Return null if a cluster is not viable as there's no scaling we can do with it */
    public String getScaleStrategyKey(String clusterId) {
       ClusterInfo ci = getCluster(clusterId);
-      if (ci != null) {
+      if ((ci != null) && isClusterViable(clusterId)) {
          return ci._scaleStrategyKey;
       }
       return null;
    }
 
-   public ScaleStrategy getScaleStrategyForCluster(String clusterId) {
-      return _scaleStrategies.get(getScaleStrategyKey(clusterId));
+   protected ScaleStrategy getScaleStrategyForCluster(String clusterId) {
+      String key = getScaleStrategyKey(clusterId);
+      if (key != null) {
+         return _scaleStrategies.get(getScaleStrategyKey(clusterId));
+      }
+      return null;
    }
 
-   public void registerScaleStrategy(ScaleStrategy strategy) {
+   protected void registerScaleStrategy(ScaleStrategy strategy) {
       _scaleStrategies.put(strategy.getKey(), strategy);
    }
 
@@ -506,12 +541,14 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getClusterIdForFolder(String clusterFolderName) {
-      for (ClusterInfo ci : _clusters.values()) {
-         String constantFolder = ci._constantData._serengetiFolder;     /* Set when cluster is created by Serengeti */
-         String discoveredFolder = ci._discoveredFolderName;            /* Discovered from SerengetiLimitInstruction */
-         if (((constantFolder != null) && (constantFolder.equals(clusterFolderName))) ||
-               ((discoveredFolder != null) && (discoveredFolder.equals(clusterFolderName)))) {
-            return ci._masterUUID;
+      if (assertHasData(_clusters)) {
+         for (ClusterInfo ci : _clusters.values()) {
+            String constantFolder = ci._constantData._serengetiFolder;     /* Set when cluster is created by Serengeti */
+            String discoveredFolder = ci._discoveredFolderName;            /* Discovered from SerengetiLimitInstruction */
+            if (((constantFolder != null) && (constantFolder.equals(clusterFolderName))) ||
+                  ((discoveredFolder != null) && (discoveredFolder.equals(clusterFolderName)))) {
+               return ci._masterUUID;
+            }
          }
       }
       return null;
@@ -519,28 +556,34 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getHostIdForVm(String vmId) {
-      VMInfo vmInfo = _vms.get(vmId);
-      if (vmInfo != null) {
-         return vmInfo._variableData._hostMoRef;
+      if (assertHasData(_vms)) {
+         VMInfo vmInfo = _vms.get(vmId);
+         if (vmInfo != null) {
+            return vmInfo._variableData._hostMoRef;
+         }
       }
       return null;
    }
 
    @Override
    public String getClusterIdForVm(String vmId) {
-      VMInfo vmInfo = _vms.get(vmId);
-      if (vmInfo != null) {
-         return vmInfo._clusterId;
+      if (assertHasData(_vms)) {
+         VMInfo vmInfo = _vms.get(vmId);
+         if (vmInfo != null) {
+            return vmInfo._clusterId;
+         }
       }
       return null;
    }
 
    @Override
    public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
-      ClusterInfo info = getCluster(clusterId);
-      if (info != null) {
-         if (info._completionEvents.size() > 0) {
-            return info._completionEvents.getFirst();
+      if (assertHasData(_clusters)) {
+         ClusterInfo info = getCluster(clusterId);
+         if (info != null) {
+            if (info._completionEvents.size() > 0) {
+               return info._completionEvents.getFirst();
+            }
          }
       }
       return null;
@@ -722,8 +765,8 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_clusters) && (key != null)) {
          Set<String> result = new HashSet<String>();
          for (String clusterId : _clusters.keySet()) {
-            ClusterInfo ci = getCluster(clusterId);
-            if ((ci != null) && (ci._scaleStrategyKey != null) && (ci._scaleStrategyKey.equals(key))) {
+            ScaleStrategy scaleStrategy = getScaleStrategyForCluster(clusterId);
+            if ((scaleStrategy != null) && (scaleStrategy.getKey().equals(key))) {
                result.add(clusterId);
             }
          }
