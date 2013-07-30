@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.api.vhm.events;
 
+import java.util.Set;
+
 /* An event generated once a cluster scale operation has completed representing Decisions for a given VM */
 public interface ClusterScaleCompletionEvent extends NotificationEvent {
 
@@ -28,12 +30,30 @@ public interface ClusterScaleCompletionEvent extends NotificationEvent {
       public String toString() {
          return _value;
       }
+      @Override
+      public int hashCode() {
+         return _value.hashCode();
+      }
+      @Override
+      public boolean equals(Object obj) {
+         if (obj == null) {
+            return false;
+         }
+
+         if (obj instanceof Decision) {
+            return _value.equals(((Decision)obj)._value);
+         }
+
+         return false;
+      }
    }
 
    public static final Decision ENABLE = new Decision("ENABLE");
    public static final Decision DISABLE = new Decision("DISABLE");
-      
+
    String getClusterId();
-   
+
    Decision getDecisionForVM(String vmId);
+
+   Set<String> getVMsForDecision(Decision decision);
 }

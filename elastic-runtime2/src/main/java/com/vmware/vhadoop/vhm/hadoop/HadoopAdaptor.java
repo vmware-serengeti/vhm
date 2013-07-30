@@ -164,26 +164,26 @@ public class HadoopAdaptor implements HadoopActions {
 
    private boolean isValidTTList(String[] tts) {
       if (tts.length == 0) {
-         _log.log(Level.SEVERE, "Error: Length of the TT list is 0!");
+         _log.log(Level.SEVERE, "Error: The task tracker list is empty!");
          return false;
       }
 
       _log.log(Level.INFO, "TTs length: " + tts.length);
 
-	  Set<String> temp = new TreeSet<String>();
+      Set<String> temp = new TreeSet<String>();
       for (String tt : tts) {
-    	 if (tt == null) {
-    		  _log.log(Level.SEVERE, "Error: Null TT name found while de/recommisioning");
-    		  return false;
-    	 }
-    	 if (tt.length() == 0) {
-   		      _log.log(Level.SEVERE, "Error: Empty TT name found while de/recommisioning");
-   		      return false;
-    	 }
-		 if (!temp.add(tt)) {
-			 _log.log(Level.SEVERE, "Error: TT list contains duplicates!");
-			 return false;
-		 }
+         if (tt == null) {
+            _log.log(Level.SEVERE, "Error: Null task tracker name found while de/recommisioning");
+            return false;
+         }
+         if (tt.length() == 0) {
+            _log.log(Level.SEVERE, "Error: Blank task tracker name found while de/recommisioning");
+            return false;
+         }
+         if (!temp.add(tt)) {
+            _log.log(Level.SEVERE, "Error: task tracker list contains duplicates!");
+            return false;
+         }
       }
 
       return true;
@@ -274,8 +274,8 @@ public class HadoopAdaptor implements HadoopActions {
 
       String[] dnsNameArray = tts.values().toArray(new String[0]);
       if (!isValidTTList(dnsNameArray)) {
-         String errorMsg = opDesc+" failed due to bad TT list";
-         _log.log(Level.SEVERE, opDesc+" failed due to bad TT list");
+         String errorMsg = opDesc+" failed due to bad task tracker list";
+         _log.log(Level.SEVERE, errorMsg);
          status.registerTaskFailed(false, errorMsg);
          return status;
       }
@@ -357,7 +357,7 @@ public class HadoopAdaptor implements HadoopActions {
          }
 
          getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
-         
+
          /* Time the invocation to ensure that we don't zoom round the retry loop if it completes too quickly */
          long activeTTsStartTime = System.currentTimeMillis();
     	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);

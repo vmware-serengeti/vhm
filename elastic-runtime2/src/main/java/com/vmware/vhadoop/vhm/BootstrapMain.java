@@ -39,6 +39,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiCluste
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
 import com.vmware.vhadoop.vhm.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
@@ -211,7 +212,7 @@ public class BootstrapMain
          /* check for it as a resource - this is always our base if it exists */
          resource = ClassLoader.getSystemResourceAsStream(baseName);
          if (resource != null) {
-            _log.info("Loading "+baseName+" from classloader resource");
+            _log.log(VhmLevel.USER, "VHM: loading default "+baseName+" from classloader resource");
             properties = new Properties();
             properties.load(resource);
          }
@@ -219,9 +220,9 @@ public class BootstrapMain
          /* if we've got version from the file system, overlay that on our resource based version if present */
          if (is != null) {
             if (properties != null) {
-               _log.info("Overlaying "+baseName+" values from "+file.getPath());
+               _log.log(VhmLevel.USER, "VHM: overlaying "+baseName+" values from "+file.getPath());
             } else {
-               _log.info("Loading "+baseName+" from "+file.getPath());
+               _log.log(VhmLevel.USER, "VHM: loading "+baseName+" from "+file.getPath());
             }
 
             properties = new Properties(properties);

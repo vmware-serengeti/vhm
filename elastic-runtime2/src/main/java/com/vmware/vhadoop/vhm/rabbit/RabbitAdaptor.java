@@ -37,8 +37,8 @@ import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.QueueClient;
-import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
 
@@ -56,7 +56,7 @@ public class RabbitAdaptor implements MQClient {
    boolean _deliberateFailureTriggered = false;
 
    private static long CONNECTION_SHUTDOWN_TIMEOUT_MILLIS = 5000;
-   
+
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 
    @SuppressWarnings("unused")
@@ -125,12 +125,15 @@ public class RabbitAdaptor implements MQClient {
                      _log.info("Rabbit queue waiting for message");
                      QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                      VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                     ClusterScaleEvent event = new SerengetiLimitInstruction(message.getClusterId(),
+                     SerengetiLimitInstruction event = new SerengetiLimitInstruction(message.getClusterId(),
                            message.getAction(),
                            message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
 
+                     /* log that we've received an explicit action from the serengeti client */
+                     _log.log(VhmLevel.USER, "VHM: <%C"+message.getClusterId()+"%C> - instruction received from Serengeti client: "+event.toString());
+
                      _eventConsumer.placeEventOnQueue(event);
-                     _log.info("New Serengeti limit event placed on queue");
+
                   }
                } catch (InterruptedException e) {
                   /* Almost certainly stop() was invoked */

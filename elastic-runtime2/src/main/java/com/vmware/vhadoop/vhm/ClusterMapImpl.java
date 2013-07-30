@@ -35,6 +35,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMConstantData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.MasterVmUpdateEvent;
 import com.vmware.vhadoop.vhm.events.NewMasterVMEvent;
@@ -68,7 +69,7 @@ public class ClusterMapImpl implements ClusterMap {
 
       /* VMInfo is created with a completed VMConstantData and a potentially incomplete or even null variableData
        * moRef and clusterId must not be null */
-      VMInfo(String moRef, VMConstantData constantData, 
+      VMInfo(String moRef, VMConstantData constantData,
             VMVariableData variableData, String clusterId) {
          _moRef = moRef;
          _constantData = constantData;
@@ -78,7 +79,7 @@ public class ClusterMapImpl implements ClusterMap {
          if ((_variableData._powerState != null) && (_variableData._powerState)) {
             _powerOnTime = System.currentTimeMillis();
          }
-         _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s", 
+         _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s",
                new String[]{moRef, moRef, clusterId, _constantData.toString(), _variableData.toString()});
       }
 
@@ -88,7 +89,7 @@ public class ClusterMapImpl implements ClusterMap {
    class ClusterInfo {
       final String _masterUUID;
       final SerengetiClusterConstantData _constantData;
-      
+
       public ClusterInfo(String clusterId, SerengetiClusterConstantData constantData) {
          this._masterUUID = clusterId;
          this._constantData = constantData;
@@ -123,6 +124,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if ((clusterId != null) && (constantData != null)) {
          ClusterInfo cluster = new ClusterInfo(clusterId, constantData);
+         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: recording existance of cluster");
          _clusters.put(clusterId, cluster);
       }
       return true;
@@ -134,10 +136,10 @@ public class ClusterMapImpl implements ClusterMap {
       if (vmInfo != null) {
          clusterId = vmInfo._clusterId;
          if (vmInfo._constantData._vmType.equals(VmType.MASTER)) {
-            _log.log(Level.INFO, "Removing Cluster <%C" + clusterId);
+            _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: removing record of cluster");
             _clusters.remove(clusterId);
          }
-         _log.log(Level.INFO, "Removing VM <%V" + vmMoRef);
+         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: removing record of VM <%V"+vmMoRef+"%V>");
          _vms.remove(vmMoRef);
       }
       dumpState(Level.FINEST);
@@ -192,6 +194,7 @@ public class ClusterMapImpl implements ClusterMap {
          return null;
       }
 
+      _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: Adding record for VM <%V"+vmId+"%V>");
       return clusterId;
    }
 
@@ -260,6 +263,12 @@ public class ClusterMapImpl implements ClusterMap {
             } else {
                vi._powerOnTime = 0;
             }
+
+            if (vi._clusterId != null) {
+               _log.log(VhmLevel.USER, "<%C"+vi._clusterId+"%C>: VM <%V"+vmId+"%V> - powered "+(powerState?"on":"off"));
+            } else {
+               _log.log(VhmLevel.USER, "VM <%V"+vmId+"%V>: powered "+(powerState?"on":"off"));
+            }
          }
          if (testForVMUpdate(toSet._vCPUs, vCPUs, vmId, "vCPUs")) {
             toSet._vCPUs = vCPUs;
@@ -271,10 +280,9 @@ public class ClusterMapImpl implements ClusterMap {
       return clusterId;
    }
 
-   /* Note that in most cases, the information in variableData will represent deltas - real changes to state. 
+   /* Note that in most cases, the information in variableData will represent deltas - real changes to state.
     * However, this may not always be the case, so this should not be assumed - note testForUpdate methods */
-   private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData,
-         Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
+   private void updateClusterVariableData(String clusterId, SerengetiClusterVariableData variableData, Set<ClusterScaleEvent> impliedScaleEventsResultSet, boolean isNewVm) {
       boolean variableDataChanged = false;
       ClusterInfo ci = getCluster(clusterId);
       if (ci != null) {
@@ -283,6 +291,9 @@ public class ClusterMapImpl implements ClusterMap {
          if (enableAutomation != null) {
             String scaleStrategyKey = _extraInfoMapper.getStrategyKey(variableData, clusterId);
             if (testForClusterUpdate(ci._scaleStrategyKey, scaleStrategyKey, clusterId, "scaleStrategyKey")) {
+
+               _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: cluster scale strategy set to "+scaleStrategyKey);
+
                ci._scaleStrategyKey = scaleStrategyKey;
                variableDataChanged = true;
             }
@@ -343,7 +354,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    private VMInfo getMasterVmForCluster(String clusterId) {
       for (VMInfo vmInfo : _vms.values()) {
-         if (vmInfo._constantData._vmType.equals(VmType.MASTER) 
+         if (vmInfo._constantData._vmType.equals(VmType.MASTER)
                && vmInfo._clusterId.equals(clusterId)) {
             return vmInfo;
          }
@@ -365,6 +376,12 @@ public class ClusterMapImpl implements ClusterMap {
    public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
       ClusterInfo cluster = getCluster(event.getClusterId());
       if (cluster != null) {
+         Set<String> enableVMs = event.getVMsForDecision(event.ENABLE);
+         Set<String> disableVMs = event.getVMsForDecision(event.DISABLE);
+         if (enableVMs != null || disableVMs != null) {
+            _log.log(VhmLevel.USER, "<%C"+event.getClusterId()+"%C>: scaling completed");
+         }
+
          cluster._completionEvents.addFirst(event);
       }
    }
@@ -411,7 +428,7 @@ public class ClusterMapImpl implements ClusterMap {
                result.add(vminfo._moRef);
             }
          } catch (NullPointerException e) {
-            /* vmInfo._constantData should never be null or have null values. 
+            /* vmInfo._constantData should never be null or have null values.
              * vmInfo._clusterId and vmInfo._moRef should never be null
              * vmInfo._variableData should never be null, but may have null values */
             VMVariableData variableInfo = vminfo._variableData;
@@ -602,7 +619,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return null;
    }
-   
+
    @Override
    public Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState) {
       if (assertHasData(_vms)) {
@@ -619,7 +636,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return null;
    }
-   
+
    @Override
    public Map<String, String> getHostIdsForVMs(Set<String> vmIds) {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
@@ -656,7 +673,7 @@ public class ClusterMapImpl implements ClusterMap {
             VMInfo vi = _vms.get(ci._constantData._masterMoRef);
             if ((vi != null) && checkPowerStateOfVm(vi._moRef, true)) {
                /* Constant data is guaranteed to be non-null. iPAddress or dnsName may be null */
-               result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._dnsName, 
+               result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._dnsName,
                      vi._variableData._ipAddr, ci._jobTrackerPort);
             }
          }
@@ -682,7 +699,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       return null;
    }
-   
+
    @Override
    public String getDnsNameForVM(String vmId) {
       if (assertHasData(_vms)) {

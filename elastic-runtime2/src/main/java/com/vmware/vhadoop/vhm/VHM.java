@@ -42,6 +42,7 @@ import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.AbstractNotificationEvent;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
@@ -68,7 +69,7 @@ public class VHM implements EventConsumer {
 
    private static long EVENT_PRODUCER_START_GRACE_TIME_MILLIS = 5000;
    private static long EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS = 5000;
-   
+
    VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
          ExtraInfoToClusterMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
       _eventProducers = new EventProducerActions();
@@ -114,7 +115,7 @@ public class VHM implements EventConsumer {
             _log.severe("EventProducer "+thisProducer.getClass().getName()+" has stopped unexpectedly, so resetting EventProducers");
             placeEventOnQueue(new EventProducerResetEvent());
          }
-         
+
          @Override
          public void notifyStarted(EventProducer thisProducer) {
             _startedProducers.add(thisProducer);
@@ -142,7 +143,7 @@ public class VHM implements EventConsumer {
          _log.fine("Event producers stop returning "+result);
          return result;
       }
-      
+
       /* Block until the event producers to be started have actually started */
       synchronized boolean start() {
          boolean result;
@@ -157,7 +158,7 @@ public class VHM implements EventConsumer {
          _log.fine("Event producers start returning "+result);
          return result;
       }
-      
+
       private boolean waitForStateChange(Set<EventProducer> producers, boolean waitForStart, long timeoutMillis) {
          boolean done;
          int timeoutCountdown = (int)timeoutMillis;
@@ -176,7 +177,7 @@ public class VHM implements EventConsumer {
          } while (!done && ((timeoutCountdown -= sleepTimeMillis) > 0));
          return (timeoutCountdown > 0);
       }
-      
+
       /* Block until the event producers to be started have restarted */
       synchronized boolean reset() {
          if (stop()) {
@@ -204,7 +205,7 @@ public class VHM implements EventConsumer {
          _log.fine("Event producer "+eventProducer.getClass().getName()+" registerd. Start result = "+result);
          return result;
       }
-      
+
       boolean isAllStopped() {
          return _startedProducers.isEmpty();
       }
@@ -366,7 +367,7 @@ public class VHM implements EventConsumer {
       }
       clusterScaleEvents.add(newEvent);
    }
-   
+
    /* The method takes all new events polled from the event queue, pulls out any ClsuterScaleEvents and organizes them by Cluster */
    private void getQueuedScaleEventsForCluster(Set<NotificationEvent> events, Map<String, Set<ClusterScaleEvent>> clusterScaleEventMap) {
       if (clusterScaleEventMap != null) {
@@ -491,17 +492,17 @@ public class VHM implements EventConsumer {
 
    /* Process new cluster state change events received from the ClusterStateChangeListener
     * The impliedScaleEventsMap allows any clusterScaleEvents implied by cluster state changes to be added */
-   private void handleClusterStateChangeEvents(Set<ClusterStateChangeEvent> eventsToProcess, 
+   private void handleClusterStateChangeEvents(Set<ClusterStateChangeEvent> eventsToProcess,
          Map<String, Set<ClusterScaleEvent>> impliedScaleEventsMap) {
       Set<ClusterScaleEvent> impliedScaleEventsForCluster = new LinkedHashSet<ClusterScaleEvent>();    /* Preserve order */
-      
+
       for (ClusterStateChangeEvent event : eventsToProcess) {
          _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
-         
+
          /* ClusterMap will process the event and may add an implied scale event (see ExtraInfoToClusterMapper) */
          String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEventsForCluster);
          if (clusterId != null) {
-            
+
             /* If there are new scale events, create or update the Set in the impliedScaleEventsMap */
             if (impliedScaleEventsForCluster.size() > 0) {
                if (impliedScaleEventsMap.get(clusterId) == null) {
@@ -531,7 +532,7 @@ public class VHM implements EventConsumer {
       final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
 
       /* ClusterMap is updated by VHM based on events that come in from the ClusterStateChangeListener
-       * The first thing we do here is update ClusterMap to ensure that the latest state is reflected ASAP 
+       * The first thing we do here is update ClusterMap to ensure that the latest state is reflected ASAP
        * Note that clusterScaleEvents can be implied by cluster state changes, so new clusterScaleEvents can be added here */
       if ((addRemoveEvents.size() + updateEvents.size() + completionEvents.size()) > 0) {
          _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
@@ -555,7 +556,7 @@ public class VHM implements EventConsumer {
       /* Now that we may have some implied scale events from above, add any additional scale events from the event queue */
       getQueuedScaleEventsForCluster(events, clusterScaleEvents);
 
-      /* If there are scale events to handle, we need to invoke the scale strategies for each cluster 
+      /* If there are scale events to handle, we need to invoke the scale strategies for each cluster
        * The ordering in which we process the clusters doesn't matter as they will be done concurrently */
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
@@ -578,14 +579,14 @@ public class VHM implements EventConsumer {
                                                       +CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS+"ms. Dumping queued events for it");
                continue;
             }
-            
+
             /* Note that any update to the scale strategy will already have been processed above in handleClusterStateChangeEvents */
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
             if (scaleStrategy == null) {
                _log.severe("There is no scaleStrategy set for cluster <%C"+clusterId);
                continue;
             }
-            
+
             _log.finer("Using "+scaleStrategy.getKey()+" scale strategy to filter events for cluster "+clusterId);
 
             /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
@@ -644,6 +645,7 @@ public class VHM implements EventConsumer {
    }
 
    public void stop(boolean hardStop) {
+      _log.log(VhmLevel.USER, "VHM: stopping");
       _running = false;
       _eventProducers.stop();
       placeEventOnQueue(new AbstractNotificationEvent(hardStop, false) {});

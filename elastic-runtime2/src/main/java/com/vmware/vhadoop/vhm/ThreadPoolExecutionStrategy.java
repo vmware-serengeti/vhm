@@ -37,13 +37,13 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 
 public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
-   
+
    private class ClusterTaskContext {
       ScaleStrategy _scaleStrategy;
       Future<ClusterScaleCompletionEvent> _completionEventPending;
       ScaleStrategyContext _scaleStrategyContext;
    }
-   
+
    private final ExecutorService _threadPool;
    private final Map<String, ClusterTaskContext> _clusterTaskContexts;
    private static int _threadCounter = 0;
@@ -61,7 +61,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
          throw new RuntimeException("Deliberate failure!!");
       }
    }
-   
+
    private static final Logger _log = Logger.getLogger(ThreadPoolExecutionStrategy.class.getName());
 
    public ThreadPoolExecutionStrategy() {
@@ -73,7 +73,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
       });
       _clusterTaskContexts = new HashMap<String, ClusterTaskContext>();
    }
-   
+
    private void setScaleStrategyAndContext(ScaleStrategy scaleStrategy, ClusterTaskContext toSet) throws Exception {
       Class<? extends ScaleStrategyContext> type = scaleStrategy.getStrategyContextType();
       if (type != null) {
@@ -110,7 +110,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
             if (ctc._completionEventPending != null) {
                _log.finest("Cluster scale events already being handled for cluster <%C"+clusterId);
             } else {
-               ctc._completionEventPending = 
+               ctc._completionEventPending =
                      _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, ctc._scaleStrategyContext));
                result = true;
             }
@@ -166,7 +166,10 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                      try {
                         _clusterTaskContexts.wait(500);
                      } catch (InterruptedException e) {
-                        _log.warning("Cluster thread wait interrupted");
+                        if (_started) {
+                           /* if we're not stopping then this is unexpected */
+                           _log.warning("Cluster thread wait interrupted");
+                        }
                      }
                   }
                } catch (Throwable t) {

@@ -18,6 +18,7 @@ package com.vmware.vhadoop.vhm.events;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.QueueClient;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
@@ -62,7 +63,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportError(String message) {
       if (_messageCallback != null) {
-         _log.info("Reporting error "+message);
+         _log.log(VhmLevel.USER, "<%C"+_clusterFolderName+"%C> - error while attempting to "+toString()+" - "+message);
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
@@ -71,7 +72,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportCompletion() {
       if (_messageCallback != null) {
-         _log.info("Reporting completion");
+         _log.log(VhmLevel.USER, "VHM: <%C"+_clusterFolderName+"%C> - completed instruction to "+toString());
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
@@ -81,5 +82,26 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    @Override
    public boolean isExclusive() {
       return true;         /* We only want to know about the latest queued event */
+   }
+
+   /**
+    * Describes the instruction
+    */
+   @Override
+   public String toString() {
+      StringBuilder buf = new StringBuilder();
+      if (_action != null) {
+         if (_action.equals("SetTarget")) {
+            return buf.append("set number of enabled compute nodes to ").append(_toSize).toString();
+         } else if (_action.equals("Unlimit")) {
+            return buf.append("enable all compute nodes").toString();
+         } else if (_action.equals("WaitForManual")) {
+            return buf.append("switch to manual mode").toString();
+         }
+
+         return _action;
+      }
+
+      return "";
    }
 }

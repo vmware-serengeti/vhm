@@ -32,6 +32,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.util.LogFormatter;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.MasterVmUpdateEvent;
 import com.vmware.vhadoop.vhm.events.NewMasterVMEvent;
@@ -63,12 +64,12 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    private class CachedVMConstantData extends VMConstantData {
       private Boolean _isElastic;
       private String _masterUUID;
-      
+
       @Override
       protected String getVariableValues() {
          return "isElastic="+_isElastic+", _masterUUID="+_masterUUID;
       }
-      
+
       @Override
       public String toString() {
          return "CachedVMConstantData{"+super.getVariableValues()+", "+getVariableValues()+"}";
@@ -81,12 +82,12 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       private VMVariableData _vmVariableData;
       private SerengetiClusterConstantData _clusterConstantData;
       private SerengetiClusterVariableData _clusterVariableData;
-      
+
       protected String getVariableValues() {
          return "_clusterId="+_clusterId+", _vmConstantData="+_vmConstantData+", _vmVariableData="+_vmVariableData+
                ", _clusterConstantData="+_clusterConstantData+", _clusterVariableData="+_clusterVariableData;
       }
-      
+
       @Override
       public String toString() {
          return "InterimVmData{"+getVariableValues()+"}";
@@ -147,7 +148,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if (vmDataList.isEmpty() && ((version == null) || version.equals(""))) {
          if (_started) {
             try {
-               _log.info("Temporarily lost connection to VC... ");
+               _log.log(VhmLevel.USER, "VHM: Temporarily lost connection to VC");
                Thread.sleep(backoffPeriodMS);
             } catch (InterruptedException e) {
                _log.warning("Unexpectedly interrupted waiting for VC");
