@@ -320,7 +320,11 @@ public class HadoopAdaptor implements HadoopActions {
       String[] unformattedList = out.toString().split("\n");
       Set<String> formattedList = new HashSet<String>();
       for (int i = 0; i < unformattedList.length-1; i++) {
-         formattedList.add(unformattedList[i].trim());
+         if (unformattedList[i].startsWith("TT:")) {
+            _log.fine("Adding TT: " + unformattedList[i].split("\\s+")[1]);
+            formattedList.add(unformattedList[i].split("\\s+")[1]);
+         }
+         //formattedList.add(unformattedList[i].trim());
       }
 
       _log.info("Active TTs so far: " + Arrays.toString(formattedList.toArray()));

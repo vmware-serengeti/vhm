@@ -166,7 +166,8 @@ printActiveTTs()
 
 # List of TT names (after removing initial tracker_)    
     for tt in ${arrNewActiveTTs[@]}; do	
-	echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement
+	ttName=`echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement`
+	echo "TT: $ttName"
     done
 }
 
