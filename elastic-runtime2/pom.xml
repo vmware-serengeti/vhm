@@ -38,27 +38,27 @@
 			<version>0.1.48</version>
 		</dependency>
 		<dependency>
-			<groupId>com.vmware.aurora</groupId>
+			<groupId>com.vmware.bdd</groupId>
 			<artifactId>vlsiCore</artifactId>
 			<version>1.0.8</version>
 		</dependency>
 		<dependency>
-			<groupId>com.vmware.aurora</groupId>
+			<groupId>com.vmware.bdd</groupId>
 			<artifactId>vlsiClient</artifactId>
 			<version>1.0.8</version>
 		</dependency>
 		<dependency>
-			<groupId>com.vmware.aurora</groupId>
+			<groupId>com.vmware.bdd</groupId>
 			<artifactId>vimVmodl</artifactId>
 			<version>1.0.8</version>
 		</dependency>
 		<dependency>
-			<groupId>com.vmware.aurora</groupId>
+			<groupId>com.vmware.bdd</groupId>
 			<artifactId>queryVmodl</artifactId>
 			<version>1.0.8</version>
 		</dependency>
 		<dependency>
-			<groupId>com.vmware.aurora</groupId>
+			<groupId>com.vmware.bdd</groupId>
 			<artifactId>reflectVmodl</artifactId>
 			<version>1.0.8</version>
 		</dependency>
