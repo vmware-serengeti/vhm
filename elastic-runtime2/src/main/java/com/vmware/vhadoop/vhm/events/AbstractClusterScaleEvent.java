@@ -23,11 +23,14 @@ public abstract class AbstractClusterScaleEvent extends AbstractNotificationEven
    private String _vmId;
    private String _hostId;
    private String _clusterId;
-   
-   public AbstractClusterScaleEvent() {
+   private String _reason;
+
+   public AbstractClusterScaleEvent(String reason) {
       super(false, true);
+
+      _reason = reason;
    }
-   
+
    @Override
    public String getVmId() {
       return _vmId;
@@ -42,7 +45,12 @@ public abstract class AbstractClusterScaleEvent extends AbstractNotificationEven
    public String getClusterId() {
       return _clusterId;
    }
-   
+
+   @Override
+   public String getReason() {
+      return _reason;
+   }
+
    public void setVmId(String vmId) {
       _vmId = vmId;
    }

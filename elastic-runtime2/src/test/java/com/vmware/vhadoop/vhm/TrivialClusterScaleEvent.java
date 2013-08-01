@@ -26,19 +26,20 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
    private static int cntr = 0;
    private int _id = ++cntr;
    private boolean _isExclusive;
-   
+
    public TrivialClusterScaleEvent(String vmId, String hostId, String clusterId, String routeKey, ChannelReporter reporter) {
+      super("trivial cluster scale event (test)");
       _vmId = vmId;
       _hostId = hostId;
       _clusterId = clusterId;
       _routeKey = routeKey;
       _reporter = reporter;
    }
-   
+
    public interface ChannelReporter {
       public void reportBack(String routeKey);
    }
-   
+
    public TrivialClusterScaleEvent(String clusterId, boolean isExclusive) {
       this(null, null, clusterId, null, null);
       _isExclusive = isExclusive;
@@ -58,13 +59,13 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
    public String getClusterId() {
       return _clusterId;
    }
-   
+
    public void ReportBack() {
       if (_reporter != null) {
          _reporter.reportBack(_routeKey);
       }
    }
-   
+
    @Override
    public String toString() {
       return "TrivialClusterScaleEvent"+_id;

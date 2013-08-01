@@ -378,8 +378,11 @@ public class ClusterMapImpl implements ClusterMap {
       if (cluster != null) {
          Set<String> enableVMs = event.getVMsForDecision(event.ENABLE);
          Set<String> disableVMs = event.getVMsForDecision(event.DISABLE);
-         if (enableVMs != null || disableVMs != null) {
-            _log.log(VhmLevel.USER, "<%C"+event.getClusterId()+"%C>: scaling completed");
+         if (enableVMs != null) {
+            _log.log(VhmLevel.USER, "<%C"+event.getClusterId()+"%C>: expansion completed");
+         }
+         if (disableVMs != null) {
+            _log.log(VhmLevel.USER, "<%C"+event.getClusterId()+"%C>: shrinking completed");
          }
 
          cluster._completionEvents.addFirst(event);

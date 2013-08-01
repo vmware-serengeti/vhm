@@ -15,6 +15,12 @@
 
 package com.vmware.vhadoop.vhm;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,10 +32,9 @@ import java.util.Set;
 
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
-import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
+import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
@@ -48,19 +53,19 @@ public class ClusterMapTest extends AbstractJUnitTest {
    List<Boolean> _isNewClusterResult;
    List<Boolean> _isClusterViableResult;
    ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(new StandaloneSimpleVCActions(), null);
-   
+
    @Override
    void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
       String clusterName = _clusterMap.handleClusterEvent(cscl.translateVMEventData(eventData), impliedScaleEvents);
       assertEquals(expectedClusterName, clusterName);
    }
-   
+
    private void changeMasterVmPowerStateForClusterName(String clusterName, boolean powerState) {
       VMVariableData vmVariableData = new VMVariableData();
       vmVariableData._powerState = powerState;
       _clusterMap.handleClusterEvent(new VmUpdateEvent(getMasterVmIdForCluster(clusterName), vmVariableData), null);
    }
-   
+
    @Override
    void registerScaleStrategy(ScaleStrategy scaleStrategy) {
       _clusterMap.registerScaleStrategy(scaleStrategy);
@@ -68,8 +73,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
    class ImpliedScaleEvent extends AbstractClusterScaleEvent {
       Integer _data;
-      
+
       ImpliedScaleEvent(String clusterId, Integer data) {
+         super("implied scale event (test)");
          setClusterId(clusterId);
          _data = data;
       }
@@ -79,7 +85,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          return false;
       }
    }
-   
+
    @Before
    public void initialize() {
       _isNewClusterResult = new ArrayList<Boolean>();
@@ -123,7 +129,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          }
       });
    }
-   
+
 
    @Test
    public void getAllKnownClusterIds() {
@@ -147,7 +153,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          String folderName = getFolderNameForClusterName(clusterName);
          String clusterId = _clusterMap.getClusterIdForFolder(folderName);
          assertEquals(deriveClusterIdFromClusterName(clusterName), clusterId);
-         
+
          String newFolderName = "NEW_FOLDER"+cntr++;
          _clusterMap.associateFolderWithCluster(clusterId, newFolderName);
          assertEquals(clusterId, _clusterMap.getClusterIdForFolder(newFolderName));
@@ -157,7 +163,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getClusterIdForFolder("bogus"));
       assertNull(_clusterMap.getClusterIdForFolder(null));
    }
-   
+
    @Test
    public void getClusterIdForVm() {
       int numClusterIds = 3;
@@ -168,12 +174,12 @@ public class ClusterMapTest extends AbstractJUnitTest {
          String vmId = getVmIdFromVmName(vmName);
          assertEquals(deriveClusterIdFromVmName(vmName), _clusterMap.getClusterIdForVm(vmId));
       }
-      
+
       /* Negative tests */
       assertNull(_clusterMap.getClusterIdForVm("bogus"));
       assertNull(_clusterMap.getClusterIdForVm(null));
    }
-   
+
    @Test
    public void getDnsNamesForVMs() {
       int numClusterIds = 3;
@@ -231,7 +237,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       String masterVmName = getMasterVmNameForCluster(clusterName0);
       String masterDnsName = getDnsNameFromVmName(masterVmName);
       assertEquals(masterDnsName, hci.getJobTrackerDnsName());
-      
+
       changeMasterVmPowerStateForClusterName(clusterName1, false);
       clusterId = deriveClusterIdFromClusterName(clusterName1);
       hci = _clusterMap.getHadoopInfoForCluster(clusterId);
@@ -275,7 +281,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getHostIdsForVMs(getEmptySet()));
       assertNull(_clusterMap.getHostIdsForVMs(null));
    }
-   
+
    @Test
    public void getLastClusterScaleCompletionEvent() {
       int numClusterIds = 3;
@@ -287,7 +293,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          ClusterScaleCompletionEvent cse = new ClusterScaleDecision(clusterId);
          _clusterMap.handleCompletionEvent(cse);
          assertEquals(cse, _clusterMap.getLastClusterScaleCompletionEvent(clusterId));
-         
+
          /* Check that most recent event is returned */
          ClusterScaleCompletionEvent cse2 = new ClusterScaleDecision(clusterId);
          _clusterMap.handleCompletionEvent(cse2);
@@ -298,7 +304,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getLastClusterScaleCompletionEvent(null));
       assertNull(_clusterMap.getLastClusterScaleCompletionEvent("bogus"));
    }
-   
+
    @Test
    public void testScaleStrategies() {
       populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST", 4, false, false, 0, null);
@@ -319,23 +325,23 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
       ScaleStrategy ssBogus = _clusterMap.getScaleStrategyForCluster("bogus");
       assertNull(ssBogus);
-      
+
       /* Change ss1 to use AUTO */
       ClusterUpdateEvent scaleStrategyChange = createScaleStrategyChangeEvent(CLUSTER_NAME_PREFIX+1, true);
       _clusterMap.handleClusterEvent(scaleStrategyChange, null);
-      
+
       ss1 = _clusterMap.getScaleStrategyForCluster(cid1);
       assertEquals(OTHER_SCALE_STRATEGY_KEY, ss1.getKey());
       assertEquals(OTHER_SCALE_STRATEGY_KEY, _clusterMap.getScaleStrategyKey(cid1));
-      
+
       /* Negative tests */
       assertNull(_clusterMap.getScaleStrategyForCluster(null));
       assertNull(_clusterMap.getScaleStrategyForCluster("bogus"));
-      
+
       assertNull(_clusterMap.getScaleStrategyKey(null));
       assertNull(_clusterMap.getScaleStrategyKey("bogus"));
    }
-   
+
    private ClusterUpdateEvent createScaleStrategyChangeEvent(String clusterName, boolean enableAuto) {
       String masterVmId = getMasterVmIdForCluster(clusterName);
       SerengetiClusterVariableData vData = new SerengetiClusterVariableData();
@@ -350,12 +356,12 @@ public class ClusterMapTest extends AbstractJUnitTest {
       populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, 0, null);
       populateClusterSameHost(CLUSTER_NAME_PREFIX+1, "DEFAULT_HOST1", 4, true, false, 1, null);
       populateClusterSameHost(CLUSTER_NAME_PREFIX+2, "DEFAULT_HOST2", 4, true, true, 2, null);
-      
+
       /* Note expected result is 3, not 4, since 3 VMs are compute VMs and 1 is master */
       Integer[][] expectedSizes1 = new Integer[][]{new Integer[]{3, null}, new Integer[]{null, 3}, new Integer[]{null, 3}};
       boolean[] expectMatch1 = new boolean[]{true, true, false};
       boolean[] expectMatch2 = new boolean[]{false, false, true};
-      
+
       /* For each cluster */
       for (int i=0; i<3; i++) {
          String clusterName = CLUSTER_NAME_PREFIX+i;
@@ -367,15 +373,15 @@ public class ClusterMapTest extends AbstractJUnitTest {
             Set<String> computeVMs = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, expectedPowerState);
             Integer result = (computeVMs == null) ? null : computeVMs.size();
             assertEquals(expectedSizes1[i][j], result);
-            
+
             if (computeVMs != null) {
                assertTrue(_clusterMap.checkPowerStateOfVms(computeVMs, expectedPowerState));
                assertFalse(_clusterMap.checkPowerStateOfVms(computeVMs, !expectedPowerState));
-               
+
                if (expectedPowerState) {
                   assertNotNull(_clusterMap.getPowerOnTimeForVm(computeVMs.iterator().next()));
                }
-               
+
                assertEquals(clusterId, _clusterMap.getClusterIdFromVMs(new ArrayList<String>(computeVMs)));
 
                /* Check that the compute VM names returned contain the cluster name */
@@ -390,7 +396,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
                } else if (computeVMs2 != null) {
                   assertTrue(computeVMs.size() != computeVMs2.size());
                }
-               
+
                computeVMs2 = _clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, MOREF_PREFIX+"DEFAULT_HOST2", (j==1));
                if (expectMatch2[i]) {
                   assertEquals(computeVMs.size(), computeVMs2.size());
@@ -402,21 +408,21 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
          Set<String> hostIds = _clusterMap.listHostsWithComputeVMsForCluster(clusterId);
          assertEquals(1, hostIds.size());
-         
+
          String extraInfo = _clusterMap.getExtraInfo(clusterId, EXTRA_INFO_KEY);
          assertEquals(Integer.parseInt(extraInfo), i);
       }
-      
+
       assertEquals(3, _clusterMap.listComputeVMsForPowerState(false).size());
       assertEquals(6, _clusterMap.listComputeVMsForPowerState(true).size());
 
       /* Negative tests */
       assertNull(_clusterMap.listComputeVMsForClusterAndPowerState("bogus", false));
       assertNull(_clusterMap.listComputeVMsForClusterAndPowerState(null, false));
-      
+
       assertNull(_clusterMap.listComputeVMsForClusterHostAndPowerState("bogus", "bogus", false));
       assertNull(_clusterMap.listComputeVMsForClusterHostAndPowerState(null, null, false));
-      
+
       assertNull(_clusterMap.checkPowerStateOfVms(null, false));
       assertNull(_clusterMap.checkPowerStateOfVms(getEmptySet(), false));
       assertNull(_clusterMap.checkPowerStateOfVms(getBogusSet(), false));
@@ -426,25 +432,25 @@ public class ClusterMapTest extends AbstractJUnitTest {
 
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster("bogus"));
       assertNull(_clusterMap.listHostsWithComputeVMsForCluster(null));
-      
+
       assertNull(_clusterMap.getClusterIdFromVMs(null));
       assertNull(_clusterMap.getClusterIdFromVMs(new ArrayList<String>(getEmptySet())));
       assertNull(_clusterMap.getClusterIdFromVMs(new ArrayList<String>(getBogusSet())));
-      
+
       assertNull(_clusterMap.getPowerOnTimeForVm("bogus"));
       assertNull(_clusterMap.getPowerOnTimeForVm(null));
-      
+
       assertNull(_clusterMap.getExtraInfo("bogus", null));
       assertNull(_clusterMap.getExtraInfo(null, null));
       assertNull(_clusterMap.getExtraInfo(null, "bogus"));
       assertNull(_clusterMap.getExtraInfo("bogus", "bogus"));
-      
+
       assertEquals(1, _clusterMap.getAllClusterIdsForScaleStrategyKey(OTHER_SCALE_STRATEGY_KEY).length);
       assertEquals(2, _clusterMap.getAllClusterIdsForScaleStrategyKey(DEFAULT_SCALE_STRATEGY_KEY).length);
       assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey(null));
       assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey("bogus"));
    }
-   
+
    @Test
    public void getVCPU() {
       populateClusterSameHost(CLUSTER_NAME_PREFIX+0, "DEFAULT_HOST1", 4, false, false, 0, null);
@@ -452,12 +458,12 @@ public class ClusterMapTest extends AbstractJUnitTest {
          String vmId = getVmIdFromVmName(vmName);
          assertEquals((Integer)DEFAULT_VCPUS, _clusterMap.getNumVCPUsForVm(vmId));
       }
-      
+
       /* Negative tests */
       assertNull(_clusterMap.getNumVCPUsForVm("bogus"));
       assertNull(_clusterMap.getNumVCPUsForVm(null));
    }
-   
+
    @Test
    public void testRemoveVM() {
       String clusterName = CLUSTER_NAME_PREFIX+0;
@@ -466,7 +472,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       Set<String> vms = _clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
       int runningTotal = 3;
       assertEquals(runningTotal, vms.size());
-      
+
       /* Remove the compute VMs */
       for (String vmId : vms) {
          --runningTotal;
@@ -479,17 +485,17 @@ public class ClusterMapTest extends AbstractJUnitTest {
             assertNull(remaining);
          }
       }
-      
+
       /* Cluster should still be there */
       String masterVmId = getMasterVmIdForCluster(clusterName);
       assertEquals(clusterId, _clusterMap.getClusterIdForVm(masterVmId));
-      
+
       /* Remove master VM and the cluster should be removed also */
       _clusterMap.handleClusterEvent(new VmRemovedFromClusterEvent(masterVmId), null);
       assertNull(_clusterMap.getClusterIdForVm(getVmIdFromVmName(masterVmId)));
       assertNull(_clusterMap.getAllKnownClusterIds());
    }
-   
+
    private ClusterUpdateEvent createNewMinInstancesUpdate(Integer newInstances, String clusterName) {
       String masterVmName = getMasterVmNameForCluster(clusterName);
       SerengetiClusterVariableData cvd = new SerengetiClusterVariableData();
@@ -497,11 +503,11 @@ public class ClusterMapTest extends AbstractJUnitTest {
       ClusterUpdateEvent cue = new ClusterUpdateEvent(getVmIdFromVmName(masterVmName), cvd);
       return cue;
    }
-   
+
    @Test
    public void testImpliedScaleEvents() {
       String clusterName = CLUSTER_NAME_PREFIX+0;
-      
+
       /* Create new non-viable cluster */
       populateClusterSameHost("NonViableCluster", "DEFAULT_HOST1", 4, false, false, 0, null);
       assertEquals(1, _isNewClusterResult.size());
@@ -512,41 +518,41 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertEquals(2, _isNewClusterResult.size());
       assertEquals(false, _isClusterViableResult.get(1));
       assertEquals(true, _isNewClusterResult.get(1));
-      
+
       Integer newInstances = 3;
       /* This set will contain any implied events created by the cluster state change */
       Set<ClusterScaleEvent> impliedScaleEventsResultSet = new HashSet<ClusterScaleEvent>();
 
       _clusterMap.handleClusterEvent(createNewMinInstancesUpdate(newInstances, clusterName), impliedScaleEventsResultSet);
       assertEquals(1, impliedScaleEventsResultSet.size());  /* We should have a new event */
-      assertEquals(3, _isNewClusterResult.size());          
+      assertEquals(3, _isNewClusterResult.size());
       assertEquals(true, _isClusterViableResult.get(2));
       assertEquals(false, _isNewClusterResult.get(2));      /* This is not a new cluster, rather an update to an existing cluster */
-      
+
       /* Validate the contents of the generated event */
       ImpliedScaleEvent impliedScaleEvent = (ImpliedScaleEvent)impliedScaleEventsResultSet.iterator().next();
       assertEquals(newInstances, impliedScaleEvent._data);
       impliedScaleEventsResultSet.clear();
-      
+
       /* Create a new cluster map update, but one which our ExtraInfoToClusterMapper has been coded to ignore */
       _clusterMap.handleClusterEvent(createNewMinInstancesUpdate(-1, clusterName), impliedScaleEventsResultSet);
       assertEquals(0, impliedScaleEventsResultSet.size());    /* Verify that an event was not generated */
-      assertEquals(4, _isNewClusterResult.size());             /* Verify that getImpliedScaleEventsForUpdate was invoked */ 
+      assertEquals(4, _isNewClusterResult.size());             /* Verify that getImpliedScaleEventsForUpdate was invoked */
       assertEquals(true, _isClusterViableResult.get(3));
       assertEquals(false, _isNewClusterResult.get(3));
    }
-   
+
    @Test
    public void validateClusterCompleteness() {
       String hostName = "DEFAULT_HOST1";
       populateClusterSameHost(CLUSTER_NAME_PREFIX+0, hostName, 4, false, false, 0, null);      /* Complete cluster, powered off */
       populateClusterSameHost(CLUSTER_NAME_PREFIX+1, hostName, 4, true, false, 0, null);       /* Complete cluster, powered on */
       populateClusterSameHost(CLUSTER_NAME_PREFIX+2, hostName, 1, false, false, 0, null);   /* Incomplete cluster - no compute VMs */
-      
+
       String clusterId0 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+0);
       assertTrue(_clusterMap.validateClusterCompleteness(clusterId0, 0));
       assertTrue(_clusterMap.validateClusterCompleteness(clusterId0, 500));
-      
+
       String clusterId1 = deriveClusterIdFromClusterName(CLUSTER_NAME_PREFIX+1);
       assertTrue(_clusterMap.validateClusterCompleteness(clusterId1, 0));
       assertTrue(_clusterMap.validateClusterCompleteness(clusterId1, 500));
@@ -560,25 +566,25 @@ public class ClusterMapTest extends AbstractJUnitTest {
       } catch (InterruptedException e) {
          e.printStackTrace();
       }
-      
+
       assertFalse(_clusterMap.validateClusterCompleteness(clusterId2, 0));
       /* This should return null as the window has elapsed */
       assertNull(_clusterMap.validateClusterCompleteness(clusterId2, 500));
-      
+
       /* Add a compute VM to cluster2 to make it complete */
       String clusterName2 = CLUSTER_NAME_PREFIX+2;
-      VMEventData eventData = createEventData(clusterName2, clusterName2+"_"+VM_NAME_PREFIX+1, false, true, hostName, 
+      VMEventData eventData = createEventData(clusterName2, clusterName2+"_"+VM_NAME_PREFIX+1, false, true, hostName,
             getMasterVmNameForCluster(clusterName2), false, 0, true);
       processNewEventData(eventData, clusterId2, null);
 
       /* Assert that it is now complete */
       assertTrue(_clusterMap.validateClusterCompleteness(clusterId2, 0));
       assertTrue(_clusterMap.validateClusterCompleteness(clusterId2, 500));
-      
+
       assertNull(_clusterMap.validateClusterCompleteness("bogus", 0));
       assertNull(_clusterMap.validateClusterCompleteness("bogus", 1000));
    }
-   
+
    @Test
    public void invokeGettersOnEmptyClusterMap() {
       Set<String> emptySet = new HashSet<String>();

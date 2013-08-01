@@ -26,6 +26,8 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    public static final String actionUnlimit = "Unlimit";
    public static final String actionWaitForManual = "WaitForManual";
 
+   private static final String reason = "serengeti limit instruction";
+
    private final String _action;
    private final String _clusterFolderName;
    private final int _toSize;
@@ -34,6 +36,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    private static final Logger _log = Logger.getLogger(SerengetiLimitInstruction.class.getName());
 
    public SerengetiLimitInstruction(String clusterFolderName, String action, int toSize, QueueClient messageCallback) {
+      super(reason);
       _action = action;
       _clusterFolderName = clusterFolderName;
       _toSize = toSize;
