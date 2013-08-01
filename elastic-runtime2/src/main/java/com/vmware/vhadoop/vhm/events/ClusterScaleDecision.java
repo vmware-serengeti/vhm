@@ -52,6 +52,7 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
       return _decisions.get(vmId);
    }
 
+   @Override
    public Set<String> getVMsForDecision(Decision decision) {
       Set<String> vms = null;
       for (String vm : _decisions.keySet()) {

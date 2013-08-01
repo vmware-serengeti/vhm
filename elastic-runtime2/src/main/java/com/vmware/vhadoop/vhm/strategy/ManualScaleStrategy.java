@@ -78,8 +78,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             int delta = 0;
             String clusterId = null;
             Set<String> vmsToED;
-            ClusterMap clusterMap = getAndReadLockClusterMap(); 
+            ClusterMap clusterMap = null; 
             try {
+               clusterMap = getAndReadLockClusterMap(); 
                String clusterFolder = limitEvent.getClusterFolderName();
                clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
                if (clusterId != null) {

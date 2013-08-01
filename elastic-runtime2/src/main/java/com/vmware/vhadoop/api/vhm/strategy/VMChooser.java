@@ -44,7 +44,7 @@ public interface VMChooser extends ClusterMapReader {
     * @param delta - the number of VMs to enable
     * @return - set of VM ids to enable (subset of candidates)
     */
-   Set<String> chooseVMsToEnable(Set<String> candidates, int delta);
+//   Set<String> chooseVMsToEnable(Set<String> candidates, int delta);
 
    /**
     * Selects VMs to disable from the specified set. The logic determining which VMs is provided by implementors.
@@ -52,7 +52,7 @@ public interface VMChooser extends ClusterMapReader {
     * @param delta - the number of VMs to disable
     * @return - set of VM ids to disable (subset of candidates)
     */
-   Set<String> chooseVMsToDisable(Set<String> candidates, int delta);
+//   Set<String> chooseVMsToDisable(Set<String> candidates, int delta);
 
    /**
     * Selects a single VM out of the specified set to enable. All the candidates must be on the same host.

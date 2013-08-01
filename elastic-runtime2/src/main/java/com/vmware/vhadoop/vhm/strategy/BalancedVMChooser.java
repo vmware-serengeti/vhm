@@ -16,10 +16,8 @@
 package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -89,8 +87,9 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       Set<String> hosts = null;
       int numHosts = 0;
       
-      ClusterMap clusterMap = getAndReadLockClusterMap();
+      ClusterMap clusterMap = null;
       try {
+         clusterMap = getAndReadLockClusterMap();
          hosts = clusterMap.listHostsWithComputeVMsForCluster(clusterId);
          if ((hosts == null) || (hosts.size() == 0)) {
             result = new TreeSet<String>();     /* Return empty set, but don't return here!! */
@@ -167,49 +166,49 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       return candidates.iterator().next();
    }
 
-   @Override
-   public Set<String> chooseVMsToEnable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, delta, true);
-   }
-
-   @Override
-   public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, delta, false);
-   }
-
-   public Set<String> chooseVMs(final Set<String> candidates, final int delta, final boolean targetPowerState) {
-      if (candidates.isEmpty()) {
-         return new TreeSet<String>();
-      }
-
-      Map<String,Host> hosts = new HashMap<String,Host>();
-
-      ClusterMap clusterMap = getAndReadLockClusterMap();
-      try {
-         for (String vm : candidates) {
-            String hostid = clusterMap.getHostIdForVm(vm);
-            Host h = hosts.get(hostid);
-            if (h == null) {
-               h = new Host();
-               h.candidates = new HashSet<String>();
-               Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
-               h.on = (vmIds == null) ? 0 : vmIds.size();
-            }
-
-            h.candidates.add(vm);
-            hosts.put(hostid, h);
-         }
-      } finally {
-         unlockClusterMap(clusterMap);
-      }
-
-      PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
-         @Override
-         public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
-      });
-
-      targets.addAll(hosts.values());
-
-      return selectVMs(targets, delta, targetPowerState);
-   }
+//   @Override
+//   public Set<String> chooseVMsToEnable(final Set<String> candidates, final int delta) {
+//      return chooseVMs(candidates, delta, true);
+//   }
+//
+//   @Override
+//   public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
+//      return chooseVMs(candidates, delta, false);
+//   }
+//
+//   public Set<String> chooseVMs(final Set<String> candidates, final int delta, final boolean targetPowerState) {
+//      if (candidates.isEmpty()) {
+//         return new TreeSet<String>();
+//      }
+//
+//      Map<String,Host> hosts = new HashMap<String,Host>();
+//
+//      ClusterMap clusterMap = getAndReadLockClusterMap();
+//      try {
+//         for (String vm : candidates) {
+//            String hostid = clusterMap.getHostIdForVm(vm);
+//            Host h = hosts.get(hostid);
+//            if (h == null) {
+//               h = new Host();
+//               h.candidates = new HashSet<String>();
+//               Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
+//               h.on = (vmIds == null) ? 0 : vmIds.size();
+//            }
+//
+//            h.candidates.add(vm);
+//            hosts.put(hostid, h);
+//         }
+//      } finally {
+//         unlockClusterMap(clusterMap);
+//      }
+//
+//      PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
+//         @Override
+//         public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
+//      });
+//
+//      targets.addAll(hosts.values());
+//
+//      return selectVMs(targets, delta, targetPowerState);
+//   }
 }

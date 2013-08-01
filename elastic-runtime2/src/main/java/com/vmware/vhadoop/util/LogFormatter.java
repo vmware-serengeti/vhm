@@ -92,7 +92,7 @@ public class LogFormatter extends Formatter {
       } else {
          result.append("   ");
       }
-
+      
       Object[] params = record.getParameters();
       String rawMessage = null;
       if ((params != null) && (params.length > 0)) {
@@ -120,6 +120,11 @@ public class LogFormatter extends Formatter {
       } catch (Exception e) {
          result.insert(0, "FOUND BADLY FORMATTED LOG MSG: ");
       }
+
+//      if (record.getLevel().equals(Level.SEVERE) || record.getLevel().equals(Level.WARNING)) {
+//         throw new RuntimeException("Severe or warning log message received: "+result);
+//      }
+
       return result.toString();
    }
 
@@ -145,10 +150,6 @@ public class LogFormatter extends Formatter {
             if (hasIds.substring(hasIdsLength - NEWLINE_LENGTH).equals(NEWLINE)) {
                endCurrentKey-= NEWLINE_LENGTH;
             }
-
-//            if (hasIds.charAt(hasIdsLength - NEWLINE_LENGTH) == '\n') {
-//               endCurrentKey--;                                   /* Ensure that the '\n' gets added back in at the end */
-//            }
          }
       }
 

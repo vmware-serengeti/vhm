@@ -376,8 +376,8 @@ public class ClusterMapImpl implements ClusterMap {
    public void handleCompletionEvent(ClusterScaleCompletionEvent event) {
       ClusterInfo cluster = getCluster(event.getClusterId());
       if (cluster != null) {
-         Set<String> enableVMs = event.getVMsForDecision(event.ENABLE);
-         Set<String> disableVMs = event.getVMsForDecision(event.DISABLE);
+         Set<String> enableVMs = event.getVMsForDecision(ClusterScaleCompletionEvent.ENABLE);
+         Set<String> disableVMs = event.getVMsForDecision(ClusterScaleCompletionEvent.DISABLE);
          if (enableVMs != null) {
             _log.log(VhmLevel.USER, "<%C"+event.getClusterId()+"%C>: expansion completed");
          }

@@ -371,10 +371,14 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
             firstTime = false;
          }
 
-         ClusterMap map = getAndReadLockClusterMap();
-         /* we really care about number of VMs in the cluster but we know that they're starting powered off at this point */
-         vms = map.listComputeVMsForCluster(master.getClusterId());
-         unlockClusterMap(map);
+         ClusterMap map = null;
+         try {
+            map = getAndReadLockClusterMap();
+            /* we really care about number of VMs in the cluster but we know that they're starting powered off at this point */
+            vms = map.listComputeVMsForCluster(master.getClusterId());
+         } finally {
+            unlockClusterMap(map);
+         }
       } while (
             (vms == null && number != 0) ||
             (vms != null && vms.size() != number) &&
@@ -407,10 +411,14 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
             firstTime = false;
          }
 
-         ClusterMap map = getAndReadLockClusterMap();
-         /* we really care about number of VMs in the cluster but we know that they're starting powered off at this point */
-         vms = map.listComputeVMsForClusterAndPowerState(clusterId, power);
-         unlockClusterMap(map);
+         ClusterMap map = null;
+         try {
+            map = getAndReadLockClusterMap();
+            /* we really care about number of VMs in the cluster but we know that they're starting powered off at this point */
+            vms = map.listComputeVMsForClusterAndPowerState(clusterId, power);
+         } finally {
+            unlockClusterMap(map);
+         }
       } while (
             ((vms == null && number != 0) ||
             (vms != null && vms.size() != number)) &&
@@ -451,9 +459,13 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
             firstTime = false;
          }
 
-         ClusterMap map = getAndReadLockClusterMap();
-         strategy = map.getScaleStrategyKey(clusterId);
-         unlockClusterMap(map);
+         ClusterMap map = null;
+         try {
+            map = getAndReadLockClusterMap();
+            strategy = map.getScaleStrategyKey(clusterId);
+         } finally {
+            unlockClusterMap(map);
+         }
       } while (strategy == null && System.currentTimeMillis() < deadline);
 
       assertNotNull(msg+" - scale strategy wasn't registered for cluster "+clusterId, strategy);

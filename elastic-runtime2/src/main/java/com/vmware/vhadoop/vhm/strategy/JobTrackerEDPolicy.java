@@ -46,8 +46,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       HadoopClusterInfo hadoopCluster = null;
       Set<String> activeVmIds = null;
 
-      ClusterMap clusterMap = getAndReadLockClusterMap();
+      ClusterMap clusterMap = null;
       try {
+         clusterMap = getAndReadLockClusterMap();
          hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
          hostNames = clusterMap.getDnsNamesForVMs(toEnable);
       } finally {
@@ -79,8 +80,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       HadoopClusterInfo hadoopCluster = null;
       Set<String> activeVmIds = null;
 
-      ClusterMap clusterMap = getAndReadLockClusterMap();
+      ClusterMap clusterMap = null;
       try {
+         clusterMap = getAndReadLockClusterMap();
          hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
          hostNames = clusterMap.getDnsNamesForVMs(toDisable);
       } finally {
@@ -123,8 +125,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    public Set<String> getActiveTTs(String clusterId) throws Exception {
       HadoopClusterInfo hadoopCluster = null;
 
-      ClusterMap clusterMap = getAndReadLockClusterMap();
+      ClusterMap clusterMap = null;
       try {
+         clusterMap = getAndReadLockClusterMap();
          hadoopCluster = clusterMap.getHadoopInfoForCluster(clusterId);
       } finally {
          unlockClusterMap(clusterMap);

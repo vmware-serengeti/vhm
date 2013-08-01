@@ -66,6 +66,10 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
 
    @Override
    public boolean unlockClusterMap(ClusterMap clusterMap) {
+      if (clusterMap == null) {
+         _log.severe("unlockClusterMap called with null clusterMap arg - ClusterMap lock probably failed");
+         return false;
+      }
       Thread currentThread = Thread.currentThread();
       if (_readerThreads.contains(currentThread)) {
          _readerThreads.remove(currentThread);

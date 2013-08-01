@@ -87,11 +87,11 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       long timeoutTime = System.currentTimeMillis() + timeout;
       long pollSleepTime = 500;
       boolean timedOut = false;
+      ClusterMap clusterMap = null;
       do {
          try {
-            ClusterMap clusterMap = _clusterMapAccess.lockClusterMap();
+            clusterMap = _clusterMapAccess.lockClusterMap();
             boolean completed = clusterMap.checkPowerStateOfVms(vmIds, expectedPowerState);
-            _clusterMapAccess.unlockClusterMap(clusterMap);
             if (completed) {
                status.registerTaskSucceeded();
                break;
@@ -99,6 +99,8 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
             Thread.sleep(Math.min(pollSleepTime, timeout));
          } catch (InterruptedException e) {
             status.registerTaskIncomplete(false, "blockOnPowerStateChange was interrupted unexpectedly");
+         } finally {
+            _clusterMapAccess.unlockClusterMap(clusterMap);
          }
          timedOut = System.currentTimeMillis() > timeoutTime;
       } while (!timedOut);

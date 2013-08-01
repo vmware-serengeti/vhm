@@ -44,8 +44,9 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
       _log.info("DumbVMChooser choosing VMs for cluster "+clusterId+" where delta="+delta+", powerState="+!targetPowerState);
 
       Set<String> vmIds = null;
-      ClusterMap clusterMap = getAndReadLockClusterMap();
+      ClusterMap clusterMap = null;
       try {
+         clusterMap = getAndReadLockClusterMap();
          vmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, !targetPowerState);
       } finally {
          unlockClusterMap(clusterMap);
@@ -79,13 +80,13 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
       return null;
    }
 
-   @Override
-   public Set<String> chooseVMsToEnable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, delta, true);
-   }
-
-   @Override
-   public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-      return chooseVMs(candidates, delta, false);
-   }
+//   @Override
+//   public Set<String> chooseVMsToEnable(final Set<String> candidates, final int delta) {
+//      return chooseVMs(candidates, delta, true);
+//   }
+//
+//   @Override
+//   public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
+//      return chooseVMs(candidates, delta, false);
+//   }
 }

@@ -67,13 +67,17 @@ public class ClusterMapAccessTest {
    
    class TestClusterMapReader extends AbstractClusterMapReader {
       public int getNumPoweredOffVMs(long delayMillis) {
-         ClusterMap cm = getAndReadLockClusterMap();
+         ClusterMap cm = null;
          try {
+            cm = getAndReadLockClusterMap();
             Thread.sleep(delayMillis);
-         } catch (InterruptedException e) {}
-         Set<String> vmIds = cm.listComputeVMsForClusterAndPowerState("myCluster", false);
-         unlockClusterMap(cm);
-         return (vmIds == null) ? 0 : vmIds.size();
+            Set<String> vmIds = cm.listComputeVMsForClusterAndPowerState("myCluster", false);
+            return (vmIds == null) ? 0 : vmIds.size();
+         } catch (InterruptedException e) {
+         } finally {
+            unlockClusterMap(cm);
+         }
+         return 0;
       }
    }
    

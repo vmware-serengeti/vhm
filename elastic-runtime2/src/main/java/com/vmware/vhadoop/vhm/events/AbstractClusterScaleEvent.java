@@ -62,4 +62,41 @@ public abstract class AbstractClusterScaleEvent extends AbstractNotificationEven
    public void setHostId(String hostId) {
       _hostId = hostId;
    }
+
+   @Override
+   public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((_clusterId == null) ? 0 : _clusterId.hashCode());
+      result = prime * result + ((_hostId == null) ? 0 : _hostId.hashCode());
+      result = prime * result + ((_vmId == null) ? 0 : _vmId.hashCode());
+      return result;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (this == obj)
+         return true;
+      if (obj == null)
+         return false;
+      if (getClass() != obj.getClass())
+         return false;
+      AbstractClusterScaleEvent other = (AbstractClusterScaleEvent) obj;
+      if (_clusterId == null) {
+         if (other._clusterId != null)
+            return false;
+      } else if (!_clusterId.equals(other._clusterId))
+         return false;
+      if (_hostId == null) {
+         if (other._hostId != null)
+            return false;
+      } else if (!_hostId.equals(other._hostId))
+         return false;
+      if (_vmId == null) {
+         if (other._vmId != null)
+            return false;
+      } else if (!_vmId.equals(other._vmId))
+         return false;
+      return true;
+   }
 }

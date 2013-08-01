@@ -18,22 +18,20 @@ package com.vmware.vhadoop.vhm;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 
 public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
-   String _vmId = null;
-   String _hostId = null;
-   String _clusterId = null;
    String _routeKey = null;
    ChannelReporter _reporter = null;
    private static int cntr = 0;
    private int _id = ++cntr;
    private boolean _isExclusive;
 
-   public TrivialClusterScaleEvent(String vmId, String hostId, String clusterId, String routeKey, ChannelReporter reporter) {
+   public TrivialClusterScaleEvent(String vmId, String hostId, String clusterId, String routeKey, ChannelReporter reporter, boolean isExclusive) {
       super("trivial cluster scale event (test)");
-      _vmId = vmId;
-      _hostId = hostId;
-      _clusterId = clusterId;
+      setVmId(vmId);
+      setHostId(hostId);
+      setClusterId(clusterId);
       _routeKey = routeKey;
       _reporter = reporter;
+      _isExclusive = isExclusive;
    }
 
    public interface ChannelReporter {
@@ -41,23 +39,7 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
    }
 
    public TrivialClusterScaleEvent(String clusterId, boolean isExclusive) {
-      this(null, null, clusterId, null, null);
-      _isExclusive = isExclusive;
-   }
-
-   @Override
-   public String getVmId() {
-      return _vmId;
-   }
-
-   @Override
-   public String getHostId() {
-      return _hostId;
-   }
-
-   @Override
-   public String getClusterId() {
-      return _clusterId;
+      this(null, null, clusterId, null, null, isExclusive);
    }
 
    public void ReportBack() {
