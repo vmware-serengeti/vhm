@@ -69,7 +69,7 @@ public class Master extends VM
    }
 
    protected Master(VirtualCenter vCenter, String cluster, Allocation capacity, Serengeti serengeti) {
-      super(vCenter, cluster+"-master", capacity);
+      super(vCenter, cluster+"-master-0", capacity);
       this.serengeti = serengeti;
 
       clusterName = cluster;
