@@ -742,6 +742,36 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertEquals(false, _isNewClusterResult.get(0));
    }
    
+   @Test
+   public void testRequeueEvents() {
+      int numClusters = 3;
+      populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
+      assertTrue(waitForTargetClusterCount(3, 1000));
+      
+      String clusterId = deriveClusterIdFromClusterName(_clusterNames.iterator().next());
+      /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
+      TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation();
+      /* Add the test ClusterScaleOperation to the test scale strategy */
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
+      
+      /* Setup the scaleStrategy so that it re-queues the TrivialClusterScaleEvent a certain number of times */
+      int timesToRequeue = 4;
+      tcso.setRequeueEventTimes(timesToRequeue);
+
+      /* Simulate a cluster scale event being triggered from an EventProducer */
+      _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId, false));
+      
+      /* VHM should invoke the scale strategy as many times as the event is queued */
+      Set<ClusterScaleCompletionEvent> foundEvents = new HashSet<ClusterScaleCompletionEvent>();
+      for (int i=0; i<(timesToRequeue+1); i++) {
+         ClusterScaleCompletionEvent event = waitForClusterScaleCompletionEvent(clusterId, 2000, foundEvents);
+         assertNotNull(event);
+         foundEvents.add(event);
+      }
+      /* Check that it is not queued for more times than requested */
+      assertNull(waitForClusterScaleCompletionEvent(clusterId, 2000, foundEvents));
+   }
+   
    @Override
    public void registerEventConsumer(EventConsumer eventConsumer) {
       _eventConsumer = eventConsumer;

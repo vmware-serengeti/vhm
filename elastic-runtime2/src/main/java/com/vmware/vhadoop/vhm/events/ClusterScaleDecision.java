@@ -15,17 +15,21 @@
 
 package com.vmware.vhadoop.vhm.events;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
+import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 
 public class ClusterScaleDecision extends AbstractNotificationEvent implements ClusterScaleCompletionEvent {
    private final String _clusterId;
    private final Map<String, Decision> _decisions;
-
+   private List<NotificationEvent> _eventsToRequeue;
+   
    public ClusterScaleDecision(String clusterId) {
       super(false, true);
       _clusterId = clusterId;
@@ -65,5 +69,17 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
       }
 
       return vms;
+   }
+
+   @Override
+   public void requeueEventForCluster(NotificationEvent event) {
+      if (_eventsToRequeue == null) {
+         _eventsToRequeue = new ArrayList<NotificationEvent>();
+      }
+      _eventsToRequeue.add(event);
+   }
+   
+   public List<NotificationEvent> getEventsToRequeue() {
+      return _eventsToRequeue;
    }
 }

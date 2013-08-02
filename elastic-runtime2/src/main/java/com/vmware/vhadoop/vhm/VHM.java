@@ -45,6 +45,7 @@ import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
 import com.vmware.vhadoop.vhm.events.AbstractNotificationEvent;
+import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.NewVmEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
@@ -546,6 +547,14 @@ public class VHM implements EventConsumer {
                handleClusterStateChangeEvents(updateEvents, clusterScaleEvents);
                for (ClusterScaleCompletionEvent event : completionEvents) {
                   _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
+                  if (event instanceof ClusterScaleDecision) {
+                     /* The option exists for a scaleStrategy to ask for an event to be re-queued, causing it to be re-invoked */
+                     List<NotificationEvent> eventsToRequeue = ((ClusterScaleDecision)event).getEventsToRequeue();
+                     if (eventsToRequeue != null) {
+                        _log.info("Requeuing event(s) from ClusterScaleCompletionEvent: "+eventsToRequeue);
+                        placeEventCollectionOnQueue(eventsToRequeue);
+                     }
+                  }
                   _clusterMap.handleCompletionEvent(event);
                }
                return null;

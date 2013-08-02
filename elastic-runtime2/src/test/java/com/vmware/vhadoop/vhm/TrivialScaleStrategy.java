@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
+import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
@@ -38,6 +39,7 @@ public class TrivialScaleStrategy extends AbstractClusterMapReader implements Sc
       Set<ClusterScaleEvent> _events;
       ScaleStrategyContext _context;
       long _scalePauseMillis = 0;
+      int _requeueEventTimes = 0;
       
       public TrivialClusterScaleOperation() {
          initialize(TrivialScaleStrategy.this);
@@ -60,6 +62,10 @@ public class TrivialScaleStrategy extends AbstractClusterMapReader implements Sc
          _context = context;
       }
       
+      void setRequeueEventTimes(int numTimes) {
+         _requeueEventTimes = numTimes;
+      }
+      
       public String getClusterId() {
          return _clusterId;
       }
@@ -79,7 +85,13 @@ public class TrivialScaleStrategy extends AbstractClusterMapReader implements Sc
          _log.info("Done scaling cluster "+_clusterId);
          TrivialClusterScaleEvent tcse = (TrivialClusterScaleEvent)_events.iterator().next();
          tcse.ReportBack();
-         return new ClusterScaleDecision(_clusterId);
+         ClusterScaleDecision result = new ClusterScaleDecision(_clusterId);
+         if (_requeueEventTimes-- > 0) {
+            for (NotificationEvent event : _events) {
+               result.requeueEventForCluster(event);
+            }
+         }
+         return result;
       }
    }
    

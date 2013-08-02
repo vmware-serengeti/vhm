@@ -56,4 +56,6 @@ public interface ClusterScaleCompletionEvent extends NotificationEvent {
    Decision getDecisionForVM(String vmId);
 
    Set<String> getVMsForDecision(Decision decision);
+   
+   void requeueEventForCluster(NotificationEvent event);
 }
