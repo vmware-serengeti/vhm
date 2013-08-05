@@ -26,4 +26,16 @@ abstract public class AbstractFaultInjectionSerengetiTestBase extends ModelTestB
       String port = master.getExtraInfo().get("vhmInfo.jobtracker.port");
       return (JobTracker)master.getOS().connect(port);
    }
+
+   @Override
+   protected int numberComputeNodesInState(FaultInjectionSerengeti.FaultInjectionMaster master, boolean state) {
+      JobTracker tracker = getApplication(master);
+      if (tracker != null) {
+         int active = tracker.getAliveTaskTrackers().size();
+         return state ? active : master.availableComputeNodes() - active;
+      }
+
+      /* if we don't have a job tracker then all of them are "inactive" */
+      return state ? 0 : master.availableComputeNodes();
+   }
 }

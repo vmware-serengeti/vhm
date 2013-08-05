@@ -207,6 +207,14 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
    protected abstract J getApplication(M master);
 
    /**
+    * Abstraction accessor so that tests can easily determine the number of active compute nodes without
+    * doing anything application specific in the test code itself.
+    * @param master
+    * @return
+    */
+   protected abstract int numberComputeNodesInState(M master, boolean state);
+
+   /**
     * Sub-classes MUST over-ride this method to create a serengeti of the desired type
     * @param numberOfHosts
     * @return
