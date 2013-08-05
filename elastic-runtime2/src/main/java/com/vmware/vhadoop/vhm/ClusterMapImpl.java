@@ -113,6 +113,10 @@ public class ClusterMapImpl implements ClusterMap {
    private boolean assertHasData(Map<? extends Object, ? extends Object> toTest) {
       return (toTest != null && (toTest.keySet().size() > 0));
    }
+   
+   private boolean assertHasData(String data) {
+      return ((data != null) && !data.trim().isEmpty());
+   }
 
    private ClusterInfo getCluster(String clusterId) {
       return _clusters.get(clusterId);
@@ -472,7 +476,10 @@ public class ClusterMapImpl implements ClusterMap {
          Set<String> result = new HashSet<String>();
          for (VMInfo vminfo : _vms.values()) {
             if ((vminfo._constantData._vmType.equals(VmType.COMPUTE)) && vminfo._clusterId.equals(clusterId)) {
-               result.add(vminfo._variableData._hostMoRef);
+               String hostMoRef = vminfo._variableData._hostMoRef;
+               if (assertHasData(hostMoRef)) {
+                  result.add(hostMoRef);
+               }
             }
          }
          return (result.size() == 0) ? null : result;
@@ -645,9 +652,9 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (String vmId : vmIds) {
-            VMInfo vm = _vms.get(vmId);
-            if (vm != null) {
-               results.put(vmId, vm._variableData._hostMoRef);
+            VMInfo vminfo = _vms.get(vmId);
+            if ((vminfo != null) && assertHasData(vminfo._variableData._hostMoRef)) {
+               results.put(vmId, vminfo._variableData._hostMoRef);
             }
          }
          if (results.size() > 0) {
@@ -675,7 +682,7 @@ public class ClusterMapImpl implements ClusterMap {
          if (ci != null) {
             VMInfo vi = _vms.get(ci._constantData._masterMoRef);
             if ((vi != null) && checkPowerStateOfVm(vi._moRef, true)) {
-               /* Constant data is guaranteed to be non-null. iPAddress or dnsName may be null */
+               /* Constant and Variable data references are guaranteed to be non-null. iPAddress or dnsName may be null */
                result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._dnsName,
                      vi._variableData._ipAddr, ci._jobTrackerPort);
             }
@@ -709,7 +716,7 @@ public class ClusterMapImpl implements ClusterMap {
          VMInfo vminfo = _vms.get(vmId);
          if (vminfo != null) {
             String dnsName = vminfo._variableData._dnsName;
-            if (!dnsName.isEmpty()) {
+            if (assertHasData(dnsName)) {
                return dnsName;
             }
          }
@@ -723,7 +730,7 @@ public class ClusterMapImpl implements ClusterMap {
          Map<String, String> results = new HashMap<String, String>();
          for (VMInfo vminfo : _vms.values()) {
             String dnsNameToTest = vminfo._variableData._dnsName;
-            if ((dnsNameToTest != null) && dnsNames.contains(dnsNameToTest)) {
+            if (assertHasData(dnsNameToTest) && dnsNames.contains(dnsNameToTest)) {
                results.put(dnsNameToTest, vminfo._moRef);
             }
          }
@@ -739,7 +746,7 @@ public class ClusterMapImpl implements ClusterMap {
       if (assertHasData(_vms)) {
          for (VMInfo vminfo : _vms.values()) {
             String dnsNameToTest = vminfo._variableData._dnsName;
-            if ((dnsNameToTest != null) && (dnsName != null) && dnsNameToTest.equals(dnsName)) {
+            if (assertHasData(dnsNameToTest) && (dnsName != null) && dnsNameToTest.equals(dnsName)) {
                return vminfo._moRef;
             }
          }
