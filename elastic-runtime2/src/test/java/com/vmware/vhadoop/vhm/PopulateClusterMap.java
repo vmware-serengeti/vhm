@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
@@ -28,9 +29,6 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
-import com.vmware.vhadoop.vhm.BootstrapMain;
-import com.vmware.vhadoop.vhm.ClusterStateChangeListenerImpl;
-import com.vmware.vhadoop.vhm.VHM;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
@@ -42,6 +40,7 @@ public class PopulateClusterMap {
    ClusterStateChangeListenerImpl _cscl;
    MQClient _mqClient;
 
+   @Ignore // disabled as this requires a configured VC connection with a live VC at the other end
    @Test
    public void test() {
       BootstrapMain mc = new BootstrapMain();

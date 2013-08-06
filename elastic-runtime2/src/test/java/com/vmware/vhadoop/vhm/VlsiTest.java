@@ -18,6 +18,7 @@ package com.vmware.vhadoop.vhm;
 import java.util.ArrayList;
 import java.util.Properties;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
@@ -25,6 +26,7 @@ import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 
 public class VlsiTest {
 
+   @Ignore // disabled as this requires a configured VC connection with a live VC at the other end
    @Test
    public void test() {
       BootstrapMain mc = new BootstrapMain();
@@ -32,7 +34,7 @@ public class VlsiTest {
       Properties properties = mc.getProperties();
       String version = "";
       while (true) {
-         ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>(); 
+         ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
          try {
             version = vcActions.waitForPropertyChange(properties.getProperty("uuid"), version, vmDataList);
          } catch (InterruptedException e) {
