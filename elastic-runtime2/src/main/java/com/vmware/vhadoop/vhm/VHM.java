@@ -520,6 +520,8 @@ public class VHM implements EventConsumer {
 
    /* When events are polled, this is the first method that gets the opportunity to triage them */
    private void handleEvents(Set<NotificationEvent> events) {
+      final Set<NotificationEvent> newAndRequeuedEvents = new HashSet<NotificationEvent>(events);
+      
       /* addRemoveEvents are events that affect the shape of a cluster */
       final Set<ClusterStateChangeEvent> addRemoveEvents = getClusterAddRemoveEvents(events);
 
@@ -552,7 +554,7 @@ public class VHM implements EventConsumer {
                      List<NotificationEvent> eventsToRequeue = ((ClusterScaleDecision)event).getEventsToRequeue();
                      if (eventsToRequeue != null) {
                         _log.info("Requeuing event(s) from ClusterScaleCompletionEvent: "+eventsToRequeue);
-                        placeEventCollectionOnQueue(eventsToRequeue);
+                        newAndRequeuedEvents.addAll(eventsToRequeue);
                      }
                   }
                   _clusterMap.handleCompletionEvent(event);
@@ -562,8 +564,7 @@ public class VHM implements EventConsumer {
          });
       }
 
-      /* Now that we may have some implied scale events from above, add any additional scale events from the event queue */
-      getQueuedScaleEventsForCluster(events, clusterScaleEvents);
+      getQueuedScaleEventsForCluster(newAndRequeuedEvents, clusterScaleEvents);
 
       /* If there are scale events to handle, we need to invoke the scale strategies for each cluster
        * The ordering in which we process the clusters doesn't matter as they will be done concurrently */
