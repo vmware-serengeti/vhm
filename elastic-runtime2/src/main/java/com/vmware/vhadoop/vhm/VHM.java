@@ -520,7 +520,7 @@ public class VHM implements EventConsumer {
 
    /* When events are polled, this is the first method that gets the opportunity to triage them */
    private void handleEvents(Set<NotificationEvent> events) {
-      final Set<NotificationEvent> newAndRequeuedEvents = new HashSet<NotificationEvent>(events);
+      final Set<NotificationEvent> newAndRequeuedEvents = new LinkedHashSet<NotificationEvent>(events);
       
       /* addRemoveEvents are events that affect the shape of a cluster */
       final Set<ClusterStateChangeEvent> addRemoveEvents = getClusterAddRemoveEvents(events);
