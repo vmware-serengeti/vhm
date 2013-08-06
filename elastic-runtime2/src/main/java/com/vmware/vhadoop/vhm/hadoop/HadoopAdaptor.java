@@ -164,7 +164,7 @@ public class HadoopAdaptor implements HadoopActions {
 
    private boolean isValidTTList(String[] tts) {
       if (tts.length == 0) {
-         _log.log(Level.SEVERE, "Error: The task tracker list is empty!");
+         _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - the list is empty");
          return false;
       }
 
@@ -173,15 +173,15 @@ public class HadoopAdaptor implements HadoopActions {
       Set<String> temp = new TreeSet<String>();
       for (String tt : tts) {
          if (tt == null) {
-            _log.log(Level.SEVERE, "Error: Null task tracker name found while de/recommisioning");
+            _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - null task tracker name");
             return false;
          }
          if (tt.length() == 0) {
-            _log.log(Level.SEVERE, "Error: Blank task tracker name found while de/recommisioning");
+            _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - blank task tracker name");
             return false;
          }
          if (!temp.add(tt)) {
-            _log.log(Level.SEVERE, "Error: task tracker list contains duplicates!");
+            _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - list contains duplicates");
             return false;
          }
       }
@@ -207,7 +207,7 @@ public class HadoopAdaptor implements HadoopActions {
       ClassLoader cl = HadoopAdaptor.class.getClassLoader();
 	   InputStream is = ((cl != null) && (fileName != null)) ? cl.getResourceAsStream(fileName) : null;
 	   if (is == null) {
-		   _log.log(Level.SEVERE, "File "+ fileName + " does not exist!");
+		   _log.log(Level.SEVERE, "VHM: class loader resource "+ fileName + " is unavailable");
 		   return null;
 	   }
 
@@ -215,13 +215,13 @@ public class HadoopAdaptor implements HadoopActions {
 	   try {
 		   result = IOUtils.toByteArray(is);
 	   } catch (IOException e) {
-		   _log.log(Level.SEVERE, "Unexpected error while converting file " + fileName + " to byte array", e);
+		   _log.log(Level.SEVERE, "VHM: exception converting class loader resource "+ fileName + " to byte array", e);
 	   }
 
       try {
          is.close();
       } catch (IOException e) {
-         _log.fine("IOException while closing stream for loading script files");
+         _log.fine("VHM: exception closing stream for class loader resource " + fileName);
       }
 
 	   return result;
@@ -275,7 +275,7 @@ public class HadoopAdaptor implements HadoopActions {
       String[] dnsNameArray = tts.values().toArray(new String[0]);
       if (!isValidTTList(dnsNameArray)) {
          String errorMsg = opDesc+" failed due to bad task tracker list";
-         _log.log(Level.SEVERE, errorMsg);
+         _log.log(Level.SEVERE, "<%C"+cluster.getClusterId()+"%C>: "+errorMsg);
          status.registerTaskFailed(false, errorMsg);
          return status;
       }

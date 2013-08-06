@@ -113,7 +113,7 @@ public class ClusterMapImpl implements ClusterMap {
    private boolean assertHasData(Map<? extends Object, ? extends Object> toTest) {
       return (toTest != null && (toTest.keySet().size() > 0));
    }
-   
+
    private boolean assertHasData(String data) {
       return ((data != null) && !data.trim().isEmpty());
    }
@@ -169,7 +169,7 @@ public class ClusterMapImpl implements ClusterMap {
    private String addNewVM(NewVmEvent event, Set<ClusterScaleEvent> impliedScaleEventsResultSet) {
       VMConstantData constantData = event.getConstantData();
       if (constantData == null) {
-         _log.severe("VMConstantData cannot be null!");
+         _log.severe("VHM: the data expected to be associated with a discovered or new VM is missing");
          return null;
       }
 
@@ -178,7 +178,7 @@ public class ClusterMapImpl implements ClusterMap {
       String clusterId = event.getClusterId();
 
       if (clusterId == null) {
-         _log.severe("ClusterId should not be null!");
+         _log.severe("VHM: the cluster id associated with a discovered or new VM must not be null");
          return null;
       }
 
@@ -186,7 +186,7 @@ public class ClusterMapImpl implements ClusterMap {
          SerengetiClusterConstantData clusterConstantData = ((NewMasterVMEvent)event).getClusterConstantData();      /* Should not be null */
          SerengetiClusterVariableData clusterVariableData = ((NewMasterVMEvent)event).getClusterVariableData();      /* Should not be null */
          if (!createCluster(clusterId, clusterConstantData)) {
-            _log.severe("Cluster <%C"+clusterId+"%C> already exists!");
+            _log.severe("<%C"+clusterId+"%C>: cluster already exists in cluster map");
             return null;
          }
          updateClusterVariableData(clusterId, clusterVariableData, impliedScaleEventsResultSet, true);
@@ -194,11 +194,11 @@ public class ClusterMapImpl implements ClusterMap {
 
       VMInfo vi = createNewVM(vmId, constantData, variableData, clusterId);
       if (vi == null) {
-         _log.severe("VMInfo already exists for new event data!");
+         _log.severe("<%C"+clusterId+"%C>: <%V:"+vmId+"%V> - already known VM added a second time as a newly discovered VM");
          return null;
       }
 
-      _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: Adding record for VM <%V"+vmId+"%V>");
+      _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: adding record for VM <%V"+vmId+"%V>");
       return clusterId;
    }
 
@@ -489,7 +489,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    public void dumpState(Level logLevel) {
       for (ClusterInfo ci : _clusters.values()) {
-         _log.log(logLevel, "Cluster <%C" + ci._masterUUID + "%C> strategy=" + ci._scaleStrategyKey +
+         _log.log(logLevel, "<%C"+ci._masterUUID+"%C>: strategy=" + ci._scaleStrategyKey +
                " extraInfoMap= "+ ci._extraInfo + " uuid= " + ci._masterUUID + " jobTrackerPort= "+ci._jobTrackerPort);
       }
 
@@ -503,8 +503,8 @@ public class ClusterMapImpl implements ClusterMap {
          String ipAddr = (variableData._ipAddr == null) ? "N/A" : variableData._ipAddr;
          String dnsName = (variableData._dnsName == null) ? "N/A" : variableData._dnsName;
          String jtPort = "";
-         _log.log(logLevel, "VM <%V" + vmInfo._moRef + "%V> " + role + powerState + vCPUs +
-               " host=" + host + " cluster=<%C" + masterUUID + "%C> IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
+         _log.log(logLevel, "<%C"+masterUUID+"%C>: <%V"+vmInfo._moRef+"%V> - vm state: " + role + powerState + vCPUs +
+               " host=" + host + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
       }
    }
 
@@ -640,7 +640,7 @@ public class ClusterMapImpl implements ClusterMap {
             }
             return vm._variableData._powerState == expectedPowerState;
          } else {
-            _log.warning("VM "+vmId+" does not exist in ClusterMap!");
+            _log.warning("VHM: <%V"+vmId+"%V> - vm does not exist in cluster map");
             return null;
          }
       }

@@ -114,7 +114,7 @@ public class RabbitAdaptor implements MQClient {
                   try {
                      Thread.sleep(20000);
                   } catch (InterruptedException e) {
-                     _log.warning("Unexpected interruption to sleep");
+                     _log.warning("VHM: unexpected interruption while waiting for connection to RabbitMQ broker to complete");
                   }
                }
 
@@ -141,7 +141,7 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("Rabbit queue shutting down");
                   /* This is not fatal, this is an expected expection when shutting down */
                } catch (Throwable t) {
-                  _log.log(Level.SEVERE, "Unexpected exception from Rabbit queue ", t);
+                  _log.log(Level.SEVERE, "VHM: unexpected exception from Rabbit queue ", t);
                   startStopCallback.notifyFailed(RabbitAdaptor.this);
                }
             }

@@ -56,7 +56,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          Host host = targets.poll();
          if (host == null) {
             /* there are no candidates left, so return what we have */
-            _log.warning("BalancedVMChooser no more hosts with candidate VMs, shortfall is "+(remaining+1));
+            _log.warning("VHM: no more hosts with candidate VMs, shortfall is "+(remaining+1));
             return result;
          }
 
@@ -86,7 +86,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       Set<String> result = null;
       Set<String> hosts = null;
       int numHosts = 0;
-      
+
       ClusterMap clusterMap = null;
       try {
          clusterMap = getAndReadLockClusterMap();

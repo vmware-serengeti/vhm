@@ -15,6 +15,10 @@
 
 package com.vmware.vhadoop.vhm.strategy;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.logging.Logger;
+
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.VCActions;
@@ -29,21 +33,19 @@ import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
-import java.util.*;
-import java.util.logging.Logger;
 
 public class ManualScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
    private static final Logger _log = Logger.getLogger(ManualScaleStrategy.class.getName());
    private final VMChooser _vmChooser;
    private final EDPolicy _enableDisablePolicy;
-   
+
    public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
-   
+
    public ManualScaleStrategy(VMChooser vmChooser, EDPolicy edPolicy) {
       _vmChooser = vmChooser;
       _enableDisablePolicy = edPolicy;
    }
-   
+
    @Override
    public void initialize(ClusterMapReader parent) {
       super.initialize(parent);
@@ -58,7 +60,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
 
    class CallableStrategy extends ClusterScaleOperation {
       final Set<ClusterScaleEvent> _events;
-      
+
       public CallableStrategy(Set<ClusterScaleEvent> events) {
          _events = events;
          initialize(ManualScaleStrategy.this);
@@ -78,9 +80,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             int delta = 0;
             String clusterId = null;
             Set<String> vmsToED;
-            ClusterMap clusterMap = null; 
+            ClusterMap clusterMap = null;
             try {
-               clusterMap = getAndReadLockClusterMap(); 
+               clusterMap = getAndReadLockClusterMap();
                String clusterFolder = limitEvent.getClusterFolderName();
                clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
                if (clusterId != null) {
@@ -146,13 +148,13 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             } else {
                if (uninitializedVmIds != null) {
                   for (String uninitializedVmId : uninitializedVmIds) {
-                     _log.warning("VM <%V"+uninitializedVmId+"%V> did not successfully respond in a reasonable time");
+                     _log.warning("<%C"+event.getClusterId()+"%C>: <%V"+uninitializedVmId+"%V> - did not successfully respond in a reasonable time");
                   }
                }
                TaskStatus firstGeneralError = tlStatus.getFirstFailure();
                if (firstGeneralError != null) {
-                  if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY, 
-                     VCActions.VC_POWER_OFF_STATUS_KEY, 
+                  if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY,
+                     VCActions.VC_POWER_OFF_STATUS_KEY,
                      ClusterMapReader.POWER_STATE_CHANGE_STATUS_KEY})) {
                      limitEvent.reportError(firstGeneralError.getMessage() + " however, powering on/off VMs succeeded;");
                   } else {
@@ -192,7 +194,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    public Class<? extends ClusterScaleEvent>[] getScaleEventTypesHandled() {
       return new Class[]{SerengetiLimitInstruction.class};
    }
-   
+
    @Override
    public String toString() {
       return getKey();

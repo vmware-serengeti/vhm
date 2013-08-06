@@ -160,7 +160,7 @@ public class VcVlsi {
             } else if (thumbprint.equalsIgnoreCase(vcThumbprint)) {
                return Result.MATCH;
             } else {
-               _log.log(Level.SEVERE, "Thumbprint mismatch: remote=" + thumbprint);
+               _log.log(Level.SEVERE, "VHM: thumbprint from vhm.properties does not match thumbprint from vCenter - "+thumbprint);
                return Result.MISMATCH;
             }
          }

@@ -71,7 +71,7 @@ public class VcAdapter implements VCActions {
          }
          return true;
       } catch (Exception e) {
-         _log.log(Level.WARNING, "VC connection failed ("+e.getClass()+"): "+e.getMessage());
+         _log.warning("VHM: connection to vCenter failed ("+e.getClass()+"): "+e.getMessage());
          return false;
       }
    }
@@ -85,11 +85,11 @@ public class VcAdapter implements VCActions {
       }
       boolean success = initClients(useCert);
       if (useCert && !success && (_vcCreds.user != null) && (_vcCreds.password != null)) {
-         _log.log(Level.WARNING, "Cert based login failed, trying user/password");
+         _log.warning("VHM: certificate based login failed, trying with username and password");
          success = initClients(false);
       }
       if (!success) {
-         _log.warning("Could not obtain VC connection through any protocol");
+         _log.warning("VHM: could not obtain vCenter connection through any protocol");
          return false;
       }
       return true;
@@ -97,12 +97,12 @@ public class VcAdapter implements VCActions {
 
    /*
     *  Reconnect to VC if connection timed out on either session
-    *  Checking both session will also have the side effect of keep both sessions active whenever validate is called. 
+    *  Checking both session will also have the side effect of keep both sessions active whenever validate is called.
     */
    private boolean validateConnection() {
       boolean success = _vcVlsi.testConnection(_defaultClient) && _vcVlsi.testConnection(_cloneClient);
       if (!success) {
-         _log.log(Level.WARNING, "Found VC connection dropped; reconnecting");
+         _log.warning("VHM: connection to vCenter dropped, attempting reconnection");
          return connect();
       }
       return success;
@@ -112,7 +112,7 @@ public class VcAdapter implements VCActions {
       _rootFolderName = rootFolderName;
       _vcCreds = vcCreds;
       if (!connect()) {
-         _log.warning("Could not initialize connection to VC");
+         _log.warning("VHM: could not initialize connection to vCenter");
       }
    }
 

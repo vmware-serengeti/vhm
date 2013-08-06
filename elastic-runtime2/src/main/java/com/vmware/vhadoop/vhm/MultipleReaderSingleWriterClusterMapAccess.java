@@ -39,16 +39,16 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
       }
       return _singleton;
    }
-   
+
    /* for testing only - ugh */
    protected static void destroy() {
       _singleton = null;
    }
-   
+
    private MultipleReaderSingleWriterClusterMapAccess(ClusterMap clusterMap) {
       _clusterMap = clusterMap;
    }
-   
+
    @Override
    public ClusterMap lockClusterMap() {
       Thread currentThread = Thread.currentThread();
@@ -59,7 +59,7 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
          }
          return _clusterMap;
       } else {
-         _log.severe("Attempt to double-lock ClusterMap!");
+         _log.severe("VHM: attempt to double-lock the cluster map");
          return null;
       }
    }
@@ -67,7 +67,7 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
    @Override
    public boolean unlockClusterMap(ClusterMap clusterMap) {
       if (clusterMap == null) {
-         _log.severe("unlockClusterMap called with null clusterMap arg - ClusterMap lock probably failed");
+         _log.severe("VHM: unlock cluster map called with null cluster map argument - prior lock probably failed");
          return false;
       }
       Thread currentThread = Thread.currentThread();
@@ -75,11 +75,11 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
          _readerThreads.remove(currentThread);
          return true;
       } else {
-         _log.severe("Attempt to double-unlock ClusterMap!");
+         _log.severe("VHM: attempt to double-unlock cluster map");
          return false;
       }
    }
-   
+
    Object runCodeInWriteLock(Callable<Object> callable) {
       synchronized(_clusterMapWriteLock) {
          try {
@@ -91,12 +91,12 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
                try {
                   Thread.sleep(pollSleep);
                   if (--killCntr < 0) {
-                     _log.severe("Reader lock left open. Whacking to 0!");
+                     _log.severe("VHM: reader lock left open, whacking to 0");
                      _readerThreads.clear();
                      break;
                   }
                } catch (InterruptedException e) {
-                  _log.warning("Unexpected interruption to sleep in writeLock");
+                  _log.warning("VHM: unexpected interruption to sleep in writeLock");
                }
             }
             return callable.call();

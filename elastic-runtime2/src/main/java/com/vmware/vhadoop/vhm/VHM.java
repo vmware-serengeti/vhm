@@ -113,7 +113,7 @@ public class VHM implements EventConsumer {
       private class EventProducerStartStopHandler implements EventProducer.EventProducerStartStopCallback {
          @Override
          public void notifyFailed(EventProducer thisProducer) {
-            _log.severe("EventProducer "+thisProducer.getClass().getName()+" has stopped unexpectedly, so resetting EventProducers");
+            _log.severe("VHM: "+thisProducer.getClass().getName()+" - event producer stopped unexpectedly, so resetting event producers");
             placeEventOnQueue(new EventProducerResetEvent());
          }
 
@@ -186,10 +186,10 @@ public class VHM implements EventConsumer {
                _log.fine("Event producers successfully restarted");
                return true;
             } else {
-               _log.warning("Event producers start failed during reset");
+               _log.warning("VHM: event producers start failed during reset");
             }
          }
-         _log.warning("Event producers stop failed during reset");
+         _log.warning("VHM: event producers stop failed during reset");
          return false;
       }
 
@@ -287,7 +287,7 @@ public class VHM implements EventConsumer {
             try {
                _eventQueue.wait();
             } catch (InterruptedException e) {
-               _log.warning("Interrupted unexpectedly while waiting for event");
+               _log.warning("VHM: interrupted unexpectedly while waiting for event");
             }
          }
          results = new LinkedHashSet<NotificationEvent>();
@@ -345,11 +345,11 @@ public class VHM implements EventConsumer {
          if (vmId != null) {
             clusterId = _clusterMap.getClusterIdForVm(vmId);
          } else {
-            _log.warning("No usable data from ClusterScaleEvent (" +
+            _log.warning("<%C"+event.getClusterId()+"%C>: no usable data from ClusterScaleEvent (" +
                   event.getVmId() + "," + event.getHostId() + "," + event.getClusterId() + ")");
             if (event instanceof SerengetiLimitInstruction) {
                SerengetiLimitInstruction sEvent = (SerengetiLimitInstruction)event;
-               _log.warning("SerengetiEvent for cluster=" + sEvent.getClusterFolderName());
+               _log.warning("<%C"+sEvent.getClusterFolderName()+"%C>: unusable scale event is a serengeti limit instruction");
             }
             _clusterMap.dumpState(Level.WARNING);
          }
@@ -584,7 +584,7 @@ public class VHM implements EventConsumer {
                   continue;
                }
             } else {
-               _log.warning("Cluster <%C"+clusterId+"%C> has been incomplete for longer than the grace period of "
+               _log.warning("<%C"+clusterId+"%C>: cluster has been incomplete for longer than the grace period of "
                                                       +CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS+"ms. Dumping queued events for it");
                continue;
             }
@@ -592,7 +592,7 @@ public class VHM implements EventConsumer {
             /* Note that any update to the scale strategy will already have been processed above in handleClusterStateChangeEvents */
             ScaleStrategy scaleStrategy = _clusterMap.getScaleStrategyForCluster(clusterId);
             if (scaleStrategy == null) {
-               _log.severe("There is no scaleStrategy set for cluster <%C"+clusterId);
+               _log.severe("<%C"+clusterId+"%C>: there is no scaleStrategy set for cluster");
                continue;
             }
 
@@ -636,7 +636,7 @@ public class VHM implements EventConsumer {
                   Set<NotificationEvent> events = pollForEvents();
                   if (checkForProducerReset(events)) {
                      if (!_eventProducers.reset()) {
-                        _log.severe("Unable to reset Event Producers. Terminating VHM");
+                        _log.severe("VHM: unable to reset event producers - Terminating VHM");
                         break;
                      }
                   }

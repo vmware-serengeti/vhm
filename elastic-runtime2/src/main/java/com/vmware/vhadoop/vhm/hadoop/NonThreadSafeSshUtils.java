@@ -65,14 +65,14 @@ public class NonThreadSafeSshUtils implements SshUtils
 
    @Override
    public ChannelExec createChannel(Logger logger, final HadoopCredentials credentials, String host, int port) {
-      
-      /* Trying out ssh connection multiple times if it does not succeed first time around -- We see this behavior intermittently esp. 
+
+      /* Trying out ssh connection multiple times if it does not succeed first time around -- We see this behavior intermittently esp.
        * during periods of heavy load */
       for (int i = 0; i < NUM_SSH_RETRIES; i++) {
          try {
-   
+
             Session session = _jsch.getSession(credentials.getSshUsername(), host, port);
-   
+
             // If private key file is specified, use that as identity; else use password.
             String prvkeyFile = credentials.getSshPrvkeyFile();
             if (prvkeyFile != null) {
@@ -82,31 +82,31 @@ public class NonThreadSafeSshUtils implements SshUtils
                UserInfo ui = new SSHUserInfo(credentials.getSshPassword(), Logger.getLogger(logger.getName()));
                session.setUserInfo(ui);
             }
-   
+
             java.util.Properties config = new java.util.Properties();
             config.put("StrictHostKeyChecking", "no"); /* TODO: Necessary? Hack? Security hole?? */
             session.setConfig(config);
-   
+
             // JG: Adding session timeout...
             session.setTimeout(15000);
-   
+
             session.connect();
-   
+
             return (ChannelExec) session.openChannel("exec");
          } catch (JSchException e) {
-            logger.log(Level.WARNING, "Could not create ssh channel on host " + host + " " + e.getMessage());
+            logger.log(Level.WARNING, "VHM: "+host+" - could not create ssh channel to host - " + e.getMessage());
             if (i < NUM_SSH_RETRIES - 1) {
                try {
-                  logger.log(Level.WARNING, "Trying to create ssh channel again on host " + host + " ...");
+                  logger.log(Level.WARNING, "VHM: "+host+" - retrying ssh connection to host after delay");
                   Thread.sleep(5000);
                } catch (InterruptedException e1) {
-                  logger.log(Level.WARNING, "Unexpected interruption to sleep");
+                  logger.log(Level.WARNING, "VHM: unexpected interruption while waiting to retry ssh connection");
                }
-            } 
+            }
          }
       }
 
-      logger.log(Level.SEVERE, "Could not create ssh channel (e.g., wrong ip addr/username/password/prvkey) on host " + host);
+      logger.log(Level.SEVERE, "VHM: "+host+" - could not create ssh channel to host (e.g., wrong ip addr/username/password/prvkey)");
       return null;
    }
 
@@ -145,7 +145,8 @@ public class NonThreadSafeSshUtils implements SshUtils
             if (!channel.isConnected()) {
                exitStatus = channel.getExitStatus();
                if (exitStatus != 0) {
-                  logger.log(Level.SEVERE, "Exit status from exec is: " + channel.getExitStatus());
+                  logger.log(Level.INFO, "VHM: execution of command on remote host failed: "+command+", exit status - "+channel.getExitStatus());
+                  logger.log(Level.SEVERE, "VHM: failure executing command on remote host - see verbose log for details");
                }
 
                break;
@@ -154,16 +155,16 @@ public class NonThreadSafeSshUtils implements SshUtils
             try {
                Thread.sleep(1000);
             } catch (InterruptedException e) {
-               logger.log(Level.WARNING, "Unexpected interruption to sleep");
+               logger.log(Level.WARNING, "VHM: unexpected interruption while waiting for remote command to complete");
             }
 
             if (System.currentTimeMillis() - startTime >= TimeUnit.MILLISECONDS.convert(INPUTSTREAM_TIMEOUT, TimeUnit.SECONDS)) {
-               logger.log(Level.SEVERE, "No input was received for " + INPUTSTREAM_TIMEOUT + "s while running remote exec!");
+               logger.log(Level.SEVERE, "VHM: no input was received for " + INPUTSTREAM_TIMEOUT + "s while executing command on remote host");
                break;
             }
          }
       } catch (IOException e) {
-         logger.log(Level.SEVERE, "Unexpected IOException executing over SSH", e);
+         logger.log(Level.SEVERE, "VHM: unexpected IOException executing command on remote host (SSH)", e);
       } finally {
          /* Caller is responsible for cleaning up resources passed in */
          if (in != null) {
@@ -182,7 +183,8 @@ public class NonThreadSafeSshUtils implements SshUtils
       OutputStream out = null;
       int rc = SUCCESS;
       try {
-         channel.setCommand(SCP_COMMAND + remotePath + remoteFileName);
+         String command = SCP_COMMAND + remotePath + remoteFileName;
+         channel.setCommand(command);
 
          out = channel.getOutputStream();
          in = channel.getInputStream();
@@ -204,20 +206,22 @@ public class NonThreadSafeSshUtils implements SshUtils
          out.flush();
 
          if (!waitForInputStream(logger, in)) {
-            logger.log(Level.SEVERE, "Error before writing SCP bytes");
+            logger.log(Level.INFO, "VHM: error copying data to remote host: "+command);
+            logger.log(Level.SEVERE, "VHM: error copying data to remote host. See verbose log for details.");
             rc = UNKNOWN_ERROR; /* TODO: Improve */
          } else {
             out.write(data);
             out.write(new byte[] { 0 }, 0, 1);
             out.flush();
-   
+
             if (!waitForInputStream(logger, in)) {
-               logger.log(Level.SEVERE, "Error after writing SCP bytes");
+               logger.log(Level.INFO, "VHM: error after pushing data to remote host: "+command);
+               logger.log(Level.SEVERE, "VHM: error after pushing data to remote host. See verbose log for details.");
                rc = UNKNOWN_ERROR;
             }
          }
       } catch (Exception e) {
-         logger.log(Level.SEVERE, "Unexpected Exception copying data to Job Tracker", e);
+         logger.log(Level.SEVERE, "VHM: unexpected exception copying data to remote host", e);
       } finally {
          /* Caller is responsible for cleaning up resources passed in */
          if (out != null) {
@@ -240,7 +244,7 @@ public class NonThreadSafeSshUtils implements SshUtils
       if (b <= 0) {
          boolean result = (b == 0);
          if (!result) {
-            log.log(Level.SEVERE, "SSH Channel failed test. First byte returned < 0 result");
+            log.log(Level.SEVERE, "VHM: ssh channel failed validity test (first byte == 0) - first byte was "+b);
          }
          return result;
       } else {
@@ -250,7 +254,7 @@ public class NonThreadSafeSshUtils implements SshUtils
             c = in.read();
             sb.append((char) c);
          } while (c != '\n');
-         log.log(Level.SEVERE, "SSH Channel failed test. Msg=" + sb.toString());
+         log.log(Level.SEVERE, "VHM: ssh channel failed validity test (first byte == 0) - " + sb.toString());
          return false;
       }
    }
@@ -269,7 +273,7 @@ public class NonThreadSafeSshUtils implements SshUtils
          }
          channel.connect();
       } catch (JSchException e) {
-         log.log(Level.SEVERE, "SSH Channel failed test. Could not connect", e);
+         log.log(Level.SEVERE, "VHM: ssh channel failed validity test - could not connect", e);
       }
 
       return channel.isConnected();
@@ -283,14 +287,14 @@ public class NonThreadSafeSshUtils implements SshUtils
             out.flush();
             out.close();
          } catch (IOException e) {
-            log.log(Level.WARNING, "Unexpected exception in SSH OutputStream cleanup", e);
+            log.log(Level.WARNING, "VHM: unexpected exception in ssh stream cleanup", e);
          }
       }
       if (channel != null) {
          try {
             session = channel.getSession();
          } catch (JSchException e) {
-            log.log(Level.WARNING, "Unexpected exception in SSH channel cleanup", e);
+            log.log(Level.WARNING, "VHM: unexpected exception in ssh channel cleanup", e);
          }
          channel.disconnect();
       }
@@ -302,7 +306,7 @@ public class NonThreadSafeSshUtils implements SshUtils
       try {
          _jsch.removeAllIdentity();
       } catch (JSchException e) {
-         log.log(Level.WARNING, "Unexpected exception in SSH channel cleanup while removing identities", e);
+         log.log(Level.WARNING, "VHM: unexpected exception in ssh channel cleanup while removing identities", e);
       }
    }
 

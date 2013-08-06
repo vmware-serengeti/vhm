@@ -135,7 +135,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
                   vmDataList.clear();
                }
             } catch (Throwable t) {
-               _log.log(Level.SEVERE, "Unexpected exception in ClusterStateChangeListener", t);
+               _log.log(Level.SEVERE, "VHM: unexpected exception in ClusterStateChangeListener", t);
                startStopCallback.notifyFailed(ClusterStateChangeListenerImpl.this);
             }
             _log.info("ClusterStateChangeListener stopping...");
@@ -148,10 +148,10 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if (vmDataList.isEmpty() && ((version == null) || version.equals(""))) {
          if (_started) {
             try {
-               _log.log(VhmLevel.USER, "VHM: Temporarily lost connection to VC");
+               _log.log(VhmLevel.USER, "VHM: temporarily lost connection to vCenter");
                Thread.sleep(backoffPeriodMS);
             } catch (InterruptedException e) {
-               _log.warning("Unexpectedly interrupted waiting for VC");
+               _log.warning("VHM: unexpectedly interrupted waiting for updates from vCenter");
             }
          }
       } else {

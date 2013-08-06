@@ -115,7 +115,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                result = true;
             }
          } catch (Exception e) {
-            _log.log(Level.SEVERE, "Unexpected exception initializing ClusterTaskContext", e);
+            _log.log(Level.SEVERE, "VHM: unexpected exception initializing ClusterTaskContext", e);
          }
          return result;
       }
@@ -150,9 +150,9 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                                     completedTasks.add(completionEvent);
                                  }
                               } catch (InterruptedException e) {
-                                 _log.warning("Cluster thread interrupted");
+                                 _log.warning("<%C"+clusterId+"%C>: cluster thread interrupted");
                               } catch (ExecutionException e) {
-                                 _log.log(Level.WARNING, "ExecutionException in cluster thread ", e);
+                                 _log.log(Level.WARNING, "<%C"+clusterId+"%C>: exception while running scale strategy for cluster", e);
                               }
                               ctc._completionEventPending = null;
                            }
@@ -168,12 +168,12 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                      } catch (InterruptedException e) {
                         if (_started) {
                            /* if we're not stopping then this is unexpected */
-                           _log.warning("Cluster thread wait interrupted");
+                           _log.warning("VHM: cluster thread wait interrupted");
                         }
                      }
                   }
                } catch (Throwable t) {
-                  _log.log(Level.SEVERE, "Unexpected exception in ThreadPoolExecutionStrategy", t);
+                  _log.log(Level.SEVERE, "VHM: unexpected exception in ThreadPoolExecutionStrategy", t);
                   startStopCallback.notifyFailed(ThreadPoolExecutionStrategy.this);
                }
                _log.info("ThreadPoolExecutionStrategy stopping...");

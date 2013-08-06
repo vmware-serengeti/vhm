@@ -28,9 +28,9 @@ import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 public interface ScaleStrategy extends ClusterMapReader {
 
    String getKey();
-   
+
    Class<? extends ScaleStrategyContext> getStrategyContextType();
-   
+
    abstract class ClusterScaleOperation extends AbstractClusterMapReader implements Callable<ClusterScaleCompletionEvent> {
       private static final Logger _log = Logger.getLogger(ClusterScaleOperation.class.getName());
 
@@ -42,16 +42,16 @@ public interface ScaleStrategy extends ClusterMapReader {
          try {
             result = localCall();
          } catch (Throwable t) {
-            _log.log(Level.SEVERE, "Unexpected exception in ClusterScaleOperation", t);
+            _log.log(Level.SEVERE, "VHM: unexpected exception while scaling", t);
          }
          getThreadLocalCompoundStatus().remove();
          return result;
       }
-      
+
       public abstract ClusterScaleCompletionEvent localCall() throws Exception;
    }
-   
+
    Class<? extends ClusterScaleEvent>[] getScaleEventTypesHandled();
-   
+
    ClusterScaleOperation getClusterScaleOperation(String clusterId, Set<ClusterScaleEvent> events, ScaleStrategyContext context);
 }
