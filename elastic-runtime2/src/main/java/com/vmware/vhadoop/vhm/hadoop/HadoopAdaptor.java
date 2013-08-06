@@ -97,7 +97,7 @@ public class HadoopAdaptor implements HadoopActions {
    static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
    private static final int MAX_CHECK_RETRY_ITERATIONS = 8;
-   private static final long MIN_ACTIVE_TT_POLL_TIME_MILLIS = 1000;
+   private static final long MIN_ACTIVE_TT_POLL_TIME_MILLIS = 100;   /* 1074605: Note longer delays can cause model test failures */
 
    public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
