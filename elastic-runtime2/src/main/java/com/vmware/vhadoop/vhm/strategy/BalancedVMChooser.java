@@ -15,9 +15,13 @@
 
 package com.vmware.vhadoop.vhm.strategy;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -110,6 +114,12 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          for (String host : hosts) {
             Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
             Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
+
+            /* this is a temporary solution that prevents us from returning the same VM on a host every time */
+            List<String> vms = new ArrayList<String>(candidateVMs);
+            Collections.shuffle(vms);
+            candidateVMs = new LinkedHashSet<String>(vms);
+
             if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
                _log.info("found "+candidateVMs.size()+" candidate VMs on host "+host);
                for (String id : candidateVMs) {
@@ -138,9 +148,6 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       return chooseVMs(clusterId, delta, true);
    }
 
-   /**
-    * Delta is negative for disabling VMs
-    */
    @Override
    public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
       return chooseVMs(clusterId, delta, false);
@@ -153,7 +160,10 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          return null;
       }
 
-      return candidates.iterator().next();
+      /* this is a temporary solution that prevents us from returning the same VM on a host every time */
+      List<String> vms = new ArrayList<String>(candidates);
+      Collections.shuffle(vms);
+      return vms.get(0);
    }
 
    @Override
@@ -163,7 +173,10 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          return null;
       }
 
-      return candidates.iterator().next();
+      /* this is a temporary solution that prevents us from returning the same VM on a host every time */
+      List<String> vms = new ArrayList<String>(candidates);
+      Collections.shuffle(vms);
+      return vms.get(0);
    }
 
 //   @Override
