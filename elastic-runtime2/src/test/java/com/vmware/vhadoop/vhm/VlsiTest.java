@@ -15,7 +15,7 @@
 
 package com.vmware.vhadoop.vhm;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.junit.Ignore;
@@ -34,15 +34,17 @@ public class VlsiTest {
       Properties properties = mc.getProperties();
       String version = "";
       while (true) {
-         ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
+         List<VMEventData> vmDataList = null;
          try {
-            version = vcActions.waitForPropertyChange(properties.getProperty("uuid"), version, vmDataList);
+            vmDataList = vcActions.waitForPropertyChange(properties.getProperty("uuid"));
          } catch (InterruptedException e) {
             e.printStackTrace();
          }
-         for (VMEventData vmData : vmDataList) {
-            System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change moRef= "
-                  +vmData._vmMoRef + " leaving=" + vmData._isLeaving);
+         if (vmDataList != null) {
+            for (VMEventData vmData : vmDataList) {
+               System.out.println(Thread.currentThread().getName()+": ClusterStateChangeListener: detected change moRef= "
+                     +vmData._vmMoRef + " leaving=" + vmData._isLeaving);
+            }
          }
       }
    }

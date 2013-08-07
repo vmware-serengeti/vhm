@@ -115,12 +115,12 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
             Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
             Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
 
-            /* this is a temporary solution that prevents us from returning the same VM on a host every time */
-            List<String> vms = new ArrayList<String>(candidateVMs);
-            Collections.shuffle(vms);
-            candidateVMs = new LinkedHashSet<String>(vms);
-
             if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
+               /* this is a temporary solution that prevents us from returning the same VM on a host every time */
+               List<String> vms = new ArrayList<String>(candidateVMs);
+               Collections.shuffle(vms);
+               candidateVMs = new LinkedHashSet<String>(vms);
+
                _log.info("found "+candidateVMs.size()+" candidate VMs on host "+host);
                for (String id : candidateVMs) {
                   _log.info("candidate VM on "+host+": "+id);
@@ -156,7 +156,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    @Override
    public String chooseVMToEnableOnHost(final Set<String> candidates) {
       /* TODO: decide whether we ever want a more sophisticated solution */
-      if (candidates.isEmpty()) {
+      if ((candidates == null) || candidates.isEmpty()) {
          return null;
       }
 
@@ -169,7 +169,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    @Override
    public String chooseVMToDisableOnHost(final Set<String> candidates) {
       /* TODO: decide whether we ever want a more sophisticated solution */
-      if (candidates.isEmpty()) {
+      if ((candidates == null) || candidates.isEmpty()) {
          return null;
       }
 

@@ -115,10 +115,16 @@ public class RabbitAdaptor implements MQClient {
                      Thread.sleep(20000);
                   } catch (InterruptedException e) {
                      _log.warning("VHM: unexpected interruption while waiting for connection to RabbitMQ broker to complete");
+                     if (!_started) {
+                        /* We could have never properly initialized and are then being told to shut down - break the loop */
+                        break;
+                     }
                   }
                }
 
-               _log.info("Connected to Rabbit server");
+               if (_started) {
+                  _log.info("Connected to Rabbit server");
+               }
 
                try {
                   while (_started) {
@@ -169,7 +175,9 @@ public class RabbitAdaptor implements MQClient {
          /* TODO: Is this the right approach? */
          _connection.getConsumer().getChannel().close();
       } catch (Exception e) {
-         _log.log(Level.INFO, "Unexpected exception stopping MQClient", e);
+         _log.log(Level.INFO, "Error shutting down MQClient "+e.getMessage());
+         /* If we're in a situation where we fail to shut the queue down cleanly, ensure we interrupt the waiting thread */
+         _mainThread.interrupt();
       }
    }
 

@@ -48,6 +48,7 @@ import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.Folder;
+import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.ServiceInstance;
 import com.vmware.vim.binding.vim.ServiceInstanceContent;
 import com.vmware.vim.binding.vim.SessionManager;
@@ -69,6 +70,8 @@ import com.vmware.vim.binding.vim.view.ViewManager;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
+import com.vmware.vim.binding.vmodl.fault.RequestCanceled;
+import com.vmware.vim.binding.vmodl.query.InvalidCollectorVersion;
 import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.Change;
@@ -95,14 +98,9 @@ import com.vmware.vim.vmomi.core.types.VmodlContext;
 
 public class VcVlsi {
 
-   private static final int SESSION_TIME_OUT = 120000;
-
    public static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master-";
 
    private static final Logger _log = Logger.getLogger(VcVlsi.class.getName());
-   private static final VmodlContext vmodlContext = VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
-   private Client defaultClient;
-   private String vcThumbprint = null;
 
    static final String VC_PROP_VM_NAME = "name";
    static final String VC_PROP_VM_EXTRA_CONFIG = "config.extraConfig";
@@ -136,9 +134,15 @@ public class VcVlsi {
    private static final String TASK_INFO_STATE = "info.state";
 
    static final String WAIT_FOR_UPDATES_CANCELED_STATUS = "VC_WAIT_FOR_UPDATES_CANCELED";
+   static final String WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION_STATUS = "VC_WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION";
+   static final String WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS = "VC_WAIT_FOR_UPDATES_INVALID_PROPERTY";
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private PropertyCollector _waitingOnPc;
+   
+   static {
+      VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
+   }
 
    void setThreadLocalCompoundStatus(ThreadLocalCompoundStatus tlcs) {
       _threadLocalStatus = tlcs;
@@ -151,7 +155,7 @@ public class VcVlsi {
       return _threadLocalStatus.get();
    }
 
-   private ThumbprintVerifier getThumbprintVerifier() {
+   private ThumbprintVerifier getThumbprintVerifier(final String vcThumbprint) {
       return new ThumbprintVerifier() {
          @Override
          public Result verify(String thumbprint) {
@@ -189,7 +193,7 @@ public class VcVlsi {
     * Create a temporary connection to VC to login using extension certificate via sdkTunnel,
     * and get the session ticket to use for the normal connection.
     */
-   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey) throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
+   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey, String vcThumbprint, long timeoutMillis) throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
       InputStream is = null;
@@ -210,8 +214,8 @@ public class VcVlsi {
       httpConfig.getKeyStoreConfig().setKeyAlias(keyStore.aliases().nextElement());
       httpConfig.getKeyStoreConfig().setKeyPassword(keyStorePwd);
 
-      httpConfig.setTimeoutMs(SESSION_TIME_OUT);
-      httpConfig.setThumbprintVerifier(getThumbprintVerifier());
+      httpConfig.setTimeoutMs((int)timeoutMillis);
+      httpConfig.setThumbprintVerifier(getThumbprintVerifier(vcThumbprint));
 
       HttpClientConfiguration clientConfig = HttpClientConfiguration.Factory.newInstance();
       clientConfig.setHttpConfiguration(httpConfig);
@@ -225,20 +229,15 @@ public class VcVlsi {
       return ticket;
    }
 
-   private String getCloneTicket() {
-      ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
-      SessionManager sm = defaultClient.createStub(SessionManager.class, sic.getSessionManager());
-      return sm.acquireCloneTicket();
-   }
-
-   public Client connect(VcCredentials credentials, boolean useKey, boolean cloneSession) throws Exception {
-      vcThumbprint = credentials.vcThumbprint;
+   public Client connect(VcCredentials credentials, boolean useKey, Client cloneClient, long timeoutMillis) throws Exception {
       String sessionTicket = null;
 
-      if (cloneSession) {
-         sessionTicket = getCloneTicket();
+      if (cloneClient != null) {
+         ServiceInstanceContent sic = getServiceInstanceContent(cloneClient);
+         SessionManager sm = cloneClient.createStub(SessionManager.class, sic.getSessionManager());
+         sessionTicket = sm.acquireCloneTicket();
       } else if (useKey) {
-         sessionTicket = getSessionTicket(credentials.vcIP, credentials.keyStoreFile, credentials.keyStorePwd, credentials.vcExtKey);
+         sessionTicket = getSessionTicket(credentials.vcIP, credentials.keyStoreFile, credentials.keyStorePwd, credentials.vcExtKey, credentials.vcThumbprint, timeoutMillis);
       }
 
       URI uri = new URI("https://"+credentials.vcIP+":443/sdk");
@@ -251,8 +250,8 @@ public class VcVlsi {
                   new LinkedBlockingQueue<Runnable>()); // work queue
 
       HttpConfigurationImpl httpConfig = new HttpConfigurationImpl();
-      httpConfig.setTimeoutMs(SESSION_TIME_OUT);
-      httpConfig.setThumbprintVerifier(getThumbprintVerifier());
+      httpConfig.setTimeoutMs((int)timeoutMillis);
+      httpConfig.setThumbprintVerifier(getThumbprintVerifier(credentials.vcThumbprint));
 
       HttpClientConfiguration clientConfig = HttpClientConfiguration.Factory.newInstance();
       clientConfig.setHttpConfiguration(httpConfig);
@@ -260,25 +259,32 @@ public class VcVlsi {
 
       Client newClient = Client.Factory.createClient(uri, version8.class, clientConfig);
 
-      ServiceInstanceContent sic = getServiceInstanceContent(newClient);
-      SessionManager sm = newClient.createStub(SessionManager.class, sic.getSessionManager());
-
-      if (cloneSession) {
-         sm.cloneSession(sessionTicket);
-      } else {
-         // set this as the default client
-         defaultClient = newClient;
-         if (useKey) {
-            sm.loginBySessionTicket(sessionTicket);
+      if (newClient != null) {
+         ServiceInstanceContent sic = getServiceInstanceContent(newClient);
+         SessionManager sm = newClient.createStub(SessionManager.class, sic.getSessionManager());
+   
+         if (cloneClient != null) {
+            sm.cloneSession(sessionTicket);
          } else {
-            sm.login(credentials.user, credentials.password, null);
+            if (useKey) {
+               sm.loginBySessionTicket(sessionTicket);
+            } else {
+               sm.login(credentials.user, credentials.password, null);
+            }
          }
       }
 
       return newClient;
    }
+   
+   public void resetConnection() {
+      _waitingOnPc = null;
+   }
 
    public boolean testConnection(Client vcClient) {
+      if (vcClient == null) {
+         return false;
+      }
       // Test the operation of the current connection using the standard simple call for this purpose.
       Calendar vcTime = null;
       try {
@@ -295,9 +301,9 @@ public class VcVlsi {
    }
 
 
-   private Folder getRootFolder() {
-      ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
-      return defaultClient.createStub(Folder.class, sic.getRootFolder());
+   private Folder getRootFolder(Client client) {
+      ServiceInstanceContent sic = getServiceInstanceContent(client);
+      return client.createStub(Folder.class, sic.getRootFolder());
    }
 
    /**
@@ -404,19 +410,19 @@ public class VcVlsi {
 
    }
 
-   private List<ManagedObjectReference> findObjectsInFolder(Folder baseFolder, TypeName type, String restrictToName) throws InvalidProperty {
+   private List<ManagedObjectReference> findObjectsInFolder(Client client, Folder baseFolder, TypeName type, String restrictToName) throws InvalidProperty {
       if (baseFolder == null) {
          return null;
       }
 
       List<ManagedObjectReference> resultRefs = new ArrayList<ManagedObjectReference>();
-      ServiceInstanceContent sic = getServiceInstanceContent(defaultClient);
+      ServiceInstanceContent sic = getServiceInstanceContent(client);
 
-      ViewManager viewMgr = defaultClient.createStub(ViewManager.class, sic.getViewManager());
-      ContainerView cView = defaultClient.createStub(ContainerView.class,
+      ViewManager viewMgr = client.createStub(ViewManager.class, sic.getViewManager());
+      ContainerView cView = client.createStub(ContainerView.class,
             viewMgr.createContainerView(baseFolder._getRef(), new TypeName[] {type}, true));
 
-      PropertyFilter propFilter = new PropertyFilter(defaultClient, cView, type);
+      PropertyFilter propFilter = new PropertyFilter(client, cView, type);
       propFilter.setPropToFilter("name");
 
       RetrieveResult rr = propFilter.retrieveProperties();
@@ -452,13 +458,13 @@ public class VcVlsi {
       return resultRefs;
    }
 
-   private Folder getFolderForName(Folder baseFolder, String restrictToName) throws InvalidProperty {
+   private Folder getFolderForName(Client client, Folder baseFolder, String restrictToName) throws InvalidProperty {
       if (baseFolder == null) {
-         baseFolder = getRootFolder();
+         baseFolder = getRootFolder(client);
       }
-      List<ManagedObjectReference> refs = findObjectsInFolder(baseFolder, typeFolder, restrictToName);
+      List<ManagedObjectReference> refs = findObjectsInFolder(client, baseFolder, typeFolder, restrictToName);
       if (refs.size() > 0) {
-         return defaultClient.createStub(Folder.class, refs.get(0));
+         return client.createStub(Folder.class, refs.get(0));
       }
       return null;
    }
@@ -477,7 +483,7 @@ public class VcVlsi {
       return propFilter;
    }
 
-   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version) throws Exception {
+   private UpdateSet callWaitForUpdates(PropertyCollector propCollector, String version) throws InvalidCollectorVersion {
       UpdateSet updateSet = null;
       if (version == null) {
          version = "";
@@ -568,7 +574,7 @@ public class VcVlsi {
    }
 
 
-   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) throws Exception {
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) throws InvalidCollectorVersion, InvalidProperty {
       if (version == null) {
          version = "";
       }
@@ -616,10 +622,10 @@ public class VcVlsi {
       return version;
    }
 
-   boolean waitForTask(Task task) {
+   boolean waitForTask(Client client, Task task) {
       CompoundStatus status = new CompoundStatus("waitForTask");
       boolean result = false;
-      PropertyFilter propFilter = new PropertyFilter(defaultClient, task);
+      PropertyFilter propFilter = new PropertyFilter(client, task);
       try {
          propFilter.setPropsToFilter(new String [] {TASK_INFO_STATE });
          UpdateSet updateSet = null;
@@ -674,21 +680,27 @@ public class VcVlsi {
    }
 
 
-   public String waitForUpdates(Client vcClient, String baseFolderName, String version, List<VMEventData> vmDataList) {
+   public String waitForUpdates(Client client, String baseFolderName, String version, List<VMEventData> vmDataList) {
       CompoundStatus status = new CompoundStatus("waitForUpdates");
       String result = version;
       try {
-         Folder f = getFolderForName(null, baseFolderName);
+         Folder f = getFolderForName(client, null, baseFolderName);
          if (f == null) {
             // This is normal state when user hasn't created any hadoop clusters yet
             _log.log(Level.INFO, "No found clusters for hadoop UUID " + baseFolderName);
          } else {
-            result = pcVMsInFolder(vcClient, f, version, vmDataList);
+            result = pcVMsInFolder(client, f, version, vmDataList);
          }
          status.registerTaskSucceeded();
-      } catch (com.vmware.vim.binding.vmodl.fault.RequestCanceled e) {
+      } catch (RequestCanceled e) {
          _log.info("waitForUpdates request has been canceled");
          result = WAIT_FOR_UPDATES_CANCELED_STATUS;
+      } catch (InvalidCollectorVersion e) {
+         _log.info("propertyCollector version has become stale");
+         result = WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION_STATUS;
+      } catch (InvalidProperty e) {
+         _log.info("propertyCollector property is invalid: "+e);
+         result = WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS;
       } catch (Exception e) {
          reportException("Unexpected exception waiting for updates", e, status);
       }
@@ -696,15 +708,15 @@ public class VcVlsi {
       return result;
    }
 
-   public List<String> getVMsInFolder(String baseFolderName, String folderName) {
+   public List<String> getVMsInFolder(Client client, String baseFolderName, String folderName) {
       CompoundStatus status = new CompoundStatus("getVMsInFolder");
       List<String> result = null;
       try {
-         Folder baseFolder = getFolderForName(null, baseFolderName);
+         Folder baseFolder = getFolderForName(client, null, baseFolderName);
 
-         Folder folder = getFolderForName(baseFolder, folderName);
+         Folder folder = getFolderForName(client, baseFolder, folderName);
 
-         List<ManagedObjectReference> refs = findObjectsInFolder(folder, typeVM, null);
+         List<ManagedObjectReference> refs = findObjectsInFolder(client, folder, typeVM, null);
          if ((refs != null) && (refs.size() > 0)) {
             result = new ArrayList<String>();
             for (ManagedObjectReference ref : refs) {
@@ -726,16 +738,16 @@ public class VcVlsi {
       status.registerTaskFailed(false, msg+": "+e.getMessage());
    }
 
-   public Map<String, Task> powerOnVMs(Set<String> vmMoRefs) {
+   public Map<String, Task> powerOnVMs(Client client, Set<String> vmMoRefs) {
       CompoundStatus status = new CompoundStatus(VCActions.VC_POWER_ON_STATUS_KEY);
       Map<String, Task> result = new HashMap<String, Task>();
       for (String moRef : vmMoRefs) {
          ManagedObjectReference ref = new ManagedObjectReference();
          ref.setValue(moRef);
-         VirtualMachine vm = defaultClient.createStub(VirtualMachine.class, ref);
+         VirtualMachine vm = client.createStub(VirtualMachine.class, ref);
          try {
             ManagedObjectReference taskRef = vm.powerOn(null);
-            Task task = defaultClient.createStub(Task.class, taskRef);
+            Task task = client.createStub(Task.class, taskRef);
             result.put(moRef, task);
             status.registerTaskSucceeded();
          } catch (Exception e) {
@@ -746,16 +758,16 @@ public class VcVlsi {
       return result;
    }
 
-   public Map<String, Task> powerOffVMs(Set<String> vmMoRefs) {
+   public Map<String, Task> powerOffVMs(Client client, Set<String> vmMoRefs) {
       CompoundStatus status = new CompoundStatus(VCActions.VC_POWER_OFF_STATUS_KEY);
       Map<String, Task> result = new HashMap<String, Task>();
       for (String moRef : vmMoRefs) {
          ManagedObjectReference ref = new ManagedObjectReference();
          ref.setValue(moRef);
-         VirtualMachine vm = defaultClient.createStub(VirtualMachine.class, ref);
+         VirtualMachine vm = client.createStub(VirtualMachine.class, ref);
          try {
             ManagedObjectReference taskRef = vm.powerOff();
-            Task task = defaultClient.createStub(Task.class, taskRef);
+            Task task = client.createStub(Task.class, taskRef);
             result.put(moRef, task);
             status.registerTaskSucceeded();
          } catch (Exception e) {
@@ -771,6 +783,16 @@ public class VcVlsi {
          synchronized(_waitingOnPc) {
             _waitingOnPc.cancelWaitForUpdates();
          }
+      }
+   }
+   
+   public PerformanceManager getPerformanceManager(Client client) {
+      try {
+         ServiceInstanceContent sic = getServiceInstanceContent(client);
+         return client.createStub(PerformanceManager.class, sic.getPerfManager());
+      } catch (Exception e) {
+         _log.info("Cannot connect to VC performance manager");
+         return null;
       }
    }
 

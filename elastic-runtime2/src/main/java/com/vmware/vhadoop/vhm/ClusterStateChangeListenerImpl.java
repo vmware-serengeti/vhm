@@ -15,8 +15,8 @@
 
 package com.vmware.vhadoop.vhm;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,7 +52,6 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    private volatile boolean _started;
    private final HashMap<String, VmCreatedData> _interimVMData;
    private Thread _mainThread;
-   private String _vcVlsiVersion = "";
 
    private final long _startTime = System.currentTimeMillis();
    private boolean _deliberateFailureTriggered = false;
@@ -119,20 +118,19 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       _mainThread = new Thread(new Runnable() {
          @Override
          public void run() {
-            ArrayList<VMEventData> vmDataList = new ArrayList<VMEventData>();
+            List<VMEventData> vmDataList;
             try {
                _log.info("ClusterStateChangeListener starting...");
                startStopCallback.notifyStarted(ClusterStateChangeListenerImpl.this);
                while (_started) {
                   try {
                      /* If version == null, this usually indicates a VC connection failure */
-                     _vcVlsiVersion = _vcActions.waitForPropertyChange(_serengetiFolderName, _vcVlsiVersion, vmDataList);
+                     vmDataList = _vcActions.waitForPropertyChange(_serengetiFolderName);
                   } catch (InterruptedException e) {
                      /* Almost certainly means that stop has been called */
                      continue;
                   }
-                  processRawVCUpdates(vmDataList, _vcVlsiVersion);
-                  vmDataList.clear();
+                  processRawVCUpdates(vmDataList);
                }
             } catch (Throwable t) {
                _log.log(Level.SEVERE, "VHM: unexpected exception in ClusterStateChangeListener", t);
@@ -144,8 +142,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       _mainThread.start();
    }
 
-   protected void processRawVCUpdates(ArrayList<VMEventData> vmDataList, String version) {
-      if (vmDataList.isEmpty() && ((version == null) || version.equals(""))) {
+   protected void processRawVCUpdates(List<VMEventData> vmDataList) {
+      if (vmDataList == null) {
          if (_started) {
             try {
                _log.log(VhmLevel.USER, "VHM: temporarily lost connection to vCenter");

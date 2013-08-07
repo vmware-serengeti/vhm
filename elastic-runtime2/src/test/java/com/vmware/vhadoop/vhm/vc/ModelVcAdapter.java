@@ -14,6 +14,7 @@
 ***************************************************************************/
 package com.vmware.vhadoop.vhm.vc;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,7 @@ import com.vmware.vhadoop.vhm.model.api.Workload;
 import com.vmware.vhadoop.vhm.model.vcenter.Folder;
 import com.vmware.vhadoop.vhm.model.vcenter.VM;
 import com.vmware.vhadoop.vhm.model.vcenter.VirtualCenter;
-import com.vmware.vim.vmomi.client.Client;
+import com.vmware.vim.binding.vim.PerformanceManager;
 
 public class ModelVcAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger("VcModelAdapter");
@@ -62,15 +63,7 @@ public class ModelVcAdapter implements VCActions {
     * This method is expected to block until there are applicable updates
     */
    @Override
-   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) throws InterruptedException {
-      String result = version;
-
-      if (!version.equals("")) {
-         _log.severe("Version is presumed to be \"\", version specified was "+version);
-         return "";
-      }
-
-
+   public List<VMEventData> waitForPropertyChange(String folderName) throws InterruptedException {
       List<VM> vms;
       try {
          setUpdateThread(Thread.currentThread());
@@ -79,6 +72,7 @@ public class ModelVcAdapter implements VCActions {
          setUpdateThread(null);
       }
 
+      List<VMEventData> result = new ArrayList<VMEventData>();
       for (VM vm : vms) {
          /* build the VMEventData list */
          VMEventData vmData = new VMEventData();
@@ -104,11 +98,7 @@ public class ModelVcAdapter implements VCActions {
             VcVlsiHelper.parseExtraConfig(vmData, key, value);
          }
 
-         vmDataList.add(vmData);
-      }
-
-      if (result.equals(VcVlsi.WAIT_FOR_UPDATES_CANCELED_STATUS)) {
-         throw new InterruptedException();
+         result.add(vmData);
       }
       return result;
    }
@@ -145,8 +135,8 @@ public class ModelVcAdapter implements VCActions {
    }
 
    @Override
-   public Client getStatsPollClient() {
-      /* TODO: return a stats accessor for the model */
+   public PerformanceManager getPerformanceManager() {
+      // TODO Auto-generated method stub
       return null;
    }
 }

@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 
-import com.vmware.vim.vmomi.client.Client;
+import com.vmware.vim.binding.vim.PerformanceManager;
 
 /* Represents actions which can be invoked on the VC subsystem */
 public interface VCActions {
@@ -71,11 +71,11 @@ public interface VCActions {
 
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean b);
 
-   public String waitForPropertyChange(String folderName, String version, List<VMEventData> vmDataList) throws InterruptedException;
+   public List<VMEventData> waitForPropertyChange(String folderName) throws InterruptedException;
 
    public void interruptWait();
-
-   public Client getStatsPollClient();
+   
+   public PerformanceManager getPerformanceManager();
 
    public List<String> listVMsInFolder(String folderName);
 

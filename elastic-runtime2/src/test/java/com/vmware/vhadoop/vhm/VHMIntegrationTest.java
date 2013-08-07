@@ -72,7 +72,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    }
    
    void processNewEventData(VMEventData eventData) {
-      _vcActions.fakeWaitForUpdatesData("", eventData);
+      _vcActions.fakeWaitForUpdatesData(eventData);
       _vcActions.addVMToFolder(eventData._serengetiFolder, eventData._vmMoRef);
    }
    
