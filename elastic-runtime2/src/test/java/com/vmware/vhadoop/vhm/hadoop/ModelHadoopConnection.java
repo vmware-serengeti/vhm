@@ -95,6 +95,7 @@ public class ModelHadoopConnection extends HadoopConnection
       int target = Integer.valueOf(args[0]);
       Collection<TaskTracker> enabled = jobTracker.getAliveTaskTrackers();
       for (TaskTracker node : enabled) {
+         out.write("TT: ".getBytes());
          out.write(node.getHostname().getBytes());
          out.write("\n".getBytes());
       }
