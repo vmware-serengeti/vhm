@@ -112,7 +112,7 @@ public class HadoopErrorCodes {
       addErrorCode(ERROR_EXCLUDES_FILE_UPDATE, true, "Error while trying to update excludes file during %sing (wrong permissions/user perhaps?);", COMMAND);
       addErrorCode(ERROR_LOCK_FILE_WRITE, true, "Error while trying to write to lock file during %sing (wrong permissions/user perhaps?);", COMMAND);
 
-      /* JG: Per current design: excludes file is cleared by the "check" script => TTs will appear already recommissioned to the recommission script, so suppressing it... */
+      /* JG: Per current design: excludes file is cleared each time any recommission happens => TTs may appear already recommissioned to the recommission script, so suppressing it... */
       //addErrorCode(WARN_TT_EXCLUDESFILE, false, "One/More TTs were already %sed as per the excludes file (%s) while executing %s;", COMMAND, EXCLUDE_FILE, DRSCRIPT);
       addErrorCode(WARN_TT_EXCLUDESFILE, false, "Successfully executed %s script (%s);", COMMAND, DRSCRIPT);
 

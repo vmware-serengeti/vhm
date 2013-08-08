@@ -35,6 +35,7 @@ import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_COMMAND_NOT_F
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_EXCESS_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_FEWER_TTS;
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.SUCCESS;
+import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.UNKNOWN_ERROR;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -317,8 +318,10 @@ public class HadoopAdaptor implements HadoopActions {
       OutputStream out = new ByteArrayOutputStream();
       int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
+      _log.info("Error code from executing script " + rc);
+      
       String[] unformattedList = out.toString().split("\n");
-      Set<String> formattedList = new HashSet<String>();
+      Set<String> formattedList = new HashSet<String>(); //Note: set also avoids potential duplicate TTnames (e.g., when a TT is restarted without decommissioning)
       for (int i = 0; i < unformattedList.length-1; i++) {
          //Expecting TTs to be annotated as "TT: ttName"
          if (unformattedList[i].startsWith("TT:")) {
@@ -347,7 +350,7 @@ public class HadoopAdaptor implements HadoopActions {
 
       int iterations = 0;
       CompoundStatus getActiveStatus = null;
-      int rc = 0;
+      int rc = UNKNOWN_ERROR;
       Set<String> allActiveTTs = null;
       boolean retryTest;
       do {

@@ -139,6 +139,9 @@ checkTargetActiveTTs()
 	    fi
     done
 
+# Print list of ActiveTTs on stdout
+    printActiveTTs arrNewActiveTTs[@]
+
     if [[ $loc_mismatchTTs -eq 0 ]]; then
 	return 0
     elif [[ $loc_mismatchTTs -lt 0 ]]; then
@@ -151,25 +154,36 @@ checkTargetActiveTTs()
 # Print Active TTs (to be sent back to remote caller)
 printActiveTTs()
 {
-    local loc_hadoopHome=$1
+    ttList=("${!1}")
 
-    newActiveTTs=`$loc_hadoopHome/bin/hadoop job -list-active-trackers 2> $JTERRFILE`
-    arrNewActiveTTs=( $newActiveTTs )
-    
-    if [ -s $JTERRFILE ]; then
-        parseJTErrFile $JTERRFILE
-        returnVal=$?
-        if [ $returnVal -ne $WARN_IGNORE ]; then
-            exit $?
-        fi
-    fi
-
-# List of TT names (after removing initial tracker_)    
-    for tt in ${arrNewActiveTTs[@]}; do	
+    for tt in ${ttList[@]}; do
 	ttName=`echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement`
-	echo "TT: $ttName"
+	echo "TT: $ttName" >&6
     done
 }
+
+# Print Active TTs (to be sent back to remote caller)
+#printActiveTTs()
+#{
+#    local loc_hadoopHome=$1
+#
+#    newActiveTTs=`$loc_hadoopHome/bin/hadoop job -list-active-trackers 2> $JTERRFILE`
+#    arrNewActiveTTs=( $newActiveTTs )
+#    
+#    if [ -s $JTERRFILE ]; then
+#        parseJTErrFile $JTERRFILE
+#        returnVal=$?
+#        if [ $returnVal -ne $WARN_IGNORE ]; then
+#            exit $?
+#        fi
+#    fi
+#
+# List of TT names (after removing initial tracker_)    
+#    for tt in ${arrNewActiveTTs[@]}; do	
+#	ttName=`echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement`
+#	echo "TT: $ttName"
+#    done
+#}
 
 main()
 {
@@ -230,8 +244,9 @@ main()
 # Restore stdout
     exec 1>&6 6>&-
 
-# Print list of ActiveTTs on stdout
-    printActiveTTs $hadoopHome
+# Print list of ActiveTTs on stdout -- moved this up into checkTargetActiveTTs to avoid
+# potential discrepancy between setting error code and listing activeTTs
+#   printActiveTTs $hadoopHome
 
 
     exit $exitVal
