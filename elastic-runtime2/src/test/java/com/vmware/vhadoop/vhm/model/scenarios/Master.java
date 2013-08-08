@@ -274,7 +274,7 @@ public class Master extends VM
          capacity.set(CPU, Serengeti.defaultCpus * vCenter.getCpuSpeed());
          capacity.set(MEMORY, Serengeti.defaultMem);
 
-         Compute compute = (Compute) vCenter.createVM(clusterName+"-compute"+(computeNodesId++), capacity, computeOVA, serengeti);
+         Compute compute = (Compute) vCenter.createVM(clusterName+"-"+host.name()+"-compute"+(computeNodesId++), capacity, computeOVA, serengeti);
          nodes[i] = compute;
 
          compute.setExtraInfo("vhmInfo.serengeti.uuid", folder.name());

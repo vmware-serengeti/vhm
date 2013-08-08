@@ -544,7 +544,7 @@ abstract public class ModelTestBase<T extends Serengeti, M extends Master, J> ex
       }
 
       if (expected.equals(value)) {
-         _log.info(msg+" - expected value "+expected.toString()+" matched");
+         _log.info(msg+" - expected value "+expected.toString()+" matched "+value.toString());
          return true;
       }
 
