@@ -37,11 +37,13 @@ import com.vmware.vim.vmomi.client.Client;
 public class VcAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger(VcAdapter.class.getName());
 
-   private static long MAIN_VC_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
-   private static long CLONED_VC_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */      
+   private static long CONTROL_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
+   private static long WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
+   private static long STATS_POLL_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */      
 
-   private Client _cloneClient;   // used for stats polling 
-   private Client _defaultClient; // used for VC operations and the main waitForPropertyChange loop
+   private Client _controlClient; // used for VC control operations and is the parent client for the others
+   private Client _waitForUpdateClient;   // used for the main waitForPropertyChange loop
+   private Client _statsPollClient;   // used for VC stats collection
    private VcVlsi _vcVlsi;
    private final VcCredentials _vcCreds;
    private final String _rootFolderName; // root folder for this VHM instance
@@ -69,9 +71,10 @@ public class VcAdapter implements VCActions {
    // returns true if it successfully connected to VC
    private boolean initClients(boolean useCert) {
       try {
-         _defaultClient = _vcVlsi.connect(_vcCreds, useCert, null, MAIN_VC_CONNECTION_TIMEOUT_MILLIS);
-         _cloneClient = _vcVlsi.connect(_vcCreds, useCert, _defaultClient, CLONED_VC_CONNECTION_TIMEOUT_MILLIS);
-         if ((_defaultClient == null) || (_cloneClient == null)) {
+         _controlClient = _vcVlsi.connect(_vcCreds, useCert, null, CONTROL_CONNECTION_TIMEOUT_MILLIS);
+         _waitForUpdateClient = _vcVlsi.connect(_vcCreds, useCert, _controlClient, WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS);
+         _statsPollClient = _vcVlsi.connect(_vcCreds, useCert, _controlClient, STATS_POLL_CONNECTION_TIMEOUT_MILLIS);
+         if ((_controlClient == null) || (_waitForUpdateClient == null) || (_statsPollClient == null)) {
             _log.log(Level.WARNING, "Unable to get VC client");
             return false;
          }
@@ -103,8 +106,8 @@ public class VcAdapter implements VCActions {
     *  Reconnect to VC if connection timed out on either session
     *  Checking both session will also have the side effect of keep both sessions active whenever validate is called.
     */
-   private boolean validateConnection() {
-      boolean success = _vcVlsi.testConnection(_defaultClient) && _vcVlsi.testConnection(_cloneClient);
+   private boolean validateConnection(Client client) {
+      boolean success = _vcVlsi.testConnection(client);
       if (!success) {
          _log.warning("VHM: connection to vCenter dropped, attempting reconnection");
          return connect();
@@ -122,7 +125,7 @@ public class VcAdapter implements VCActions {
    }
    
    private boolean resetConnection() {
-      _defaultClient = _cloneClient = null;
+      _controlClient = _waitForUpdateClient = _statsPollClient = null;
       _vcVlsi.resetConnection();
       _vcVlsi.setThreadLocalCompoundStatus(_threadLocalStatus);
       _waitForUpdatesVersion = "";
@@ -131,14 +134,14 @@ public class VcAdapter implements VCActions {
 
    @Override
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean powerOn) {
-      if (!validateConnection()) {
+      if (!validateConnection(_controlClient)) {
          return null;
       }
       Map<String, Task> taskList = null;
       if (powerOn) {
-         taskList = _vcVlsi.powerOnVMs(_defaultClient, vmMoRefs);
+         taskList = _vcVlsi.powerOnVMs(_controlClient, vmMoRefs);
       } else {
-         taskList = _vcVlsi.powerOffVMs(_defaultClient, vmMoRefs);
+         taskList = _vcVlsi.powerOffVMs(_controlClient, vmMoRefs);
       }
       return convertTaskListToFutures(taskList);
    }
@@ -155,7 +158,7 @@ public class VcAdapter implements VCActions {
 
             @Override
             public Boolean get() throws InterruptedException, ExecutionException {
-               return _vcVlsi.waitForTask(_defaultClient, task);
+               return _vcVlsi.waitForTask(_controlClient, task);
             }
 
             @Override
@@ -178,12 +181,12 @@ public class VcAdapter implements VCActions {
 
    @Override
    public List<VMEventData> waitForPropertyChange(String folderName) throws InterruptedException {
-      if (!validateConnection()) {
+      if (!validateConnection(_waitForUpdateClient)) {
          return null;
       }
       List<VMEventData> result = new ArrayList<VMEventData>();
       for (int i=0; i<2; i++) {
-         String versionStatus = _vcVlsi.waitForUpdates(_defaultClient, folderName, _waitForUpdatesVersion, result);
+         String versionStatus = _vcVlsi.waitForUpdates(_waitForUpdateClient, folderName, _waitForUpdatesVersion, result);
          if (versionStatus.equals(VcVlsi.WAIT_FOR_UPDATES_CANCELED_STATUS)) {
             throw new InterruptedException();
          } else
@@ -197,6 +200,7 @@ public class VcAdapter implements VCActions {
             resetConnection();
             continue;
          } else {
+            _log.info("Updating waitForUpdates version to "+versionStatus);
             _waitForUpdatesVersion = versionStatus;
          }
          break;
@@ -206,15 +210,18 @@ public class VcAdapter implements VCActions {
 
    @Override
    public PerformanceManager getPerformanceManager() {
-      return _vcVlsi.getPerformanceManager(_cloneClient);
+      if (!validateConnection(_statsPollClient)) {
+         return null;
+      }
+      return _vcVlsi.getPerformanceManager(_statsPollClient);
    }
 
    @Override
    public List<String> listVMsInFolder(String folderName) {
-      if (!validateConnection()) {
+      if (!validateConnection(_controlClient)) {
          return null;
       }
-      return _vcVlsi.getVMsInFolder(_defaultClient, _rootFolderName, folderName);
+      return _vcVlsi.getVMsInFolder(_controlClient, _rootFolderName, folderName);
    }
 
    @Override
