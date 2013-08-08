@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -56,7 +57,9 @@ public class ClusterMapImpl implements ClusterMap {
    private final Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
 
    private final ExtraInfoToClusterMapper _extraInfoMapper;
-
+//   private final Random _random = new Random();     /* Uncomment to do random failure testing */
+//   private final int FAILURE_FACTOR = 20;
+   
    ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
       _extraInfoMapper = mapper;
    }
@@ -396,6 +399,7 @@ public class ClusterMapImpl implements ClusterMap {
    @Override
    /* Return null if a cluster is not viable as there's no scaling we can do with it */
    public String getScaleStrategyKey(String clusterId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       ClusterInfo ci = getCluster(clusterId);
       if ((ci != null) && isClusterViable(clusterId)) {
          return ci._scaleStrategyKey;
@@ -417,6 +421,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Set<String> listComputeVMsForClusterHostAndPowerState(String clusterId, String hostId, boolean powerState) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if ((clusterId != null) && (hostId != null)) {
          return generateComputeVMList(clusterId, hostId, powerState);
       }
@@ -454,6 +459,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (clusterId != null) {
          return generateComputeVMList(clusterId, null, powerState);
       }
@@ -462,16 +468,19 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Set<String> listComputeVMsForPowerState(boolean powerState) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       return generateComputeVMList(null, null, powerState);
    }
 
    @Override
    public Set<String> listComputeVMsForCluster(String clusterId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       return generateComputeVMList(clusterId, null, null);
    }
 
    @Override
    public Set<String> listHostsWithComputeVMsForCluster(String clusterId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          Set<String> result = new HashSet<String>();
          for (VMInfo vminfo : _vms.values()) {
@@ -568,6 +577,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getClusterIdForFolder(String clusterFolderName) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_clusters)) {
          for (ClusterInfo ci : _clusters.values()) {
             String constantFolder = ci._constantData._serengetiFolder;     /* Set when cluster is created by Serengeti */
@@ -583,6 +593,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getHostIdForVm(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          VMInfo vmInfo = _vms.get(vmId);
          if (vmInfo != null) {
@@ -594,6 +605,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getClusterIdForVm(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          VMInfo vmInfo = _vms.get(vmId);
          if (vmInfo != null) {
@@ -605,6 +617,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public ClusterScaleCompletionEvent getLastClusterScaleCompletionEvent(String clusterId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_clusters)) {
          ClusterInfo info = getCluster(clusterId);
          if (info != null) {
@@ -618,6 +631,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Boolean checkPowerStateOfVms(Set<String> vmIds, boolean expectedPowerState) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          for (String vmId : vmIds) {
             Boolean result = checkPowerStateOfVm(vmId, expectedPowerState);
@@ -632,6 +646,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          VMInfo vm = _vms.get(vmId);
          if (vm != null) {
@@ -649,6 +664,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Map<String, String> getHostIdsForVMs(Set<String> vmIds) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (String vmId : vmIds) {
@@ -666,6 +682,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String[] getAllKnownClusterIds() {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_clusters)) {
          return _clusters.keySet().toArray(new String[0]);
       }
@@ -676,12 +693,14 @@ public class ClusterMapImpl implements ClusterMap {
    /* HadoopClusterInfo returned may contain null values for any of its fields except for clusterId
     * This method will return null if a JobTracker representing the cluster is powered off */
    public HadoopClusterInfo getHadoopInfoForCluster(String clusterId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_clusters)) {
          ClusterInfo ci = getCluster(clusterId);
          HadoopClusterInfo result = null;
          if (ci != null) {
             VMInfo vi = _vms.get(ci._constantData._masterMoRef);
-            if ((vi != null) && checkPowerStateOfVm(vi._moRef, true)) {
+            Boolean powerState = checkPowerStateOfVm(vi._moRef, true);
+            if ((vi != null) && (powerState != null) && powerState) {
                /* Constant and Variable data references are guaranteed to be non-null. iPAddress or dnsName may be null */
                result = new HadoopClusterInfo(ci._masterUUID, vi._variableData._dnsName,
                      vi._variableData._ipAddr, ci._jobTrackerPort);
@@ -695,6 +714,7 @@ public class ClusterMapImpl implements ClusterMap {
    @Override
    /* Note that the map returned will only contain VMs that have got a valid DnsName */
    public Map<String, String> getDnsNamesForVMs(Set<String> vmIds) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (String vmId : vmIds) {
@@ -712,6 +732,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getDnsNameForVM(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          VMInfo vminfo = _vms.get(vmId);
          if (vminfo != null) {
@@ -726,6 +747,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Map<String, String> getVmIdsForDnsNames(Set<String> dnsNames) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(dnsNames) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (VMInfo vminfo : _vms.values()) {
@@ -743,6 +765,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getVmIdForDnsName(String dnsName) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          for (VMInfo vminfo : _vms.values()) {
             String dnsNameToTest = vminfo._variableData._dnsName;
@@ -756,6 +779,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Integer getNumVCPUsForVm(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          VMInfo vm = _vms.get(vmId);
          if (vm != null) {
@@ -767,6 +791,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public Long getPowerOnTimeForVm(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_vms)) {
          VMInfo vm = _vms.get(vmId);
          if (vm != null) {
@@ -778,6 +803,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String getExtraInfo(String clusterId, String key) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       ClusterInfo info = getCluster(clusterId);
       if (info != null) {
          if (info._extraInfo != null) {
@@ -789,6 +815,7 @@ public class ClusterMapImpl implements ClusterMap {
 
    @Override
    public String[] getAllClusterIdsForScaleStrategyKey(String key) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(_clusters) && (key != null)) {
          Set<String> result = new HashSet<String>();
          for (String clusterId : _clusters.keySet()) {
