@@ -679,33 +679,36 @@ public class VcVlsi {
       return result;
    }
 
-
    public String waitForUpdates(Client client, String baseFolderName, String version, List<VMEventData> vmDataList) {
       CompoundStatus status = new CompoundStatus("waitForUpdates");
-      String result = version;
+      String newVersion = version;
+      /* There is an expectation that this method should never return null */
+      if (newVersion == null) {
+         newVersion = "";
+      }
       try {
          Folder f = getFolderForName(client, null, baseFolderName);
          if (f == null) {
             // This is normal state when user hasn't created any hadoop clusters yet
             _log.log(Level.INFO, "No found clusters for hadoop UUID " + baseFolderName);
          } else {
-            result = pcVMsInFolder(client, f, version, vmDataList);
+            newVersion = pcVMsInFolder(client, f, version, vmDataList);
          }
          status.registerTaskSucceeded();
       } catch (RequestCanceled e) {
          _log.info("waitForUpdates request has been canceled");
-         result = WAIT_FOR_UPDATES_CANCELED_STATUS;
+         newVersion = WAIT_FOR_UPDATES_CANCELED_STATUS;
       } catch (InvalidCollectorVersion e) {
          _log.info("propertyCollector version has become stale");
-         result = WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION_STATUS;
+         newVersion = WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION_STATUS;
       } catch (InvalidProperty e) {
          _log.info("propertyCollector property is invalid: "+e);
-         result = WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS;
+         newVersion = WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS;
       } catch (Exception e) {
          reportException("Unexpected exception waiting for updates", e, status);
       }
       getCompoundStatus().addStatus(status);
-      return result;
+      return newVersion;
    }
 
    public List<String> getVMsInFolder(Client client, String baseFolderName, String folderName) {

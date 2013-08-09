@@ -376,7 +376,9 @@ public class VHM implements EventConsumer {
             if (event instanceof AbstractClusterScaleEvent) {
                /* Derive the cluster ID and other details if the event does not already have it */
                String clusterId = completeClusterScaleEventDetails((AbstractClusterScaleEvent)event);
-               updateOrCreateClusterScaleEventSet(clusterId, (ClusterScaleEvent)event, clusterScaleEventMap);
+               if (clusterId != null) {
+                  updateOrCreateClusterScaleEventSet(clusterId, (ClusterScaleEvent)event, clusterScaleEventMap);
+               }
             }
          }
       }
@@ -532,6 +534,7 @@ public class VHM implements EventConsumer {
       final Set<ClusterScaleCompletionEvent> completionEvents = getClusterScaleCompletionEvents(events);
 
       /* clusterScaleEvents are events suggesting the scaling up or down of a cluster */
+      /* (we really want to ensure that no null clusterIds get added to clusterScaleEvents in the event of an error) */
       final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
 
       /* ClusterMap is updated by VHM based on events that come in from the ClusterStateChangeListener
@@ -570,6 +573,10 @@ public class VHM implements EventConsumer {
        * The ordering in which we process the clusters doesn't matter as they will be done concurrently */
       if (clusterScaleEvents.size() > 0) {
          for (String clusterId : clusterScaleEvents.keySet()) {
+            if (clusterId == null) {
+               /* This should not happen - defensive coding */
+               continue;
+            }
             Set<ClusterScaleEvent> unconsolidatedEvents = clusterScaleEvents.get(clusterId);
             if (unconsolidatedEvents == null) {
                continue;
