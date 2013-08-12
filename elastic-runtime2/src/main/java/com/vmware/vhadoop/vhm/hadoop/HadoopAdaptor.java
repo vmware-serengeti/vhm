@@ -46,7 +46,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -163,16 +162,13 @@ public class HadoopAdaptor implements HadoopActions {
       return result;
    }
 
-   private boolean isValidTTList(String[] tts) {
-      if (tts.length == 0) {
+   private boolean isValidTTList(Set<String> ttDnsNames) {
+      if ((ttDnsNames == null) || (ttDnsNames.isEmpty())) {
          _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - the list is empty");
          return false;
       }
 
-      _log.log(Level.INFO, "TTs length: " + tts.length);
-
-      Set<String> temp = new TreeSet<String>();
-      for (String tt : tts) {
+      for (String tt : ttDnsNames) {
          if (tt == null) {
             _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - null task tracker name");
             return false;
@@ -181,16 +177,12 @@ public class HadoopAdaptor implements HadoopActions {
             _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - blank task tracker name");
             return false;
          }
-         if (!temp.add(tt)) {
-            _log.log(Level.SEVERE, "VHM: validating task tracker list failed while de/recommisioning - list contains duplicates");
-            return false;
-         }
       }
 
       return true;
    }
 
-   private String createVMList(String[] tts) {
+   private String createVMList(Set<String> tts) {
       StringBuilder sb = new StringBuilder();
       for (String tt : tts) {
          sb.append(tt).append('\n');
@@ -270,11 +262,10 @@ public class HadoopAdaptor implements HadoopActions {
       return rc;
    }
 
-   private CompoundStatus decomRecomTTs(String opDesc, Map<String, String> tts, HadoopClusterInfo cluster, String scriptFileName, String listFileName) {
+   private CompoundStatus decomRecomTTs(String opDesc, Set<String> ttDnsNames, HadoopClusterInfo cluster, String scriptFileName, String listFileName) {
       CompoundStatus status = new CompoundStatus("decomRecomTTs");
 
-      String[] dnsNameArray = tts.values().toArray(new String[0]);
-      if (!isValidTTList(dnsNameArray)) {
+      if (!isValidTTList(ttDnsNames)) {
          String errorMsg = opDesc+" failed due to bad task tracker list";
          _log.log(Level.SEVERE, "<%C"+cluster.getClusterId()+"%C>: "+errorMsg);
          status.registerTaskFailed(false, errorMsg);
@@ -288,7 +279,7 @@ public class HadoopAdaptor implements HadoopActions {
       setErrorParamsForCommand(cluster, opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
 
       OutputStream out = new ByteArrayOutputStream();
-      String operationList = createVMList(dnsNameArray);
+      String operationList = createVMList(ttDnsNames);
       int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
       if (rc == 0) {
          rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
@@ -298,13 +289,13 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
-   public void decommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster) {
-      getCompoundStatus().addStatus(decomRecomTTs("Decommission", tts, cluster, DECOM_SCRIPT_FILE_NAME, DECOM_LIST_FILE_NAME));
+   public void decommissionTTs(Set<String> ttDnsNames, HadoopClusterInfo cluster) {
+      getCompoundStatus().addStatus(decomRecomTTs("Decommission", ttDnsNames, cluster, DECOM_SCRIPT_FILE_NAME, DECOM_LIST_FILE_NAME));
    }
 
    @Override
-   public void recommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster) {
-      getCompoundStatus().addStatus(decomRecomTTs("Recommission", tts, cluster, RECOM_SCRIPT_FILE_NAME, RECOM_LIST_FILE_NAME));
+   public void recommissionTTs(Set<String> ttDnsNames, HadoopClusterInfo cluster) {
+      getCompoundStatus().addStatus(decomRecomTTs("Recommission", ttDnsNames, cluster, RECOM_SCRIPT_FILE_NAME, RECOM_LIST_FILE_NAME));
    }
 
    @Override
@@ -338,13 +329,26 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
-   public Set<String> checkTargetTTsSuccess(String opType, Map<String, String> affectedTTs, int totalTargetEnabled, HadoopClusterInfo cluster) {
-      Set<String> patients = new HashSet<String>(affectedTTs.values());
+   /* Returns the set of active dnsNames based on input Set */
+   public Set<String> checkTargetTTsSuccess(String opType, Set<String> ttDnsNames, int totalTargetEnabled, HadoopClusterInfo cluster) {
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
 
-	   _log.log(Level.INFO, "Affected TTs:"+patients);
+      if (ttDnsNames == null) {
+         _log.warning("No valid TT names provided");
+         return null;
+      }
+      
+      /* We don't expect null or empty values, but weed out anyway */
+      ttDnsNames.remove(null);
+      ttDnsNames.remove("");
+      if (ttDnsNames.size() == 0) {
+         _log.warning("No valid TT names provided");
+         return null;
+      }
+      
+	   _log.log(Level.INFO, "Affected TTs: "+ttDnsNames);
 
       setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
 
@@ -356,7 +360,7 @@ public class HadoopAdaptor implements HadoopActions {
       do {
     	   if (iterations > 0) {
        	   _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
-       	   _log.log(Level.INFO, "Affected TTs:"+patients);
+       	   _log.log(Level.INFO, "Affected TTs: "+ttDnsNames);
          }
 
          getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
@@ -367,7 +371,7 @@ public class HadoopAdaptor implements HadoopActions {
     	   long activeTTsElapsedTime = System.currentTimeMillis() - activeTTsStartTime;
 
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
-    	   if ((opType.equals("Recommission") && allActiveTTs.containsAll(patients)) || (opType.equals("Decommission") && patients.retainAll(allActiveTTs) && patients.isEmpty())) {
+    	   if ((opType.equals("Recommission") && allActiveTTs.containsAll(ttDnsNames)) || (opType.equals("Decommission") && ttDnsNames.retainAll(allActiveTTs) && ttDnsNames.isEmpty())) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
             rc = SUCCESS;
             break;
@@ -404,27 +408,7 @@ public class HadoopAdaptor implements HadoopActions {
          getCompoundStatus().addStatus(getActiveStatus);
       }
 
-      return convertDnsNamesToVmIds(affectedTTs, allActiveTTs);
-   }
-
-   private Set<String> convertDnsNamesToVmIds(Map<String, String> vmIdToDnsName, Set<String> allActiveTTs) {
-      Set<String> result = new HashSet<String>();
-      Map<String, String> dnsNameToVmId = buildReverseLookup(vmIdToDnsName);
-      for (String activeTT : allActiveTTs) {
-         String vmId = dnsNameToVmId.get(activeTT);
-         if (vmId != null) {
-            result.add(vmId);
-         }
-      }
-      return result;
-   }
-
-   private Map<String, String> buildReverseLookup(Map<String, String> vmIdToDnsName) {
-      Map<String, String> result = new HashMap<String, String>();
-      for (String vmId : vmIdToDnsName.keySet()) {
-         result.put(vmIdToDnsName.get(vmId), vmId);
-      }
-      return result;
+      return allActiveTTs;
    }
 
    /**

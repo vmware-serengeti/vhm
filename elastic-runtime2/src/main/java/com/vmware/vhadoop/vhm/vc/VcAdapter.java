@@ -200,7 +200,7 @@ public class VcAdapter implements VCActions {
             resetConnection();
             continue;
          } else if (!_waitForUpdatesVersion.equals(versionStatus)) {
-            _log.info("Updating waitForUpdates version to "+versionStatus);
+            _log.fine("Updating waitForUpdates version to "+versionStatus);
             _waitForUpdatesVersion = versionStatus;
          }
          break;

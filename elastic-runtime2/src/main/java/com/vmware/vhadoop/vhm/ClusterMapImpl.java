@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -712,15 +711,14 @@ public class ClusterMapImpl implements ClusterMap {
    }
 
    @Override
-   /* Note that the map returned will only contain VMs that have got a valid DnsName */
+   /* Note that the method returns all valid input VM ids, even if they have null DNS names */
    public Map<String, String> getDnsNamesForVMs(Set<String> vmIds) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (assertHasData(vmIds) && assertHasData(_vms)) {
          Map<String, String> results = new HashMap<String, String>();
          for (String vmId : vmIds) {
-            String dnsName = getDnsNameForVM(vmId);
-            if (dnsName != null) {
-               results.put(vmId, dnsName);
+            if (_vms.get(vmId) != null) {
+               results.put(vmId, getDnsNameForVM(vmId));
             }
          }
          if (results.size() > 0) {

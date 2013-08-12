@@ -145,7 +145,8 @@ public class NonThreadSafeSshUtils implements SshUtils
             if (!channel.isConnected()) {
                exitStatus = channel.getExitStatus();
                if (exitStatus != 0) {
-                  logger.log(Level.INFO, "VHM: execution of command on remote host failed: "+command+", exit status - "+channel.getExitStatus());
+                  /* Non-zero exit code does not necessarily mean failure, it could mean retry */
+                  logger.log(Level.INFO, "VHM: execution of command on remote host: "+command+", returned exit status - "+channel.getExitStatus());
                }
 
                break;

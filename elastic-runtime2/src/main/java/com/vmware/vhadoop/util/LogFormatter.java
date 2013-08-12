@@ -38,6 +38,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.IllegalFormatConversionException;
 import java.util.Map;
+import java.util.Set;
 import java.util.UnknownFormatConversionException;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
@@ -215,6 +216,21 @@ public class LogFormatter extends Formatter {
          result.append(hasIds.substring(nextInbetweenText));
       }
       return result;
+   }
+
+   public static String constructListOfLoggableVms(Set<String> vmIds) {
+      if (vmIds == null) {
+         return "null";
+      }
+      if (vmIds.isEmpty()) {
+         return "[]";
+      }
+      StringBuffer sb = new StringBuffer();
+      for (String activeVmId : vmIds) {
+         sb.append("<%V").append(activeVmId).append("%V>, ");
+      }
+      sb.delete(sb.length()-2, sb.length());
+      return sb.toString();
    }
 
 }

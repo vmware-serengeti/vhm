@@ -30,7 +30,6 @@
 
 package com.vmware.vhadoop.api.vhm;
 
-import java.util.Map;
 import java.util.Set;
 
 /* Represents actions which can be invoked on the Hadoop subsystem */
@@ -84,22 +83,11 @@ public interface HadoopActions {
       }
    }
 
-   /** 
-	 * 	Decommission a given set of TaskTrackers from a JobTracker 
-	 *	@param TaskTrackers that need to be decommissioned
-	 *  @return SUCCESS/FAIL
-	 */
-		public void decommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster);
+   public void decommissionTTs(Set<String> ttDnsNames, HadoopClusterInfo cluster);
 
-	/** 
-	 * 	Recommission a given set of TaskTrackers to a JobTracker 
-	 *	@param TaskTrackers that need to be recommissioned/added
-	 *  @return SUCCESS/FAIL
-	 */
-		public void recommissionTTs(Map<String, String> tts, HadoopClusterInfo cluster);
-
-		
-		public Set<String> checkTargetTTsSuccess(String opType, Map<String, String> tts, int totalTargetEnabled, HadoopClusterInfo cluster);
-		
-	   public Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled);
+   public void recommissionTTs(Set<String> ttDnsNames, HadoopClusterInfo cluster);
+	
+   public Set<String> checkTargetTTsSuccess(String opType, Set<String> ttDnsNames, int totalTargetEnabled, HadoopClusterInfo cluster);
+	
+   public Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled);
 }

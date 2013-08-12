@@ -105,7 +105,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             } finally {
                unlockClusterMap(clusterMap);
             }
-            Set<String> uninitializedVmIds = null;
+            Set<String> unresponsiveVmIds = null;
             if (delta > 0) {
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                limitEvent.reportProgress(10, null);
@@ -113,7 +113,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   Set<String> enabledTTs = _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
                   if (enabledTTs != null) {
                      _log.fine("Enabled TTs: "+enabledTTs);
-                     uninitializedVmIds = diffIds(vmsToED, enabledTTs);
+                     unresponsiveVmIds = diffIds(vmsToED, enabledTTs);
                      limitEvent.reportProgress(30, null);
                      returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
@@ -131,7 +131,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   Set<String> disabledTTs = _enableDisablePolicy.disableTTs(vmsToED, targetSize, clusterId);
                   if (disabledTTs != null) {
                      _log.fine("Disabled TTs: "+disabledTTs);
-                     uninitializedVmIds = diffIds(vmsToED, disabledTTs);
+                     unresponsiveVmIds = diffIds(vmsToED, disabledTTs);
                      limitEvent.reportProgress(30, null);
                      returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
@@ -146,8 +146,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             if (tlStatus.getFailedTaskCount() == 0) {
                limitEvent.reportCompletion();
             } else {
-               if (uninitializedVmIds != null) {
-                  for (String uninitializedVmId : uninitializedVmIds) {
+               if (unresponsiveVmIds != null) {
+                  for (String uninitializedVmId : unresponsiveVmIds) {
                      _log.warning("<%C"+event.getClusterId()+"%C>: <%V"+uninitializedVmId+"%V> - did not successfully respond in a reasonable time");
                   }
                }
