@@ -39,7 +39,8 @@ public class VcAdapter implements VCActions {
 
    private static long CONTROL_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
    private static long WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
-   private static long STATS_POLL_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */      
+   private static long STATS_POLL_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */     
+   private static long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = 5000;   /* If no clusters are installed, we should be pretty much dormant */
 
    private Client _controlClient; // used for VC control operations and is the parent client for the others
    private Client _waitForUpdateClient;   // used for the main waitForPropertyChange loop
@@ -199,6 +200,10 @@ public class VcAdapter implements VCActions {
             /* We should never see this */
             resetConnection();
             continue;
+         } else
+         if (versionStatus.equals(VcVlsi.WAIT_FOR_UPDATES_NO_CLUSTERS)) {
+            /* If no clusters are yet created, VHM should be pretty much dormant */
+            Thread.sleep(SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS);
          } else if (!_waitForUpdatesVersion.equals(versionStatus)) {
             _log.fine("Updating waitForUpdates version to "+versionStatus);
             _waitForUpdatesVersion = versionStatus;

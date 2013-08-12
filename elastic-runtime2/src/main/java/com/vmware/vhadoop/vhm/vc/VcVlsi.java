@@ -136,6 +136,7 @@ public class VcVlsi {
    static final String WAIT_FOR_UPDATES_CANCELED_STATUS = "VC_WAIT_FOR_UPDATES_CANCELED";
    static final String WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION_STATUS = "VC_WAIT_FOR_UPDATES_INVALID_COLLECTOR_VERSION";
    static final String WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS = "VC_WAIT_FOR_UPDATES_INVALID_PROPERTY";
+   static final String WAIT_FOR_UPDATES_NO_CLUSTERS = "VC_WAIT_FOR_UPDATES_NO_CLUSTERS";
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private PropertyCollector _waitingOnPc;
@@ -691,6 +692,7 @@ public class VcVlsi {
          if (f == null) {
             // This is normal state when user hasn't created any hadoop clusters yet
             _log.log(Level.INFO, "No found clusters for hadoop UUID " + baseFolderName);
+            newVersion = WAIT_FOR_UPDATES_NO_CLUSTERS;
          } else {
             newVersion = pcVMsInFolder(client, f, version, vmDataList);
          }
