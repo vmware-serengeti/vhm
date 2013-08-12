@@ -109,7 +109,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    public Set<String> disableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
       Map<String, String> dnsNameMap = null;
       HadoopClusterInfo hadoopCluster = null;
-      Set<String> activeVmIds = null;
+      Set<String> successfulIds = null;
 
       ClusterMap clusterMap = null;
       try {
@@ -136,9 +136,11 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          }
          /* TODO: Legacy code returns a CompoundStatus rather than modifying thread local version. Ideally it would be refactored for consistency */
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
-            activeVmIds = getActiveVmIds(_hadoopActions.checkTargetTTsSuccess("Decommission", validDnsNames, newTargetEnabled, hadoopCluster));
-            if ((activeVmIds != null) && !activeVmIds.isEmpty()) {
-               _log.log(VhmLevel.USER, "The following task trackers failed to decommission cleanly: "+LogFormatter.constructListOfLoggableVms(activeVmIds));
+            Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Decommission", validDnsNames, newTargetEnabled, hadoopCluster);
+            successfulIds = getVmIdSubset(ttVmIds, getActiveVmIds(activeDnsNames));
+            Set<String> unsuccessfulIds = getVmIdSubset(ttVmIds, successfulIds);
+            if (!unsuccessfulIds.isEmpty()) {
+               _log.log(VhmLevel.USER, "The following task trackers failed to decommission cleanly: "+LogFormatter.constructListOfLoggableVms(unsuccessfulIds));
             }
          }
          /* Power off all the VMs, decommissioned or not - note this does not block */
@@ -147,7 +149,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Unexpected VC error powering off Task Trackers");
          }
       }
-      return getSuccessfullyDisabledVmIds(ttVmIds, activeVmIds);
+      return successfulIds;
    }
    
    private Set<String> getVmIdsWithInvalidDnsNames(Map<String, String> dnsNameMap) {
@@ -240,10 +242,10 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       return result;
    }
 
-   private Set<String> getSuccessfullyDisabledVmIds(Set<String> allVmIds, Set<String> activeVmIds) {
+   private Set<String> getVmIdSubset(Set<String> allVmIds, Set<String> toRemove) {
       Set<String> result = new HashSet<String>(allVmIds);
-      if (activeVmIds != null) {
-         result.removeAll(activeVmIds);
+      if (toRemove != null) {
+         result.removeAll(toRemove);
       }
       return result;
    }
