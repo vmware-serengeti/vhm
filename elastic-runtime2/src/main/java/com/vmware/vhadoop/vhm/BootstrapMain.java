@@ -44,6 +44,7 @@ import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
 import com.vmware.vhadoop.vhm.hadoop.SimpleHadoopCredentials;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
+import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 import com.vmware.vhadoop.vhm.strategy.BalancedVMChooser;
 import com.vmware.vhadoop.vhm.strategy.JobTrackerEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
@@ -52,6 +53,8 @@ import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
 public class BootstrapMain
 {
+   public static VHMJsonReturnMessage _temp = VHMJsonReturnMessage.getVHMJsonReturnMessage();
+   
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
    public static final String DEFAULT_LOG_CONFIG_FILENAME = "logging.properties";
    public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";

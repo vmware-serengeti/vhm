@@ -42,6 +42,11 @@ public class VHMJsonReturnMessage {
    public final String error_msg;
    public final String progress_msg;
 
+   /* For internal initialization */
+   public static VHMJsonReturnMessage getVHMJsonReturnMessage() {
+      return new VHMJsonReturnMessage(false, false, 0, 0, "", "");
+   }
+   
    public VHMJsonReturnMessage(
           Boolean param_finished,
           Boolean param_succeed,

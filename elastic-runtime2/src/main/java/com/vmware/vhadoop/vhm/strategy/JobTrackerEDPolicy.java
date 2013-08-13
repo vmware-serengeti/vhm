@@ -37,6 +37,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    private final VCActions _vcActions;
 
    private static final long MAX_DNS_WAIT_TIME_MILLIS = 120000;
+   private static final long DNS_WAIT_SLEEP_TIME_MILLIS = 5000;
    
    public JobTrackerEDPolicy(HadoopActions hadoopActions, VCActions vcActions) {
       _hadoopActions = hadoopActions;
@@ -74,6 +75,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
          _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>"+constructUserLogMessage(vmIdsWithNoDns, validDnsNames, false));
 
+         _hadoopActions.recommissionTTs(ttVmIds, hadoopCluster);        /* pass ttVMids in here for now - this is bogus but harmless */
          if (_vcActions.changeVMPowerState(ttVmIds, true) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
             _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Failed to power on Task Trackers");
@@ -91,7 +93,6 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                }
 
                if (validDnsNames != null) {
-                  _hadoopActions.recommissionTTs(validDnsNames, hadoopCluster);
                   activeVmIds = _hadoopActions.checkTargetTTsSuccess("Recommission", validDnsNames, totalTargetEnabled, hadoopCluster);
                }
             } else {
@@ -191,7 +192,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             }
             _log.info("Looking for valid DNS names for "+LogFormatter.constructListOfLoggableVms(getVmIdsWithInvalidDnsNames(newDnsNameMap)));
             try {
-               Thread.sleep(5000);
+               Thread.sleep(DNS_WAIT_SLEEP_TIME_MILLIS);
             } catch (InterruptedException e) {}
          } while (System.currentTimeMillis() <= endTime);
          /* If we fell out of the loop, it's likely we didn't find everything we were looking for */
