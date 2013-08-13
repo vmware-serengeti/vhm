@@ -528,6 +528,7 @@ public class VcVlsi {
                } else if (pcName.equals(VC_PROP_VM_NAME)) {
                   vmData._myName = (String)pcValue;
                   /* Update this as early as possible. Doesn't matter if the key already exists */
+                  logger.log(Level.FINE, "Associating vmId "+vmData._vmMoRef+" with name "+vmData._myName);
                   LogFormatter._vmIdToNameMapper.put(vmData._vmMoRef, vmData._myName);
                } else if (pcName.equals(VC_PROP_VM_POWER_STATE)) {
                   PowerState ps = (PowerState)pcValue;

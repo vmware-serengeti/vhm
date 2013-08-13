@@ -267,6 +267,8 @@ public class ClusterMapImpl implements ClusterMap {
             if (powerState) {
                vi._powerOnTime = System.currentTimeMillis();
             } else {
+               vi._variableData._dnsName = null;    /* Not safe to cache - it might change */    
+               vi._variableData._ipAddr = null;     /* Not safe to cache - it might change */
                vi._powerOnTime = 0;
             }
 

@@ -66,32 +66,34 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      /* Note: Individual DNS name values can be null here in some circumstances, but the valid vmIds will still be part of the hostNames keySet() */
       if ((dnsNameMap != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
 
          Set<String> validDnsNames = getValidDnsNames(dnsNameMap);
-         Set<String> vmIdsWithInvalidDns = getVmIdsWithInvalidDnsNames(dnsNameMap);
+         Set<String> vmIdsWithNoDns = getVmIdsWithInvalidDnsNames(dnsNameMap);
 
-         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>"+constructUserLogMessage(vmIdsWithInvalidDns, validDnsNames, false));
+         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>"+constructUserLogMessage(vmIdsWithNoDns, validDnsNames, false));
 
-         /* Only send TTs with valid dnsNames to be properly recommissioned - the rest will just be powered on */
-         if (validDnsNames != null) {
-            _hadoopActions.recommissionTTs(validDnsNames, hadoopCluster);
-         }
          if (_vcActions.changeVMPowerState(ttVmIds, true) == null) {
             status.registerTaskFailed(false, "Failed to change VM power state in VC");
             _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Failed to power on Task Trackers");
          } else {
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-               if (vmIdsWithInvalidDns != null) {
-                  Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(vmIdsWithInvalidDns, MAX_DNS_WAIT_TIME_MILLIS);
+               if (vmIdsWithNoDns != null) {
+                  Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(vmIdsWithNoDns, MAX_DNS_WAIT_TIME_MILLIS);
                   if (newDnsNames != null) {
-                     validDnsNames.addAll(newDnsNames);
+                     if (validDnsNames == null) {
+                        validDnsNames = newDnsNames;
+                     } else {
+                        validDnsNames.addAll(newDnsNames);
+                     }
                   }
                }
-               /* Even if we still don't have a full list of valid DNS names, we have to hope we'll reach our original target */
-               activeVmIds = _hadoopActions.checkTargetTTsSuccess("Recommission", validDnsNames, totalTargetEnabled, hadoopCluster);
+
+               if (validDnsNames != null) {
+                  _hadoopActions.recommissionTTs(validDnsNames, hadoopCluster);
+                  activeVmIds = _hadoopActions.checkTargetTTsSuccess("Recommission", validDnsNames, totalTargetEnabled, hadoopCluster);
+               }
             } else {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Unexpected VC error powering on Task Trackers");
             }
@@ -187,7 +189,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             } finally {
                unlockClusterMap(clusterMap);
             }
-            _log.info("Still looking for valid DNS names for "+LogFormatter.constructListOfLoggableVms(getVmIdsWithInvalidDnsNames(newDnsNameMap)));
+            _log.info("Looking for valid DNS names for "+LogFormatter.constructListOfLoggableVms(getVmIdsWithInvalidDnsNames(newDnsNameMap)));
             try {
                Thread.sleep(5000);
             } catch (InterruptedException e) {}
