@@ -101,6 +101,10 @@ public class HadoopConnection {
 
       _log.log(Level.INFO, "Copying data to remote file "+remotePath+remoteFileName + " on jobtracker " + _hadoopCluster.getJobTrackerIpAddr());
 
+      if (_hadoopCluster.getJobTrackerIpAddr() == null) {
+         return HadoopErrorCodes.ERROR_JT_CONNECTION;
+      }
+
       ChannelExec channel = _sshUtils.createChannel(_log, _credentials, _hadoopCluster.getJobTrackerIpAddr(), _connectionProperties.getSshPort());
       if (channel == null) {
          return UNKNOWN_ERROR;          /* TODO: Improve */
@@ -126,6 +130,10 @@ public class HadoopConnection {
       int exitStatus = UNKNOWN_ERROR;
 
       _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker " + _hadoopCluster.getJobTrackerIpAddr());
+
+      if (_hadoopCluster.getJobTrackerIpAddr() == null) {
+         return HadoopErrorCodes.ERROR_JT_CONNECTION;
+      }
 
       ChannelExec channel = null;
       PrintStream ps = null;
@@ -160,6 +168,10 @@ public class HadoopConnection {
       return _hadoopHomePath;
    }
 
+   public boolean isStale(HadoopClusterInfo newClusterInfo) {
+      return !_hadoopCluster.equals(newClusterInfo);
+   }
+   
    public String getJobTrackerAddr() {
       return _hadoopCluster.getJobTrackerIpAddr();
    }

@@ -53,6 +53,8 @@ import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
 public class BootstrapMain
 {
+   /* Class initialize early to avoid occasional NoClassDefFoundError in model testing
+      Field is never used - public to avoid having it optimized out. Yes this is ugly. */
    public static VHMJsonReturnMessage _temp = VHMJsonReturnMessage.getVHMJsonReturnMessage();
    
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";

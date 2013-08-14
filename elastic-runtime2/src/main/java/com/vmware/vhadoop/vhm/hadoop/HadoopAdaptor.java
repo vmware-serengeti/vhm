@@ -147,8 +147,11 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    private HadoopConnection getConnectionForCluster(HadoopClusterInfo cluster) {
+      if ((cluster == null) || (cluster.getJobTrackerIpAddr() == null)) {
+         return null;
+      }
       HadoopConnection result = _connections.get(cluster.getClusterId());
-      if (result == null) {
+      if (result == null || result.isStale(cluster)) {
          /* TODO: SshUtils could be a single shared thread-safe object or non threadsafe object per connection */
          result = getHadoopConnection(cluster, _connectionProperties);
          result.setHadoopCredentials(_credentials);
@@ -276,15 +279,19 @@ public class HadoopAdaptor implements HadoopActions {
       String listRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + listFileName;
 
       HadoopConnection connection = getConnectionForCluster(cluster);
-      setErrorParamsForCommand(cluster, opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
-
-      OutputStream out = new ByteArrayOutputStream();
-      String operationList = createVMList(ttDnsNames);
-      int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
-      if (rc == 0) {
-         rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
+      if (connection != null) {
+         setErrorParamsForCommand(cluster, opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
+   
+         OutputStream out = new ByteArrayOutputStream();
+         String operationList = createVMList(ttDnsNames);
+         int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
+         if (rc == 0) {
+            rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
+         }
+         status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
+      } else {
+         status.registerTaskFailed(false, "Cound not create HadoopConnection");
       }
-      status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       return status;
    }
 
@@ -306,6 +313,9 @@ public class HadoopAdaptor implements HadoopActions {
 
    protected Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled, CompoundStatus status) {
       HadoopConnection connection = getConnectionForCluster(cluster);
+      if (connection == null) {
+         return null;
+      }
       OutputStream out = new ByteArrayOutputStream();
       int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
@@ -371,7 +381,9 @@ public class HadoopAdaptor implements HadoopActions {
     	   long activeTTsElapsedTime = System.currentTimeMillis() - activeTTsStartTime;
 
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
-    	   if ((opType.equals("Recommission") && allActiveTTs.containsAll(ttDnsNames)) || (opType.equals("Decommission") && ttDnsNames.retainAll(allActiveTTs) && ttDnsNames.isEmpty())) {
+    	   if ((allActiveTTs != null) && 
+    	         ((opType.equals("Recommission") && allActiveTTs.containsAll(ttDnsNames)) || 
+    	               (opType.equals("Decommission") && ttDnsNames.retainAll(allActiveTTs) && ttDnsNames.isEmpty()))) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
             rc = SUCCESS;
             break;

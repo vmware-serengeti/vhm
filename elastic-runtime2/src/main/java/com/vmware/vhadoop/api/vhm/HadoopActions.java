@@ -63,6 +63,49 @@ public interface HadoopActions {
       public Integer getJobTrackerPort() {
          return _jobTrackerPort;
       }
+
+      @Override
+      public int hashCode() {
+         final int prime = 31;
+         int result = 1;
+         result = prime * result + ((_clusterId == null) ? 0 : _clusterId.hashCode());
+         result = prime * result + ((_jobTrackerDnsName == null) ? 0 : _jobTrackerDnsName.hashCode());
+         result = prime * result + ((_jobTrackerIpAddr == null) ? 0 : _jobTrackerIpAddr.hashCode());
+         result = prime * result + ((_jobTrackerPort == null) ? 0 : _jobTrackerPort.hashCode());
+         return result;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+         if (this == obj)
+            return true;
+         if (obj == null)
+            return false;
+         if (getClass() != obj.getClass())
+            return false;
+         HadoopClusterInfo other = (HadoopClusterInfo) obj;
+         if (_clusterId == null) {
+            if (other._clusterId != null)
+               return false;
+         } else if (!_clusterId.equals(other._clusterId))
+            return false;
+         if (_jobTrackerDnsName == null) {
+            if (other._jobTrackerDnsName != null)
+               return false;
+         } else if (!_jobTrackerDnsName.equals(other._jobTrackerDnsName))
+            return false;
+         if (_jobTrackerIpAddr == null) {
+            if (other._jobTrackerIpAddr != null)
+               return false;
+         } else if (!_jobTrackerIpAddr.equals(other._jobTrackerIpAddr))
+            return false;
+         if (_jobTrackerPort == null) {
+            if (other._jobTrackerPort != null)
+               return false;
+         } else if (!_jobTrackerPort.equals(other._jobTrackerPort))
+            return false;
+         return true;
+      }
    }
 
    public class JTConfigInfo {
