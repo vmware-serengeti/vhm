@@ -175,6 +175,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
                String clusterName = (masterIndex >= 0) ? masterVmName.substring(0, masterIndex) : masterVmName;
                String clusterId = constantData._myUUID;
                LogFormatter._clusterIdToNameMapper.put(clusterId, clusterName);
+               _log.log(VhmLevel.USER, "VHM: mapping cluster id "+clusterId+" to cluster name "+clusterName);
                return clusterId;
             }
          }

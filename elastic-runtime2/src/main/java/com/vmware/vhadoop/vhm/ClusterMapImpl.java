@@ -58,7 +58,7 @@ public class ClusterMapImpl implements ClusterMap {
    private final ExtraInfoToClusterMapper _extraInfoMapper;
 //   private final Random _random = new Random();     /* Uncomment to do random failure testing */
 //   private final int FAILURE_FACTOR = 20;
-   
+
    ClusterMapImpl(ExtraInfoToClusterMapper mapper) {
       _extraInfoMapper = mapper;
    }
@@ -130,7 +130,7 @@ public class ClusterMapImpl implements ClusterMap {
       }
       if ((clusterId != null) && (constantData != null)) {
          ClusterInfo cluster = new ClusterInfo(clusterId, constantData);
-         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: recording existance of cluster");
+         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: recording existence of cluster");
          _clusters.put(clusterId, cluster);
       }
       return true;
@@ -267,7 +267,7 @@ public class ClusterMapImpl implements ClusterMap {
             if (powerState) {
                vi._powerOnTime = System.currentTimeMillis();
             } else {
-               vi._variableData._dnsName = null;    /* Not safe to cache - it might change */    
+               vi._variableData._dnsName = null;    /* Not safe to cache - it might change */
                vi._variableData._ipAddr = null;     /* Not safe to cache - it might change */
                vi._powerOnTime = 0;
             }

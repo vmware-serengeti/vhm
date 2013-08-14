@@ -38,14 +38,14 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
    private static final long MAX_DNS_WAIT_TIME_MILLIS = 120000;
    private static final long DNS_WAIT_SLEEP_TIME_MILLIS = 5000;
-   
+
    public JobTrackerEDPolicy(HadoopActions hadoopActions, VCActions vcActions) {
       _hadoopActions = hadoopActions;
       _vcActions = vcActions;
    }
 
-   /* This method blocks until it has made all reasonable efforts to determine that the TTs have been successfully registered with the JT 
-    * 
+   /* This method blocks until it has made all reasonable efforts to determine that the TTs have been successfully registered with the JT
+    *
     * When VMs are powered down, the DNS name and IP address are wiped to ensure that no stale entries persist. As such, recommission gets
     * a list of ttVmIds for powered-off VMs, none of which will yet have a DNS name. Typically VC gets the update of a fresh DNS name after
     * the JobTracker, so once the DNS names have come through from VC, the checkTargetTTsSuccess should complete as a formality.
@@ -54,7 +54,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    public Set<String> enableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
       HadoopClusterInfo hadoopCluster = null;
       Set<String> activeVmIds = null;
- 
+
       ClusterMap clusterMap = null;
       try {
          clusterMap = getAndReadLockClusterMap();
@@ -66,14 +66,14 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
 
-         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>"+constructUserLogMessage(ttVmIds, null, false));
+         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: "+constructUserLogMessage(ttVmIds, null, false));
 
          /* pass ttVMids in here for now - this is currently bogus but harmless - all this does currently is delete any exclude list */
          _hadoopActions.recommissionTTs(ttVmIds, hadoopCluster);
-         
+
          if (_vcActions.changeVMPowerState(ttVmIds, true) == null) {
-            status.registerTaskFailed(false, "Failed to change VM power state in VC");
-            _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Failed to power on Task Trackers");
+            status.registerTaskFailed(false, "Failed to change VM power state in vCenter");
+            _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: failed to power on task trackers");
          } else {
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
                Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(ttVmIds, MAX_DNS_WAIT_TIME_MILLIS);
@@ -82,15 +82,15 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                   activeVmIds = getActiveVmIds(activeDnsNames);
                }
             } else {
-               _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Unexpected VC error powering on Task Trackers");
+               _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: unexpected vCenter error powering on task trackers");
             }
          }
       }
       return activeVmIds;
    }
 
-   /* This method blocks until it has made all reasonable efforts to determine that the TTs have been successfully unregistered with the JT 
-    * 
+   /* This method blocks until it has made all reasonable efforts to determine that the TTs have been successfully unregistered with the JT
+    *
     * Effective hadoop de-commission must work with dnsNames, whereas the power-off needs VM IDs. In certain error cases, there may be no
     * valid DNS name for some of the vmIds to de-commission. In this case, we must simply power those off. Note that this may leave the JT
     * thinking that these TTs are still alive for a period of time */
@@ -111,13 +111,13 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
       if ((dnsNameMap != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
-         
+
          Set<String> validDnsNames = getValidDnsNames(dnsNameMap);
          Set<String> vmIdsWithInvalidDns = getVmIdsWithInvalidDnsNames(dnsNameMap);
          /* Since we can only check for de-commission of VMs with valid dns names, we should adjust the target accordingly */
          int newTargetEnabled = (vmIdsWithInvalidDns == null) ? totalTargetEnabled : totalTargetEnabled + vmIdsWithInvalidDns.size();
 
-         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>"+constructUserLogMessage(vmIdsWithInvalidDns, validDnsNames, true));
+         _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: "+constructUserLogMessage(vmIdsWithInvalidDns, validDnsNames, true));
 
          /* Only send TTs with valid dnsNames to be properly decommissioned - the rest will just be powered off */
          if (validDnsNames != null) {
@@ -129,18 +129,18 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             successfulIds = getVmIdSubset(ttVmIds, getActiveVmIds(activeDnsNames));
             Set<String> unsuccessfulIds = getVmIdSubset(ttVmIds, successfulIds);
             if (!unsuccessfulIds.isEmpty()) {
-               _log.log(VhmLevel.USER, "The following task trackers failed to decommission cleanly: "+LogFormatter.constructListOfLoggableVms(unsuccessfulIds));
+               _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: the following task trackers failed to decommission cleanly: "+LogFormatter.constructListOfLoggableVms(unsuccessfulIds));
             }
          }
          /* Power off all the VMs, decommissioned or not - note this does not block */
          if (_vcActions.changeVMPowerState(ttVmIds, false) == null) {
-            status.registerTaskFailed(false, "Failed to change VM power state in VC");
-            _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Unexpected VC error powering off Task Trackers");
+            status.registerTaskFailed(false, "Failed to change VM power state in vCenter");
+            _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: unexpected vCenter error powering off task trackers");
          }
       }
       return successfulIds;
    }
-   
+
    private Set<String> getVmIdsWithInvalidDnsNames(Map<String, String> dnsNameMap) {
       Set<String> vmIdsWithInvalidDnsNames = null;
       for (String ttVmId : dnsNameMap.keySet()) {
@@ -196,9 +196,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    private String constructUserLogMessage(Set<String> vmIdsWithInvalidDns, Set<String> validDnsNames, boolean isDecommission) {
       int toDeRecommission = (validDnsNames == null) ? 0 : (validDnsNames.size());
       int toChangePowerState = (vmIdsWithInvalidDns == null) ? 0 : (vmIdsWithInvalidDns.size());
-      String powerOffMsg = (toChangePowerState == 0) ? "" : " powering "+(isDecommission ? "off " : "on ")+toChangePowerState+" task tracker"+
+      String powerOffMsg = (toChangePowerState == 0) ? "" : "powering "+(isDecommission ? "off " : "on ")+toChangePowerState+" task tracker"+
                                                          (toChangePowerState > 1 ? "s" : "");
-      String decommissionMsg = (toDeRecommission == 0) ? "" : " "+(isDecommission ? "de" : "re")+"commissioning "+toDeRecommission+" task tracker"+
+      String decommissionMsg = (toDeRecommission == 0) ? "" : (isDecommission ? "de" : "re")+"commissioning "+toDeRecommission+" task tracker"+
                                                          (toDeRecommission > 1 ? "s" : "") + (toChangePowerState > 0 ? ";" : "");
       return decommissionMsg + powerOffMsg;
    }
