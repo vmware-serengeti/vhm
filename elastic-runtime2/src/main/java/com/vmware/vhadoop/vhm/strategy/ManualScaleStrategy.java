@@ -29,6 +29,7 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
@@ -85,7 +86,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                clusterMap = getAndReadLockClusterMap();
                String clusterFolder = limitEvent.getClusterFolderName();
                clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
-               if (clusterId != null) {
+               if (clusterId != null) {               
                   Set<String> poweredOffVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
                   int poweredOffVms = (poweredOffVmList == null) ? 0 : poweredOffVmList.size();
                   Set<String> poweredOnVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
@@ -97,6 +98,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                      targetSize = limitEvent.getToSize();
                      delta = targetSize - poweredOnVms;
                   }
+                  _log.log(VhmLevel.USER, "Handling manual elasticity command from Serengeti for cluster: <%C"+clusterId+"%C> to set number of enabled compute nodes to " + targetSize);
                   returnEvent = new ClusterScaleDecision(clusterId);
                } else {
                   tlStatus.registerTaskFailed(false, "Unknown clusterId for Cluster Folder "+clusterFolder);
