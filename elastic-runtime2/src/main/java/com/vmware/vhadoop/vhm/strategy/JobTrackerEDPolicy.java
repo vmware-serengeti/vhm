@@ -36,8 +36,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    private final HadoopActions _hadoopActions;
    private final VCActions _vcActions;
 
-   private static final long MAX_DNS_WAIT_TIME_MILLIS = 120000;
-   private static final long DNS_WAIT_SLEEP_TIME_MILLIS = 5000;
+   private static final long MAX_DNS_WAIT_TIME_MILLIS = 180000;
+   private static final long MAX_DNS_WAIT_SLEEP_TIME_MILLIS = 5000;
 
    public JobTrackerEDPolicy(HadoopActions hadoopActions, VCActions vcActions) {
       _hadoopActions = hadoopActions;
@@ -49,6 +49,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
     * When VMs are powered down, the DNS name and IP address are wiped to ensure that no stale entries persist. As such, recommission gets
     * a list of ttVmIds for powered-off VMs, none of which will yet have a DNS name. Typically VC gets the update of a fresh DNS name after
     * the JobTracker, so once the DNS names have come through from VC, the checkTargetTTsSuccess should complete as a formality.
+    * 
+    * Method returns a set of all active VM IDs in the cluster
     */
    @Override
    public Set<String> enableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
@@ -78,6 +80,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
                Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(ttVmIds, MAX_DNS_WAIT_TIME_MILLIS);
                if (newDnsNames != null) {
+                  /* Returns all active dns names in the cluster */
                   Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Recommission", newDnsNames, totalTargetEnabled, hadoopCluster);
                   activeVmIds = getActiveVmIds(activeDnsNames);
                }
@@ -93,7 +96,10 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
     *
     * Effective hadoop de-commission must work with dnsNames, whereas the power-off needs VM IDs. In certain error cases, there may be no
     * valid DNS name for some of the vmIds to de-commission. In this case, we must simply power those off. Note that this may leave the JT
-    * thinking that these TTs are still alive for a period of time */
+    * thinking that these TTs are still alive for a period of time 
+    * 
+    * Method returns a list of all the TTs successfully decommissioned
+    */
    @Override
    public Set<String> disableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
       Map<String, String> dnsNameMap = null;
@@ -125,7 +131,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          }
 
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
+            /* Returns all active TTs in this cluster */
             Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Decommission", validDnsNames, newTargetEnabled, hadoopCluster);
+            /* This is the list of what we successfully de-commissioned */
             successfulIds = getVmIdSubset(ttVmIds, getActiveVmIds(activeDnsNames));
             Set<String> unsuccessfulIds = getVmIdSubset(ttVmIds, successfulIds);
             if (!unsuccessfulIds.isEmpty()) {
@@ -158,6 +166,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    private Set<String> blockAndGetDnsNamesForVmIdsWithoutCachedDns(Set<String> vmIdsWithInvalidDns, long timeoutMillis) {
       long endTime = System.currentTimeMillis() + timeoutMillis;
       Set<String> result = null;
+      int retryTimes = 0;
       if (vmIdsWithInvalidDns != null) {
          do {
             ClusterMap clusterMap = null;
@@ -178,7 +187,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             }
             _log.info("Looking for valid DNS names for "+LogFormatter.constructListOfLoggableVms(getVmIdsWithInvalidDnsNames(newDnsNameMap)));
             try {
-               Thread.sleep(DNS_WAIT_SLEEP_TIME_MILLIS);
+               /* Try faster initially */
+               Thread.sleep(Math.min((1000 * ++retryTimes), MAX_DNS_WAIT_SLEEP_TIME_MILLIS));
             } catch (InterruptedException e) {}
          } while (System.currentTimeMillis() <= endTime);
          /* If we fell out of the loop, it's likely we didn't find everything we were looking for */

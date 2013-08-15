@@ -339,7 +339,7 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
-   /* Returns the set of active dnsNames based on input Set */
+   /* Returns the total set of active dnsNames for the given cluster */
    public Set<String> checkTargetTTsSuccess(String opType, Set<String> ttDnsNames, int totalTargetEnabled, HadoopClusterInfo cluster) {
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
       String listRemoteFilePath = null;
