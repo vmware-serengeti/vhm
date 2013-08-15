@@ -24,7 +24,6 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
-import com.vmware.vhadoop.vhm.model.api.ResourceType;
 import com.vmware.vhadoop.vhm.model.api.Workload;
 import com.vmware.vhadoop.vhm.model.vcenter.Folder;
 import com.vmware.vhadoop.vhm.model.vcenter.VM;
@@ -84,12 +83,7 @@ public class ModelVcAdapter implements VCActions {
          vmData._myName = vm.getId();
          vmData._myUUID = vm.getId();
          vmData._powerState = vm.powerState();
-         if (vm.getMaximum() != null) {
-            vmData._vCPUs = (int) (vm.getMaximum().get(ResourceType.CPU) / _vCenter.getCpuSpeed());
-         } else {
-            /* assume 1 if unset - could be because this VM's not assigned a host yet */
-            vmData._vCPUs = 1;
-         }
+         vmData._vCPUs = 1;
 
          /* parse out the extraInfo fields into the event */
          Map<String,String> extraInfo = vm.getExtraInfo();
