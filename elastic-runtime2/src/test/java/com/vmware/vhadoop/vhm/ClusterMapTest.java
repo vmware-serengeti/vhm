@@ -183,7 +183,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
    @Test
    public void getDnsNamesForVMs() {
       int numClusterIds = 3;
-      populateSimpleClusterMap(numClusterIds, 4, false);
+      populateSimpleClusterMap(numClusterIds, 4, true);
       Set<String> vmIds = getVmIdsFromVmNames(_vmNames);
       Map<String, String> dnsNames = _clusterMap.getDnsNamesForVMs(vmIds);
       assertEquals(_vmNames.size(), dnsNames.size());
@@ -204,7 +204,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
    @Test
    public void getVmIdsForDnsName() {
       int numClusterIds = 3;
-      populateSimpleClusterMap(numClusterIds, 4, false);
+      populateSimpleClusterMap(numClusterIds, 4, true);
       Set<String> vmIds = getVmIdsFromVmNames(_vmNames);
       Map<String, String> dnsNames = _clusterMap.getDnsNamesForVMs(vmIds);
       Map<String, String> vmIdMap = _clusterMap.getVmIdsForDnsNames(new HashSet<String>(dnsNames.values()));
