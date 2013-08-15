@@ -281,7 +281,7 @@ public class HadoopAdaptor implements HadoopActions {
       HadoopConnection connection = getConnectionForCluster(cluster);
       if (connection != null) {
          setErrorParamsForCommand(cluster, opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
-   
+
          OutputStream out = new ByteArrayOutputStream();
          String operationList = createVMList(ttDnsNames);
          int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
@@ -290,7 +290,7 @@ public class HadoopAdaptor implements HadoopActions {
          }
          status.addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       } else {
-         status.registerTaskFailed(false, "Cound not create HadoopConnection");
+         status.registerTaskFailed(false, "could not create connection to job tracker for cluster");
       }
       return status;
    }
@@ -320,7 +320,7 @@ public class HadoopAdaptor implements HadoopActions {
       int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
       _log.info("Error code from executing script " + rc);
-      
+
       String[] unformattedList = out.toString().split("\n");
       Set<String> formattedList = new HashSet<String>(); //Note: set also avoids potential duplicate TTnames (e.g., when a TT is restarted without decommissioning)
       for (int i = 0; i < unformattedList.length-1; i++) {
@@ -349,7 +349,7 @@ public class HadoopAdaptor implements HadoopActions {
          _log.warning("No valid TT names provided");
          return null;
       }
-      
+
       /* We don't expect null or empty values, but weed out anyway */
       ttDnsNames.remove(null);
       ttDnsNames.remove("");
@@ -357,7 +357,7 @@ public class HadoopAdaptor implements HadoopActions {
          _log.warning("No valid TT names provided");
          return null;
       }
-      
+
 	   _log.log(Level.INFO, "Affected TTs: "+ttDnsNames);
 
       setErrorParamsForCommand(cluster, opDesc, scriptRemoteFilePath, listRemoteFilePath);
@@ -381,8 +381,8 @@ public class HadoopAdaptor implements HadoopActions {
     	   long activeTTsElapsedTime = System.currentTimeMillis() - activeTTsStartTime;
 
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
-    	   if ((allActiveTTs != null) && 
-    	         ((opType.equals("Recommission") && allActiveTTs.containsAll(ttDnsNames)) || 
+    	   if ((allActiveTTs != null) &&
+    	         ((opType.equals("Recommission") && allActiveTTs.containsAll(ttDnsNames)) ||
     	               (opType.equals("Decommission") && ttDnsNames.retainAll(allActiveTTs) && ttDnsNames.isEmpty()))) {
             _log.log(Level.INFO, "All selected TTs correctly %sed", opType.toLowerCase());
             rc = SUCCESS;
