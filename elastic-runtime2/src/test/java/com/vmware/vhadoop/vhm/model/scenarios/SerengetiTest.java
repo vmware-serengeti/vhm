@@ -211,4 +211,26 @@ public class SerengetiTest extends AbstractSerengetiTestBase
 
       logMetrics(nodes);
    }
+
+   @Test
+   public void testInvalidTarget() {
+      final int numberOfHosts = 1;
+      final int computeNodesPerHost = 3;
+      final int target = (computeNodesPerHost * numberOfHosts) + 2;
+      String clusterName = "serengetiTest";
+
+      /* general test setup */
+      setup(numberOfHosts);
+      _vCenter.setMetricsInterval(200);
+      _serengeti.setMaxLatency(500);
+
+      /* create a cluster to work with */
+      Master cluster = createCluster(clusterName, computeNodesPerHost);
+
+      String msgid = cluster.setTargetComputeNodeNum(target);
+      assertMessageResponse("waiting for target compute nodes to succeed", cluster, msgid);
+
+      setTimeout(5000);
+      assertVMsInPowerState("waiting for target compute node num ("+(computeNodesPerHost * numberOfHosts)+") to take effect", cluster, (computeNodesPerHost * numberOfHosts), true);
+   }
 }
