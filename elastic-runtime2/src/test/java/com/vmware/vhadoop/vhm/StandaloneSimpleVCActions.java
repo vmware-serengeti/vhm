@@ -61,6 +61,9 @@ public class StandaloneSimpleVCActions implements VCActions {
 
    @Override
    public void interruptWait() {
+      synchronized(_propertyChangeValues) {
+         _propertyChangeValues.notifyAll();
+      }
       _latestArgs.put("interruptWait", new Object[]{});
    }
 
