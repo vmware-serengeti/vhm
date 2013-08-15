@@ -78,7 +78,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
                Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(ttVmIds, MAX_DNS_WAIT_TIME_MILLIS);
                if (newDnsNames != null) {
-                  activeVmIds = _hadoopActions.checkTargetTTsSuccess("Recommission", newDnsNames, totalTargetEnabled, hadoopCluster);
+                  Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Recommission", newDnsNames, totalTargetEnabled, hadoopCluster);
+                  activeVmIds = getActiveVmIds(activeDnsNames);
                }
             } else {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C> Unexpected VC error powering on Task Trackers");
@@ -203,6 +204,9 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    }
 
    private Set<String> getActiveVmIds(Set<String> activeDnsNames) {
+      if (activeDnsNames == null) {
+         return null;
+      }
       ClusterMap clusterMap = null;
       Set<String> result = null;
       try {
