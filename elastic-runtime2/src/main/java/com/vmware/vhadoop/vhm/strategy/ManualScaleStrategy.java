@@ -98,7 +98,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                      targetSize = limitEvent.getToSize();
                      delta = targetSize - poweredOnVms;
                   }
-                  _log.log(VhmLevel.USER, "Handling manual elasticity command from Serengeti for cluster: <%C"+clusterId+"%C> to set number of enabled compute nodes to " + targetSize);
+                  _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: handling manual elasticity command from Serengeti to set number of enabled compute nodes to " + targetSize);
                   returnEvent = new ClusterScaleDecision(clusterId);
                } else {
                   tlStatus.registerTaskFailed(false, "Unknown clusterId for Cluster Folder "+clusterFolder);
