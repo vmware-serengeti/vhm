@@ -78,9 +78,15 @@ public class ClusterMapImpl implements ClusterMap {
          /* Provide an empty variableData if a null one is passed in */
          _variableData = (variableData != null) ? variableData : new VMVariableData();
          _clusterId = clusterId;
-         if ((_variableData._powerState != null) && (_variableData._powerState)) {
-            _powerOnTime = System.currentTimeMillis();
+         if (_variableData._powerState != null) {
+            if (_variableData._powerState) {
+               _powerOnTime = System.currentTimeMillis();
+            } else {
+               _variableData._dnsName = null;         /* VC may give us stale values for a powered-off VM on init */
+               _variableData._ipAddr = null;
+            }
          }
+         
          _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s",
                new String[]{moRef, moRef, clusterId, _constantData.toString(), _variableData.toString()});
       }
@@ -250,14 +256,8 @@ public class ClusterMapImpl implements ClusterMap {
          Boolean powerState = variableData._powerState;
          Integer vCPUs = variableData._vCPUs;
          VMVariableData toSet = vi._variableData;
-         if (testForVMUpdate(toSet._dnsName, dnsName, vmId, "dnsName")) {
-            toSet._dnsName = dnsName;
-         }
          if (testForVMUpdate(toSet._hostMoRef, hostMoRef, vmId, "hostMoRef")) {
             toSet._hostMoRef = hostMoRef;
-         }
-         if (testForVMUpdate(toSet._ipAddr, ipAddr, vmId, "ipAddr")) {
-            toSet._ipAddr = ipAddr;
          }
          if (testForVMUpdate(toSet._myName, myName, vmId, "myName")) {
             toSet._myName = myName;
@@ -267,8 +267,6 @@ public class ClusterMapImpl implements ClusterMap {
             if (powerState) {
                vi._powerOnTime = System.currentTimeMillis();
             } else {
-               vi._variableData._dnsName = null;    /* Not safe to cache - it might change */
-               vi._variableData._ipAddr = null;     /* Not safe to cache - it might change */
                vi._powerOnTime = 0;
             }
 
@@ -277,6 +275,15 @@ public class ClusterMapImpl implements ClusterMap {
             } else {
                _log.log(VhmLevel.USER, "VM <%V"+vmId+"%V>: powered "+(powerState?"on":"off"));
             }
+         }
+         if ((toSet._powerState != null) && (!toSet._powerState)) {
+            dnsName = ipAddr = "";        /* Any time we know the VM is powered off, remove stale values */
+         }
+         if (testForVMUpdate(toSet._dnsName, dnsName, vmId, "dnsName")) {
+            toSet._dnsName = dnsName;
+         }
+         if (testForVMUpdate(toSet._ipAddr, ipAddr, vmId, "ipAddr")) {
+            toSet._ipAddr = ipAddr;
          }
          if (testForVMUpdate(toSet._vCPUs, vCPUs, vmId, "vCPUs")) {
             toSet._vCPUs = vCPUs;
