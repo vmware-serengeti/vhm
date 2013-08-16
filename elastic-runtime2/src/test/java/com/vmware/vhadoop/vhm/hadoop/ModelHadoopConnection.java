@@ -119,11 +119,14 @@ public class ModelHadoopConnection extends HadoopConnection
 
       if (enabled.size() == target) {
          return SUCCESS;
-      } else if (enabled.size() < target) {
-         return ERROR_FEWER_TTS;
-      } else {
-         return ERROR_EXCESS_TTS;
       }
+
+      /* delay to emulate the fact that the script on the job tracker takes some time, no delay causes problems in getActiveTTs */
+      try {
+         Thread.sleep(10);
+      } catch (InterruptedException e) {/*squash*/}
+
+      return enabled.size() < target ? ERROR_FEWER_TTS : ERROR_EXCESS_TTS;
    }
 
    /**
