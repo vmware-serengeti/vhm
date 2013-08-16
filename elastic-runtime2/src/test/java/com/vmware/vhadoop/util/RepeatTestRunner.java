@@ -16,6 +16,8 @@
 package com.vmware.vhadoop.util;
 
 import org.junit.Ignore;
+import org.junit.internal.AssumptionViolatedException;
+import org.junit.internal.runners.model.EachTestNotifier;
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
@@ -54,13 +56,27 @@ public class RepeatTestRunner extends BlockJUnit4ClassRunner
 
       if (method.getAnnotation(RepeatTest.class) != null && method.getAnnotation(Ignore.class) == null) {
          runRepeatedly(methodBlock(method), description, notifier);
+         return;
       }
+
       super.runChild(method, notifier);
    }
 
    private void runRepeatedly(Statement statement, Description description, RunNotifier notifier) {
       for (Description desc : description.getChildren()) {
-         runLeaf(statement, desc, notifier);
+         EachTestNotifier eachNotifier = new EachTestNotifier(notifier, desc);
+         eachNotifier.fireTestStarted();
+         try {
+            statement.evaluate();
+         } catch (AssumptionViolatedException e) {
+            eachNotifier.addFailedAssumption(e);
+            return;
+         } catch (Throwable e) {
+            eachNotifier.addFailure(e);
+            return;
+         } finally {
+            eachNotifier.fireTestFinished();
+         }
       }
    }
 
