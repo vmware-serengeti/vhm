@@ -50,13 +50,13 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
     * a list of ttVmIds for powered-off VMs, none of which will yet have a DNS name. Typically VC gets the update of a fresh DNS name after
     * the JobTracker, so once the DNS names have come through from VC, the checkTargetTTsSuccess should complete as a formality.
     * 
-    * Method returns a set of all active VM IDs in the cluster
+    * Method returns a set of enabled VM IDs from the input set of VMs
     */
    @Override
    public Set<String> enableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
       HadoopClusterInfo hadoopCluster = null;
-      Set<String> activeVmIds = null;
-
+      Set<String> successfulIds = null;
+      
       ClusterMap clusterMap = null;
       try {
          clusterMap = getAndReadLockClusterMap();
@@ -80,16 +80,20 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
                Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(ttVmIds, MAX_DNS_WAIT_TIME_MILLIS);
                if (newDnsNames != null) {
-                  /* Returns all active dns names in the cluster */
+                  /* Returns only successfully enabled VMs from the input set */
                   Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Recommission", newDnsNames, totalTargetEnabled, hadoopCluster);
-                  activeVmIds = getActiveVmIds(activeDnsNames);
+                  Set<String> activeVmIds = getActiveVmIds(activeDnsNames);
+                  if (activeVmIds != null) {
+                     successfulIds = new HashSet<String>(ttVmIds);
+                     successfulIds.retainAll(activeVmIds);
+                  }                  
                }
             } else {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: unexpected vCenter error powering on task trackers");
             }
          }
       }
-      return activeVmIds;
+      return successfulIds;
    }
 
    /* This method blocks until it has made all reasonable efforts to determine that the TTs have been successfully unregistered with the JT
@@ -98,7 +102,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
     * valid DNS name for some of the vmIds to de-commission. In this case, we must simply power those off. Note that this may leave the JT
     * thinking that these TTs are still alive for a period of time 
     * 
-    * Method returns a list of all the TTs successfully decommissioned
+    * Method returns set of VMs successfully decommissioned
     */
    @Override
    public Set<String> disableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
@@ -131,7 +135,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          }
 
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
-            /* Returns all active TTs in this cluster */
+            /* Returns enabled TTs in this cluster */
             Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Decommission", validDnsNames, newTargetEnabled, hadoopCluster);
             /* This is the list of what we successfully de-commissioned */
             successfulIds = getVmIdSubset(ttVmIds, getActiveVmIds(activeDnsNames));

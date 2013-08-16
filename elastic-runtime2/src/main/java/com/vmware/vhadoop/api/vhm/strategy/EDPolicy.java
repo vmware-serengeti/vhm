@@ -22,7 +22,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 /* Takes a set of VMs and either enables or disables them, based on whatever strategy it needs */
 public interface EDPolicy extends ClusterMapReader {
    public static final String ACTIVE_TTS_STATUS_KEY = "getActiveStatus";
-   /* Caller should expect this to block - returns all VM IDs that are enabled in the cluster */
+   /* Caller should expect this to block - returns the VM IDs that were successfully enabled */
    /* Note that this method may return null in the case of an error */
    Set<String> enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception;
 

@@ -18,7 +18,6 @@ package com.vmware.vhadoop.vhm.strategy;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.util.VhmLevel;
@@ -40,13 +39,7 @@ public class DumbEDPolicy extends AbstractClusterMapReader implements EDPolicy {
       if (_vcActions.changeVMPowerState(toEnable, true) == null) {
          getCompoundStatus().registerTaskFailed(false, "Failed to change VM power state");
       }
-      ClusterMap clusterMap = null;
-      try {
-         clusterMap = getAndReadLockClusterMap();
-         return clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
-      } finally {
-         unlockClusterMap(clusterMap);
-      }
+      return toEnable;     /* Clue is in the title: Dumby assume it worked */
    }
 
 

@@ -13,21 +13,6 @@
 * limitations under the License.
 ***************************************************************************/
 
-/***************************************************************************
- * Copyright (c) 2012 VMware, Inc. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ***************************************************************************/
-
 package com.vmware.vhadoop.vhm.hadoop;
 
 import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ERROR_CATCHALL;
@@ -96,8 +81,7 @@ public class HadoopAdaptor implements HadoopActions {
 
    static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
-   private static final int MAX_CHECK_RETRY_ITERATIONS = 8;
-   private static final long MIN_ACTIVE_TT_POLL_TIME_MILLIS = 100;   /* 1074605: Note longer delays can cause model test failures */
+   private static final int MAX_CHECK_RETRY_ITERATIONS = 4;
 
    public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
@@ -323,7 +307,8 @@ public class HadoopAdaptor implements HadoopActions {
 
       String[] unformattedList = out.toString().split("\n");
       Set<String> formattedList = new HashSet<String>(); //Note: set also avoids potential duplicate TTnames (e.g., when a TT is restarted without decommissioning)
-      for (int i = 0; i < unformattedList.length-1; i++) {
+      /* JG: Changing for-loop limit from unformattedList.length-1 to unformattedList.length since we now explicitly check for TTnames starting with "TT:" (No more @@@... issue) */
+      for (int i = 0; i < unformattedList.length; i++) {
          //Expecting TTs to be annotated as "TT: ttName"
          if (unformattedList[i].startsWith("TT:")) {
             _log.fine("Adding TT: " + unformattedList[i].split("\\s+")[1]);
@@ -339,7 +324,7 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    @Override
-   /* Returns the total set of active dnsNames for the given cluster */
+   /* Returns the set of active dnsNames based on input Set */
    public Set<String> checkTargetTTsSuccess(String opType, Set<String> ttDnsNames, int totalTargetEnabled, HadoopClusterInfo cluster) {
       String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
       String listRemoteFilePath = null;
@@ -366,7 +351,6 @@ public class HadoopAdaptor implements HadoopActions {
       CompoundStatus getActiveStatus = null;
       int rc = UNKNOWN_ERROR;
       Set<String> allActiveTTs = null;
-      boolean retryTest;
       do {
     	   if (iterations > 0) {
        	   _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
@@ -375,10 +359,7 @@ public class HadoopAdaptor implements HadoopActions {
 
          getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
 
-         /* Time the invocation to ensure that we don't zoom round the retry loop if it completes too quickly */
-         long activeTTsStartTime = System.currentTimeMillis();
     	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
-    	   long activeTTsElapsedTime = System.currentTimeMillis() - activeTTsStartTime;
 
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
     	   if ((allActiveTTs != null) &&
@@ -399,20 +380,34 @@ public class HadoopAdaptor implements HadoopActions {
              * on target #TTs we are good.
              * TODO: Change check script to return success if #newly added + #current_enabled is met rather than target #TTs is met. This is
              * to address scenarios where there is a mismatch (#Active TTs != #poweredOn VMs) to begin with...
-             * */
-            rc = SUCCESS;
-         }
-         retryTest = (rc == ERROR_FEWER_TTS || rc == ERROR_EXCESS_TTS) && (++iterations <= MAX_CHECK_RETRY_ITERATIONS);
+             * CHANGED: We have changed the time at which this function is invoked -- it gets invoked only when dns/hostnames are available.
+             * So we no longer have this issue of not knowing hostnames and still meeting target #TTs. Our only successful exit is when the
+             * TTs that have been explicitly asked to be checked, have been correctly de/recommissioned.
+             * 
+             * rc = SUCCESS; //Note: removing this
+             *      
+             * We also notice that in this case, where #Active TTs matches target, but all the requested TTs haven't been de/recommissioned yet,
+             * the check script returns immediately (because it only looks for a match of these values, which is true here). So we recompute
+             * target TTs based on latest information to essentially put back the delay...
+             */
 
-         if (retryTest) {
-            if (activeTTsElapsedTime < MIN_ACTIVE_TT_POLL_TIME_MILLIS) {
-               try {
-                  Thread.sleep(MIN_ACTIVE_TT_POLL_TIME_MILLIS - activeTTsElapsedTime);
-               } catch (InterruptedException e) {}
+            Set<String> deltaTTs = new HashSet<String>(ttDnsNames);
+            if (opType.equals("Recommission")) {              
+               deltaTTs.removeAll(allActiveTTs); //get TTs that haven't been recommissioned yet...
+               totalTargetEnabled = allActiveTTs.size() + deltaTTs.size();
+            } else { //optype = Decommission
+               deltaTTs.retainAll(allActiveTTs); //get TTs that haven't been decommissioned yet...
+               totalTargetEnabled = allActiveTTs.size() - deltaTTs.size();
             }
+            
+            _log.log(Level.INFO, "Even though #ActiveTTs = #TargetTTs, not all requested TTs have been " + opType.toLowerCase() + "ed yet - Trying again with updated target: " + totalTargetEnabled);
          }
 
-      } while (retryTest);
+         /* Break out if there is an error other than the ones we expect to be resolved in a subsequent invocation of the check script */ 
+         if (rc != ERROR_FEWER_TTS && rc != ERROR_EXCESS_TTS && rc != UNKNOWN_ERROR) {
+            break;
+         }
+      } while (iterations++ < MAX_CHECK_RETRY_ITERATIONS);
 
       getCompoundStatus().addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       if (rc != SUCCESS) {

@@ -112,11 +112,11 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
-                  /* Note that this returns all active VM IDs for the cluster */
-                  Set<String> allActiveTTs = _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
-                  if (allActiveTTs != null) {
-                     _log.fine("All enabled TTs: "+allActiveTTs);
-                     unresponsiveVmIds = diffIds(vmsToED, allActiveTTs);
+                  /* Note that this returns successfully enabled VM IDs from the input set of VMs*/
+                  Set<String> enabledTTs = _enableDisablePolicy.enableTTs(vmsToED, targetSize, clusterId);
+                  if (enabledTTs != null) {
+                     _log.fine("Enabled TTs: "+enabledTTs);
+                     unresponsiveVmIds = diffIds(vmsToED, enabledTTs);
                      limitEvent.reportProgress(30, null);
                      returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
@@ -131,7 +131,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
-                  /* Note that this returns just the VMs disabled */
+                  /* Note that this returns disabled VM IDs for the cluster */
                   Set<String> disabledTTs = _enableDisablePolicy.disableTTs(vmsToED, targetSize, clusterId);
                   if (disabledTTs != null) {
                      _log.fine("Disabled TTs: "+disabledTTs);
