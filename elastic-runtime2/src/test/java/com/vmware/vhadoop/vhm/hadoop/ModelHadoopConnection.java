@@ -77,6 +77,7 @@ public class ModelHadoopConnection extends HadoopConnection
       }
 
       /* store the file for later reference */
+      /* TODO: see if we want to stash this on the actual job tracker VM as a "file" rather than just noting it here in the connection */
       files.put(remotePath+remoteFileName, new String(inputData));
 
       return SUCCESS;
@@ -84,6 +85,10 @@ public class ModelHadoopConnection extends HadoopConnection
 
    @Override
    public int executeScript(String scriptFileName, String destinationPath, String[] args, OutputStream out) {
+      if (!files.containsKey(destinationPath + scriptFileName)) {
+         return ERROR_COMMAND_NOT_FOUND;
+      }
+
       try {
          if (scriptFileName.equals("checkTargetTTsSuccess.sh")) {
             return shCheckTargetTTsSuccess(args, out);
