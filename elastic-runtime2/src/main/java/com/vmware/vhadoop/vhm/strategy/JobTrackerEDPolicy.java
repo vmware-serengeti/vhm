@@ -74,7 +74,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          _hadoopActions.recommissionTTs(ttVmIds, hadoopCluster);
 
          if (_vcActions.changeVMPowerState(ttVmIds, true) == null) {
-            status.registerTaskFailed(false, "Failed to change VM power state in vCenter");
+            status.registerTaskFailed(false, "failed to change VM power state in vCenter");
             _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: failed to power on task trackers");
          } else {
             if (status.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
@@ -87,6 +87,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                      successfulIds = new HashSet<String>(ttVmIds);
                      successfulIds.retainAll(activeVmIds);
                   }                  
+               } else {
+                  status.registerTaskFailed(false, "no DNS names could be obtained for Task Trackers");
                }
             } else {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: unexpected vCenter error powering on task trackers");

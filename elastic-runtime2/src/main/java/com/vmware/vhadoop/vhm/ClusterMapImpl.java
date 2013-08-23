@@ -68,6 +68,7 @@ public class ClusterMapImpl implements ClusterMap {
       final VMConstantData _constantData;
       final VMVariableData _variableData;
       final String _clusterId;
+      long _powerOnTime; // most recent timestamp when VHM learned VM is on
 
       /* VMInfo is created with a completed VMConstantData and a potentially incomplete or even null variableData
        * moRef and clusterId must not be null */
@@ -90,8 +91,6 @@ public class ClusterMapImpl implements ClusterMap {
          _log.log(Level.FINE, "Creating new VMInfo <%%V%s%%V>(%s) for cluster <%%C%s%%C>. %s. %s",
                new String[]{moRef, moRef, clusterId, _constantData.toString(), _variableData.toString()});
       }
-
-      long _powerOnTime; // most recent timestamp when VHM learned VM is on
    }
 
    class ClusterInfo {

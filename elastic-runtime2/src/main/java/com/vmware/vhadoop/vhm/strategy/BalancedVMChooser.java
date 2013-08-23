@@ -123,12 +123,12 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
 
                _log.info("found "+candidateVMs.size()+" candidate VMs on host "+host);
                for (String id : candidateVMs) {
-                  _log.info("candidate VM on "+host+": "+id);
+                  _log.info("candidate VM on "+host+": <%V"+id);
                }
                if (on != null) {
                   _log.info("found "+on.size()+" VMs powered on, on host "+host);
                   for (String id : on) {
-                     _log.info("powered on VM on "+host+": "+id);
+                     _log.fine("powered on VM on "+host+": <%V"+id);
                   }
                }
                Host h = new Host();

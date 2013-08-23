@@ -122,10 +122,11 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
                         blockOnPowerStateChange(vmsToED, true, 120000);
                      }
-                     limitEvent.reportProgress(90, null);
                   } else {
-                     tlStatus.registerTaskFailed(false, "enableTTs returned null, so aborting operation");
+                     unresponsiveVmIds = vmsToED;
+                     tlStatus.registerTaskFailed(false, "no Task Trackers were enabled successfully");
                   }
+                  limitEvent.reportProgress(90, null);
                }
             } else if (delta < 0) {
                vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
@@ -141,10 +142,11 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
                         blockOnPowerStateChange(vmsToED, false, 120000);
                      }
-                     limitEvent.reportProgress(90, null);
                   } else {
-                     tlStatus.registerTaskFailed(false, "disableTTs returned null, so aborting operation");
+                     unresponsiveVmIds = vmsToED;
+                     tlStatus.registerTaskFailed(false, "no Task Trackers were disabled successfully");
                   }
+                  limitEvent.reportProgress(90, null);
                }
             }
             if (tlStatus.getFailedTaskCount() == 0) {
