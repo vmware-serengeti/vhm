@@ -162,7 +162,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY,
                      VCActions.VC_POWER_OFF_STATUS_KEY,
                      ClusterMapReader.POWER_STATE_CHANGE_STATUS_KEY})) {
-                     limitEvent.reportError(firstGeneralError.getMessage() + " however, powering on/off VMs succeeded;");
+                     limitEvent.reportError(firstGeneralError.getMessage() + " however, powering on/off VMs succeeded");
                   } else {
                      limitEvent.reportError(firstGeneralError.getMessage());
                   }

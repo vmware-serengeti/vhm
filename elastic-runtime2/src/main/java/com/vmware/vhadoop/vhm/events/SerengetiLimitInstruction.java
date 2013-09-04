@@ -66,7 +66,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportError(String message) {
       if (_messageCallback != null) {
-         _log.warning("<%C"+_clusterFolderName+"%C> - error while attempting to "+toString()+" - "+message);
+         _log.warning("<%C"+_clusterFolderName+"%C> - error while attempting to "+toString()+" - "+message+";");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());

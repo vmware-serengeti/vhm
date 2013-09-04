@@ -16,16 +16,13 @@
 package com.vmware.vhadoop.vhm.vc;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -56,13 +53,8 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
-import com.vmware.vim.binding.vim.fault.InvalidLocale;
-import com.vmware.vim.binding.vim.fault.InvalidLogin;
-import com.vmware.vim.binding.vim.fault.NoClientCertificate;
-import com.vmware.vim.binding.vim.fault.NoHost;
-import com.vmware.vim.binding.vim.fault.NotFound;
-import com.vmware.vim.binding.vim.fault.NotSupportedHost;
-import com.vmware.vim.binding.vim.fault.TooManyTickets;
+import com.vmware.vim.binding.vim.fault.HostConnectFault;
+import com.vmware.vim.binding.vim.fault.VimFault;
 import com.vmware.vim.binding.vim.option.OptionValue;
 import com.vmware.vim.binding.vim.version.version8;
 import com.vmware.vim.binding.vim.view.ContainerView;
@@ -185,7 +177,7 @@ public class VcVlsi {
       return vcClient.createStub(ServiceInstance.class, svcRef);
    }
 
-   private ServiceInstanceContent getServiceInstanceContent(Client vcClient) {
+   private ServiceInstanceContent getServiceInstanceContent(Client vcClient) throws ConnectionException {
       ServiceInstance svc = getServiceInstance(vcClient);
       return svc.retrieveContent();
    }
@@ -194,7 +186,8 @@ public class VcVlsi {
     * Create a temporary connection to VC to login using extension certificate via sdkTunnel,
     * and get the session ticket to use for the normal connection.
     */
-   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey, String vcThumbprint, long timeoutMillis) throws URISyntaxException, KeyStoreException, NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException, InvalidLogin, InvalidLocale, NoClientCertificate, NoHost, NotSupportedHost, NotFound, TooManyTickets {
+   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey, String vcThumbprint, long timeoutMillis) 
+         throws ConnectionException, URISyntaxException, IOException, GeneralSecurityException, VimFault {
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
       InputStream is = null;
@@ -230,7 +223,8 @@ public class VcVlsi {
       return ticket;
    }
 
-   public Client connect(VcCredentials credentials, boolean useKey, Client cloneClient, long timeoutMillis) throws Exception {
+   public Client connect(VcCredentials credentials, boolean useKey, Client cloneClient, long timeoutMillis) 
+         throws ConnectionException, HostConnectFault, IOException, VimFault, GeneralSecurityException, URISyntaxException {
       String sessionTicket = null;
 
       if (cloneClient != null) {
@@ -302,7 +296,7 @@ public class VcVlsi {
    }
 
 
-   private Folder getRootFolder(Client client) {
+   private Folder getRootFolder(Client client) throws ConnectionException {
       ServiceInstanceContent sic = getServiceInstanceContent(client);
       return client.createStub(Folder.class, sic.getRootFolder());
    }
@@ -362,17 +356,17 @@ public class VcVlsi {
          return viewToObject;
       }
 
-      public void setPropToFilter(String property) throws InvalidProperty {
+      public void setPropToFilter(String property) throws InvalidProperty, ConnectionException {
          _propertySpec.setPathSet(new String[] {property});
          init();
       }
 
-      public void setPropsToFilter(String[] properties) throws InvalidProperty {
+      public void setPropsToFilter(String[] properties) throws InvalidProperty, ConnectionException {
          _propertySpec.setPathSet(properties);
          init();
       }
 
-      private void init() throws InvalidProperty  {
+      private void init() throws InvalidProperty, ConnectionException  {
          if (!_initialized) {
             _propertyFilterSpec.setPropSet(new PropertySpec [] {_propertySpec});
 
@@ -384,12 +378,12 @@ public class VcVlsi {
          _initialized = true;
       }
 
-      public PropertyCollector getPropertyCollector() throws InvalidProperty  {
+      public PropertyCollector getPropertyCollector() throws InvalidProperty, ConnectionException  {
          init();
          return _propertyCollector;
       }
 
-      public RetrieveResult retrieveProperties() throws InvalidProperty {
+      public RetrieveResult retrieveProperties() throws InvalidProperty, ConnectionException {
          init();
          RetrieveOptions retrieveOptions = new RetrieveOptions();
 
@@ -411,7 +405,8 @@ public class VcVlsi {
 
    }
 
-   private List<ManagedObjectReference> findObjectsInFolder(Client client, Folder baseFolder, TypeName type, String restrictToName) throws InvalidProperty {
+   private List<ManagedObjectReference> findObjectsInFolder(Client client, Folder baseFolder, TypeName type, String restrictToName) 
+         throws InvalidProperty, ConnectionException {
       if (baseFolder == null) {
          return null;
       }
@@ -470,7 +465,8 @@ public class VcVlsi {
       return null;
    }
 
-   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet) throws InvalidProperty {
+   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet) 
+         throws InvalidProperty, ConnectionException {
       PropertyFilter propFilter = null;
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
 
@@ -576,7 +572,8 @@ public class VcVlsi {
    }
 
 
-   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) throws InvalidCollectorVersion, InvalidProperty {
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) 
+         throws ConnectionException, InvalidCollectorVersion, InvalidProperty {
       if (version == null) {
          version = "";
       }
@@ -672,6 +669,8 @@ public class VcVlsi {
             }
          }
          status.registerTaskSucceeded();
+      } catch (ConnectionException e) {
+         reportException("Error connecting to vCenter: "+e.getMessage(), status);
       } catch (Exception e) {
          reportException("Unexpected exception waiting for task completion", e, status);
       } finally {
@@ -707,6 +706,8 @@ public class VcVlsi {
       } catch (InvalidProperty e) {
          _log.info("propertyCollector property is invalid: "+e);
          newVersion = WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS;
+      } catch (ConnectionException e) {
+         reportException("Error connecting to vCenter: "+e.getMessage(), status);
       } catch (Exception e) {
          reportException("Unexpected exception waiting for updates", e, status);
       }
@@ -732,6 +733,8 @@ public class VcVlsi {
          status.registerTaskSucceeded();
       } catch (com.vmware.vim.binding.vmodl.fault.RequestCanceled e) {
          _log.info("getVMsInFolder has been canceled");
+      } catch (ConnectionException e) {
+         reportException("Error connecting to vCenter: "+e.getMessage(), status);
       } catch (Exception e) {
          reportException("Unexpected exception in getVMsInFolder", e, status);
       }
@@ -739,9 +742,18 @@ public class VcVlsi {
       return result;
    }
 
+   private void reportException(String msg, CompoundStatus status) {
+      reportException(msg, null, status);
+   }
+
    private void reportException(String msg, Exception e, CompoundStatus status) {
-      _log.log(Level.INFO, msg, e);
-      status.registerTaskFailed(false, msg+": "+e.getMessage());
+      if (e != null) {
+         /* Stack trace at INFO level to comply with PSP */
+         _log.log(Level.INFO, msg, e);
+         msg += ": "+e.getMessage();
+      }
+      _log.log(Level.WARNING, msg);
+      status.registerTaskFailed(false, msg);
    }
 
    public Map<String, Task> powerOnVMs(Client client, Set<String> vmMoRefs) {
@@ -757,7 +769,7 @@ public class VcVlsi {
             result.put(moRef, task);
             status.registerTaskSucceeded();
          } catch (Exception e) {
-            reportException("Error powering on VM", e, status);
+            reportException("Error powering on VM: "+e.getMessage(), status);
          }
       }
       getCompoundStatus().addStatus(status);
@@ -777,7 +789,7 @@ public class VcVlsi {
             result.put(moRef, task);
             status.registerTaskSucceeded();
          } catch (Exception e) {
-            reportException("Error powering off VM", e, status);
+            reportException("Error powering off VM: "+e.getMessage(), status);
          }
       }
       getCompoundStatus().addStatus(status);

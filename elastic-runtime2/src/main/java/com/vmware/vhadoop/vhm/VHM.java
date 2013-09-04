@@ -378,6 +378,8 @@ public class VHM implements EventConsumer {
                String clusterId = completeClusterScaleEventDetails((AbstractClusterScaleEvent)event);
                if (clusterId != null) {
                   updateOrCreateClusterScaleEventSet(clusterId, (ClusterScaleEvent)event, clusterScaleEventMap);
+               } else if (event instanceof SerengetiLimitInstruction) {
+                  ((SerengetiLimitInstruction) event).reportError("Unable to resolve cluster ID from vCenter");
                }
             }
          }
