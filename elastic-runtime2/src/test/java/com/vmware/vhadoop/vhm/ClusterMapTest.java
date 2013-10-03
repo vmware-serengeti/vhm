@@ -48,7 +48,7 @@ import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 
 public class ClusterMapTest extends AbstractJUnitTest {
-   ClusterMapImpl _clusterMap;
+   AbstractClusterMap _clusterMap;
    static final String EXTRA_INFO_KEY = "extraInfo1";
    List<Boolean> _isNewClusterResult;
    List<Boolean> _isClusterViableResult;

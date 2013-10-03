@@ -57,7 +57,7 @@ public class VHM implements EventConsumer {
    private final EventProducerActions _eventProducers;
    private final Queue<NotificationEvent> _eventQueue;
    private boolean _initialized;
-   private final ClusterMapImpl _clusterMap;
+   private final AbstractClusterMap _clusterMap;
    private final ExecutionStrategy _executionStrategy;
    private final VCActions _vcActions;
    private final MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
@@ -76,7 +76,7 @@ public class VHM implements EventConsumer {
       _eventProducers = new EventProducerActions();
       _eventQueue = new LinkedList<NotificationEvent>();
       _initialized = true;
-      _clusterMap = new ClusterMapImpl(strategyMapper);
+      _clusterMap = new CachingClusterMapImpl(strategyMapper);
       _vcActions = vcActions;
       _clusterMapAccess = MultipleReaderSingleWriterClusterMapAccess.getClusterMapAccess(_clusterMap);
       _parentClusterMapReader = new AbstractClusterMapReader(_clusterMapAccess, threadLocalStatus) {};
