@@ -83,6 +83,7 @@ import com.vmware.vim.binding.vmodl.query.PropertyCollector.UpdateSet;
 import com.vmware.vim.binding.vmodl.query.PropertyCollector.WaitOptions;
 import com.vmware.vim.vmomi.client.Client;
 import com.vmware.vim.vmomi.client.exception.ConnectionException;
+import com.vmware.vim.vmomi.client.exception.TransportProtocolException;
 import com.vmware.vim.vmomi.client.http.HttpClientConfiguration;
 import com.vmware.vim.vmomi.client.http.ThumbprintVerifier;
 import com.vmware.vim.vmomi.client.http.impl.HttpConfigurationImpl;
@@ -707,6 +708,8 @@ public class VcVlsi {
          _log.info("propertyCollector property is invalid: "+e);
          newVersion = WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS;
       } catch (ConnectionException e) {
+         reportException("Error connecting to vCenter: "+e.getMessage(), status);
+      } catch (TransportProtocolException e) {
          reportException("Error connecting to vCenter: "+e.getMessage(), status);
       } catch (Exception e) {
          reportException("Unexpected exception waiting for updates", e, status);
