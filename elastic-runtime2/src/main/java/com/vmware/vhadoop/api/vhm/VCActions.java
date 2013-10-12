@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import com.vmware.vim.binding.vim.PerformanceManager;
+import com.vmware.vim.binding.vim.event.EventManager;
 
 /* Represents actions which can be invoked on the VC subsystem */
 public interface VCActions {
@@ -74,8 +75,10 @@ public interface VCActions {
    public List<VMEventData> waitForPropertyChange(String folderName) throws InterruptedException;
 
    public void interruptWait();
-   
+
    public PerformanceManager getPerformanceManager();
+
+   public EventManager getEventManager();
 
    public List<String> listVMsInFolder(String folderName);
 

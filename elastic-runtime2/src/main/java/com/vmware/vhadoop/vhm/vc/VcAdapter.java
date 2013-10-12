@@ -32,6 +32,7 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.Task;
+import com.vmware.vim.binding.vim.event.EventManager;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VcAdapter implements VCActions {
@@ -39,7 +40,7 @@ public class VcAdapter implements VCActions {
 
    private static long CONTROL_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
    private static long WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
-   private static long STATS_POLL_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */     
+   private static long STATS_POLL_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */
    private static long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = 5000;   /* If no clusters are installed, we should be pretty much dormant */
 
    private Client _controlClient; // used for VC control operations and is the parent client for the others
@@ -124,7 +125,7 @@ public class VcAdapter implements VCActions {
          _log.warning("VHM: could not initialize connection to vCenter");
       }
    }
-   
+
    private boolean resetConnection() {
       _controlClient = _waitForUpdateClient = _statsPollClient = null;
       _vcVlsi.resetConnection();
@@ -219,6 +220,13 @@ public class VcAdapter implements VCActions {
          return null;
       }
       return _vcVlsi.getPerformanceManager(_statsPollClient);
+   }
+
+   public EventManager getEventManager() {
+      if (!validateConnection(_controlClient)) {
+         return null;
+      }
+      return _vcVlsi.getEventManager(_controlClient);
    }
 
    @Override

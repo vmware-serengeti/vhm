@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vim.binding.vim.PerformanceManager;
+import com.vmware.vim.binding.vim.event.EventManager;
 
 public class StandaloneSimpleVCActions implements VCActions {
    Map<String, Object[]> _latestArgs = new HashMap<String, Object[]>();
@@ -34,7 +35,7 @@ public class StandaloneSimpleVCActions implements VCActions {
    class PropertyChangeValues {
       VMEventData _eventToReturn;
    }
-   
+
    @Override
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs,
          boolean b) {
@@ -54,7 +55,7 @@ public class StandaloneSimpleVCActions implements VCActions {
       returnVal.add(_propertyChangeValues._eventToReturn);
       return returnVal;
    }
-   
+
    Object[] getLatestMethodArgs(String methodName) {
       return _latestArgs.get(methodName);
    }
@@ -72,7 +73,7 @@ public class StandaloneSimpleVCActions implements VCActions {
       _latestArgs.put("listVMsInFolder", new Object[]{folderName});
       return _vmsInFolderMap.get(folderName);
    }
-   
+
    protected void addVMToFolder(String folderName, String vmId) {
       List<String> vms = _vmsInFolderMap.get(folderName);
       if (vms == null) {
@@ -108,4 +109,9 @@ public class StandaloneSimpleVCActions implements VCActions {
       return null;
    }
 
+   @Override
+   public EventManager getEventManager() {
+      _latestArgs.put("getEventManager", new Object[]{});
+      return null;
+   }
 }

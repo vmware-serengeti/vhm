@@ -53,6 +53,7 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
+import com.vmware.vim.binding.vim.event.EventManager;
 import com.vmware.vim.binding.vim.fault.HostConnectFault;
 import com.vmware.vim.binding.vim.fault.VimFault;
 import com.vmware.vim.binding.vim.option.OptionValue;
@@ -133,7 +134,7 @@ public class VcVlsi {
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
    private PropertyCollector _waitingOnPc;
-   
+
    static {
       VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
    }
@@ -187,7 +188,7 @@ public class VcVlsi {
     * Create a temporary connection to VC to login using extension certificate via sdkTunnel,
     * and get the session ticket to use for the normal connection.
     */
-   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey, String vcThumbprint, long timeoutMillis) 
+   private String getSessionTicket(String vcIP, String keyStoreFile, String keyStorePwd, String vcExtKey, String vcThumbprint, long timeoutMillis)
          throws ConnectionException, URISyntaxException, IOException, GeneralSecurityException, VimFault {
       URI uri = new URI("https://sdkTunnel:8089/sdk/vimService");
       KeyStore keyStore = KeyStore.getInstance("JKS");
@@ -224,7 +225,7 @@ public class VcVlsi {
       return ticket;
    }
 
-   public Client connect(VcCredentials credentials, boolean useKey, Client cloneClient, long timeoutMillis) 
+   public Client connect(VcCredentials credentials, boolean useKey, Client cloneClient, long timeoutMillis)
          throws ConnectionException, HostConnectFault, IOException, VimFault, GeneralSecurityException, URISyntaxException {
       String sessionTicket = null;
 
@@ -258,7 +259,7 @@ public class VcVlsi {
       if (newClient != null) {
          ServiceInstanceContent sic = getServiceInstanceContent(newClient);
          SessionManager sm = newClient.createStub(SessionManager.class, sic.getSessionManager());
-   
+
          if (cloneClient != null) {
             sm.cloneSession(sessionTicket);
          } else {
@@ -272,7 +273,7 @@ public class VcVlsi {
 
       return newClient;
    }
-   
+
    public void resetConnection() {
       _waitingOnPc = null;
    }
@@ -406,7 +407,7 @@ public class VcVlsi {
 
    }
 
-   private List<ManagedObjectReference> findObjectsInFolder(Client client, Folder baseFolder, TypeName type, String restrictToName) 
+   private List<ManagedObjectReference> findObjectsInFolder(Client client, Folder baseFolder, TypeName type, String restrictToName)
          throws InvalidProperty, ConnectionException {
       if (baseFolder == null) {
          return null;
@@ -466,7 +467,7 @@ public class VcVlsi {
       return null;
    }
 
-   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet) 
+   private PropertyFilter setupWaitForUpdates(Client vcClient, Folder baseFolder, TypeName type, String[] statePropsToGet)
          throws InvalidProperty, ConnectionException {
       PropertyFilter propFilter = null;
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);
@@ -573,7 +574,7 @@ public class VcVlsi {
    }
 
 
-   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList) 
+   private String pcVMsInFolder(Client vcClient, Folder folder, String version, List<VMEventData> vmDataList)
          throws ConnectionException, InvalidCollectorVersion, InvalidProperty {
       if (version == null) {
          version = "";
@@ -806,13 +807,23 @@ public class VcVlsi {
          }
       }
    }
-   
+
    public PerformanceManager getPerformanceManager(Client client) {
       try {
          ServiceInstanceContent sic = getServiceInstanceContent(client);
          return client.createStub(PerformanceManager.class, sic.getPerfManager());
       } catch (Exception e) {
          _log.info("Cannot connect to VC performance manager");
+         return null;
+      }
+   }
+
+   public EventManager getEventManager(Client client) {
+      try {
+         ServiceInstanceContent sic = getServiceInstanceContent(client);
+         return client.createStub(EventManager.class, sic.getEventManager());
+      } catch (Exception e) {
+         _log.info("Cannot connect to VC event manager");
          return null;
       }
    }
