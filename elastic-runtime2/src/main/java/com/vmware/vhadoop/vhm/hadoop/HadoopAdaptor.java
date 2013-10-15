@@ -425,4 +425,9 @@ public class HadoopAdaptor implements HadoopActions {
    protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
       return new HadoopConnection(cluster, properties, new NonThreadSafeSshUtils());
    }
+
+   @Override
+   public boolean validateTtHostNames(Set<String> dnsNames) {
+      return true;
+   }
 }
