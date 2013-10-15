@@ -133,4 +133,6 @@ public interface HadoopActions {
    public Set<String> checkTargetTTsSuccess(String opType, Set<String> ttDnsNames, int totalTargetEnabled, HadoopClusterInfo cluster);
 	
    public Set<String> getActiveTTs(HadoopClusterInfo cluster, int totalTargetEnabled);
+
+   public boolean validateTtHostNames(Set<String> dnsNames);
 }
