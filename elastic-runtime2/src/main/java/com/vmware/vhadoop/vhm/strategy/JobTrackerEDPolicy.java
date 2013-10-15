@@ -15,6 +15,7 @@
 
 package com.vmware.vhadoop.vhm.strategy;
 
+import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -67,6 +68,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
       if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
+         long initTime = System.currentTimeMillis();
 
          _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: "+constructUserLogMessage(ttVmIds, null, false));
 
@@ -81,12 +83,14 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                Set<String> newDnsNames = blockAndGetDnsNamesForVmIdsWithoutCachedDns(ttVmIds, MAX_DNS_WAIT_TIME_MILLIS);
                if (newDnsNames != null) {
                   /* Returns only successfully enabled VMs from the input set */
+                  long checkTime = System.currentTimeMillis();
                   Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Recommission", newDnsNames, totalTargetEnabled, hadoopCluster);
                   Set<String> activeVmIds = getActiveVmIds(activeDnsNames);
                   if (activeVmIds != null) {
                      successfulIds = new HashSet<String>(ttVmIds);
                      successfulIds.retainAll(activeVmIds);
-                  }                  
+                  }
+                  _log.info("TIMING: Power on to DNS resolution in "+(checkTime-initTime)+"ms; TT verification in "+(System.currentTimeMillis()-checkTime)+"ms");
                } else {
                   status.registerTaskFailed(false, "no DNS names could be obtained for Task Trackers");
                }
@@ -123,6 +127,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
 
       if ((dnsNameMap != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
          CompoundStatus status = getCompoundStatus();
+         long initTime = System.currentTimeMillis();
 
          Set<String> validDnsNames = getValidDnsNames(dnsNameMap);
          Set<String> vmIdsWithInvalidDns = getVmIdsWithInvalidDnsNames(dnsNameMap);
@@ -137,6 +142,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          }
 
          if (status.screenStatusesForSpecificFailures(new String[]{"decomRecomTTs"})) {
+            long checkTime = System.currentTimeMillis();
             /* Returns enabled TTs in this cluster */
             Set<String> activeDnsNames = _hadoopActions.checkTargetTTsSuccess("Decommission", validDnsNames, newTargetEnabled, hadoopCluster);
             /* This is the list of what we successfully de-commissioned */
@@ -144,6 +150,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             Set<String> unsuccessfulIds = getVmIdSubset(ttVmIds, successfulIds);
             if (!unsuccessfulIds.isEmpty()) {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: the following task trackers failed to decommission cleanly: "+LogFormatter.constructListOfLoggableVms(unsuccessfulIds));
+            } else {
+               _log.info("TIMING: Decommission in "+(checkTime-initTime)+"ms; TT verification in "+(System.currentTimeMillis()-checkTime)+"ms");
             }
          }
          /* Power off all the VMs, decommissioned or not - note this does not block */
@@ -168,6 +176,10 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       }
       return vmIdsWithInvalidDnsNames;
    }
+   
+   private boolean validateDnsNames(Set<String> dnsNames) {
+      return _hadoopActions.validateTtHostNames(dnsNames);
+   }
 
    private Set<String> blockAndGetDnsNamesForVmIdsWithoutCachedDns(Set<String> vmIdsWithInvalidDns, long timeoutMillis) {
       long endTime = System.currentTimeMillis() + timeoutMillis;
@@ -184,7 +196,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                   return null;         /* This would mean that our vmIds themselves have become invalid, which would only occur if vms are deleted */
                }
                result = new HashSet<String>(newDnsNameMap.values());
-               if (!result.contains(null) && !result.contains("")) {
+               if (!result.contains(null) && !result.contains("") && validateDnsNames(result)) {
                   _log.info("Found valid DNS names for all VMs");
                   return result;
                }
