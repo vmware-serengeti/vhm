@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vim.binding.vim.PerformanceManager;
+import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
 
 public class StandaloneSimpleVCActions implements VCActions {
@@ -113,5 +114,17 @@ public class StandaloneSimpleVCActions implements VCActions {
    public EventManager getEventManager() {
       _latestArgs.put("getEventManager", new Object[]{});
       return null;
+   }
+
+   @Override
+   public AlarmManager getAlarmManager() {
+      _latestArgs.put("getAlarmManager", new Object[]{});
+      return null;
+   }
+
+   @Override
+   public void logEventWithVC(String vmMoRef, String message, VcLogLevel level) {
+      _latestArgs.put("logEventWithVC", new Object[]{});
+      return;
    }
 }

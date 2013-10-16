@@ -32,7 +32,9 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.Task;
+import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
+import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VcAdapter implements VCActions {
@@ -222,11 +224,20 @@ public class VcAdapter implements VCActions {
       return _vcVlsi.getPerformanceManager(_statsPollClient);
    }
 
+   @Override
    public EventManager getEventManager() {
       if (!validateConnection(_controlClient)) {
          return null;
       }
       return _vcVlsi.getEventManager(_controlClient);
+   }
+
+   @Override
+   public AlarmManager getAlarmManager() {
+      if (!validateConnection(_controlClient)) {
+         return null;
+      }
+      return _vcVlsi.getAlarmManager(_controlClient);
    }
 
    @Override
@@ -242,4 +253,22 @@ public class VcAdapter implements VCActions {
       _vcVlsi.cancelWaitForUpdates();
    }
 
+   /**
+    * This logs an event with VC for the specified VM. The structure of the detail message is:
+    * BDE lower_case_level_name - provided message string
+    *
+    * We use this prefix and level construction to provide source information via GeneralUserEvent. Ideally we will
+    * move to using EventEx event type with custom BDE events registered via the UI extension.
+    */
+   @Override
+   public void logEventWithVC(String vmMoRef, String message, VcLogLevel level) {
+      ManagedObjectReference ref = new ManagedObjectReference();
+      ref.setValue(vmMoRef);
+      ref.setType("VirtualMachine");
+
+      EventManager eventManager = getEventManager();
+      if (eventManager != null) {
+         eventManager.logUserEvent(ref, VC_EVENT_MSG_PREFIX+" "+level.name().toLowerCase()+" - "+message);
+      }
+   }
 }

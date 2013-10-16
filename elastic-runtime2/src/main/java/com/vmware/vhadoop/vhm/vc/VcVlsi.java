@@ -53,6 +53,7 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
+import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
 import com.vmware.vim.binding.vim.fault.HostConnectFault;
 import com.vmware.vim.binding.vim.fault.VimFault;
@@ -824,6 +825,16 @@ public class VcVlsi {
          return client.createStub(EventManager.class, sic.getEventManager());
       } catch (Exception e) {
          _log.info("Cannot connect to VC event manager");
+         return null;
+      }
+   }
+
+   public AlarmManager getAlarmManager(Client client) {
+      try {
+         ServiceInstanceContent sic = getServiceInstanceContent(client);
+         return client.createStub(AlarmManager.class, sic.getAlarmManager());
+      } catch (Exception e) {
+         _log.info("Cannot connect to VC alarm manager");
          return null;
       }
    }
