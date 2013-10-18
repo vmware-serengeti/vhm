@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 
+import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
@@ -31,8 +32,6 @@ public interface VCActions {
    public static final String VC_POWER_OFF_STATUS_KEY = "powerOffVM";
 
    public static enum VcLogLevel { INFO, WARNING, ERROR };
-   /** This is used as a prefix for events logged with VC. While we're using GeneralUserEvent we need to indicate the source of the event */
-   public static final String VC_EVENT_MSG_PREFIX = "BDE";
 
    public class MasterVmEventData {
       public Boolean _enableAutomation;
@@ -89,5 +88,7 @@ public interface VCActions {
 
    public List<String> listVMsInFolder(String folderName);
 
-   public void logEventWithVC(String vmMoRef, String message, VcLogLevel level);
+   public void log(VcLogLevel level, String vmMoRef, String message);
+
+   public ExtensionManager getExtensionManager();
 }

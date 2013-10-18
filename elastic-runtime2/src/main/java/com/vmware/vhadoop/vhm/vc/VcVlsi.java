@@ -44,6 +44,7 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
+import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.Folder;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.ServiceInstance;
@@ -835,6 +836,16 @@ public class VcVlsi {
          return client.createStub(AlarmManager.class, sic.getAlarmManager());
       } catch (Exception e) {
          _log.info("Cannot connect to VC alarm manager");
+         return null;
+      }
+   }
+
+   public ExtensionManager getExtensionManager(Client client) {
+      try {
+         ServiceInstanceContent sic = getServiceInstanceContent(client);
+         return client.createStub(ExtensionManager.class, sic.getExtensionManager());
+      } catch (Exception e) {
+         _log.info("Cannot connect to VC extension manager");
          return null;
       }
    }

@@ -16,6 +16,7 @@
 package com.vmware.vhadoop.vhm.vc;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,10 +31,15 @@ import java.util.logging.Logger;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vim.binding.impl.vim.event.EventExImpl;
+import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
+import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
+import com.vmware.vim.binding.vim.event.EventEx;
 import com.vmware.vim.binding.vim.event.EventManager;
+import com.vmware.vim.binding.vim.fault.InvalidEvent;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.vmomi.client.Client;
 
@@ -241,6 +247,14 @@ public class VcAdapter implements VCActions {
    }
 
    @Override
+   public ExtensionManager getExtensionManager() {
+      if (!validateConnection(_controlClient)) {
+         return null;
+      }
+      return _vcVlsi.getExtensionManager(_controlClient);
+   }
+
+   @Override
    public List<String> listVMsInFolder(String folderName) {
       if (!validateConnection(_controlClient)) {
          return null;
@@ -261,14 +275,26 @@ public class VcAdapter implements VCActions {
     * move to using EventEx event type with custom BDE events registered via the UI extension.
     */
    @Override
-   public void logEventWithVC(String vmMoRef, String message, VcLogLevel level) {
+   public void log(VcLogLevel level, String vmMoRef, String message) {
+      EventManager eventManager = getEventManager();
+
       ManagedObjectReference ref = new ManagedObjectReference();
       ref.setValue(vmMoRef);
       ref.setType("VirtualMachine");
 
-      EventManager eventManager = getEventManager();
-      if (eventManager != null) {
-         eventManager.logUserEvent(ref, VC_EVENT_MSG_PREFIX+" "+level.name().toLowerCase()+" - "+message);
+      EventEx event = new EventExImpl();
+      event.setCreatedTime(Calendar.getInstance());
+      event.setUserName("Big Data Extensions");
+      event.setEventTypeId("com.vmware.vhadoop.vhm.vc.VMStatusEvent");
+      event.setSeverity(level.name().toLowerCase());
+      event.setMessage(message);
+      event.setObjectId(ref.getValue());
+      event.setObjectType(new TypeNameImpl("VirtualMachine"));
+
+      try {
+         eventManager.postEvent(event, null);
+      } catch (InvalidEvent e) {
+         _log.log(Level.INFO, "VHM: <%VM"+vmMoRef+"%VM> - failed to log event with vCenter", e);
       }
    }
 }

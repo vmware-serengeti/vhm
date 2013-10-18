@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
@@ -123,8 +124,14 @@ public class StandaloneSimpleVCActions implements VCActions {
    }
 
    @Override
-   public void logEventWithVC(String vmMoRef, String message, VcLogLevel level) {
-      _latestArgs.put("logEventWithVC", new Object[]{});
+   public ExtensionManager getExtensionManager() {
+      _latestArgs.put("getExtensionManager", new Object[]{});
+      return null;
+   }
+
+   @Override
+   public void log(VcLogLevel level, String vmMoRef, String message) {
+      _latestArgs.put("log", new Object[]{});
       return;
    }
 }
