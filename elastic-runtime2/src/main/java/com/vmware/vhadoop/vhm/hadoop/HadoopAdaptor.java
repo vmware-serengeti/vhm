@@ -42,8 +42,8 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopConnectionProperties;
-import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopCredentials;
 import com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ParamTypes;
+import com.vmware.vhadoop.vhm.hadoop.SshUtilities.Credentials;
 
 /**
  * Class which represents the real implementation of HadoopActions
@@ -57,7 +57,7 @@ public class HadoopAdaptor implements HadoopActions {
 
    private final Map<String, HadoopConnection> _connections;
    private final HadoopErrorCodes _errorCodes;
-   private final HadoopCredentials _credentials;
+   private final Credentials _credentials;
    private final JTConfigInfo _jtConfig;
    private final HadoopConnectionProperties _connectionProperties;        /* TODO: Provide setter? If not, make local */
    private final Map<String, Map<ParamTypes, String>> _errorParamValues;  /* TODO: Will need one per connection/cluster */
@@ -83,7 +83,7 @@ public class HadoopAdaptor implements HadoopActions {
 
    private static final int MAX_CHECK_RETRY_ITERATIONS = 4;
 
-   public HadoopAdaptor(HadoopCredentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
+   public HadoopAdaptor(Credentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
       _credentials = credentials;
       _jtConfig = jtConfig;
@@ -383,27 +383,27 @@ public class HadoopAdaptor implements HadoopActions {
              * CHANGED: We have changed the time at which this function is invoked -- it gets invoked only when dns/hostnames are available.
              * So we no longer have this issue of not knowing hostnames and still meeting target #TTs. Our only successful exit is when the
              * TTs that have been explicitly asked to be checked, have been correctly de/recommissioned.
-             * 
+             *
              * rc = SUCCESS; //Note: removing this
-             *      
+             *
              * We also notice that in this case, where #Active TTs matches target, but all the requested TTs haven't been de/recommissioned yet,
              * the check script returns immediately (because it only looks for a match of these values, which is true here). So we recompute
              * target TTs based on latest information to essentially put back the delay...
              */
 
             Set<String> deltaTTs = new HashSet<String>(ttDnsNames);
-            if (opType.equals("Recommission")) {              
+            if (opType.equals("Recommission")) {
                deltaTTs.removeAll(allActiveTTs); //get TTs that haven't been recommissioned yet...
                totalTargetEnabled = allActiveTTs.size() + deltaTTs.size();
             } else { //optype = Decommission
                deltaTTs.retainAll(allActiveTTs); //get TTs that haven't been decommissioned yet...
                totalTargetEnabled = allActiveTTs.size() - deltaTTs.size();
             }
-            
+
             _log.log(Level.INFO, "Even though #ActiveTTs = #TargetTTs, not all requested TTs have been " + opType.toLowerCase() + "ed yet - Trying again with updated target: " + totalTargetEnabled);
          }
 
-         /* Break out if there is an error other than the ones we expect to be resolved in a subsequent invocation of the check script */ 
+         /* Break out if there is an error other than the ones we expect to be resolved in a subsequent invocation of the check script */
          if (rc != ERROR_FEWER_TTS && rc != ERROR_EXCESS_TTS && rc != UNKNOWN_ERROR) {
             break;
          }
@@ -423,7 +423,7 @@ public class HadoopAdaptor implements HadoopActions {
     * @return
     */
    protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
-      return new HadoopConnection(cluster, properties, new NonThreadSafeSshUtils());
+      return new HadoopConnection(cluster, properties, new SshConnectionCache(20));
    }
 
    @Override

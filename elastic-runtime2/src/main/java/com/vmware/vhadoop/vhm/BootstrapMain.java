@@ -41,7 +41,7 @@ import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.hadoop.HadoopAdaptor;
-import com.vmware.vhadoop.vhm.hadoop.SimpleHadoopCredentials;
+import com.vmware.vhadoop.vhm.hadoop.SshUtilities.Credentials;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor;
 import com.vmware.vhadoop.vhm.rabbit.SimpleRabbitCredentials;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
@@ -56,7 +56,7 @@ public class BootstrapMain
    /* Class initialize early to avoid occasional NoClassDefFoundError in model testing
       Field is never used - public to avoid having it optimized out. Yes this is ugly. */
    public static VHMJsonReturnMessage _temp = VHMJsonReturnMessage.getVHMJsonReturnMessage();
-   
+
    public static final String DEFAULT_VHM_CONFIG_FILENAME = "vhm.properties";
    public static final String DEFAULT_LOG_CONFIG_FILENAME = "logging.properties";
    public static final String DEFAULT_VHM_LOG_FILENAME = "vhm.xml";
@@ -286,7 +286,7 @@ public class BootstrapMain
 
    HadoopActions getHadoopInterface(ThreadLocalCompoundStatus tlcs) {
       if (_hadoopActions == null) {
-         _hadoopActions = new HadoopAdaptor(new SimpleHadoopCredentials(_properties.getProperty("vHadoopUser"),
+         _hadoopActions = new HadoopAdaptor(new Credentials(_properties.getProperty("vHadoopUser"),
                                                                         _properties.getProperty("vHadoopPwd"),
                                                                         _properties.getProperty("vHadoopPrvkeyFile")),
                                             new JTConfigInfo(_properties.getProperty("vHadoopHome"),
