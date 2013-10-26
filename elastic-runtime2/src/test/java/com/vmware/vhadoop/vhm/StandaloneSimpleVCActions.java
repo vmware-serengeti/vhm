@@ -26,6 +26,7 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
+import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.event.EventManager;
 
 public class StandaloneSimpleVCActions implements VCActions {
@@ -130,7 +131,7 @@ public class StandaloneSimpleVCActions implements VCActions {
    }
 
    @Override
-   public void log(VcLogLevel level, String vmMoRef, String message) {
+   public void log(EventSeverity level, String vmMoRef, String message) {
       _latestArgs.put("log", new Object[]{});
       return;
    }

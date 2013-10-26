@@ -37,6 +37,7 @@ import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
+import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.event.EventEx;
 import com.vmware.vim.binding.vim.event.EventManager;
 import com.vmware.vim.binding.vim.fault.InvalidEvent;
@@ -268,14 +269,14 @@ public class VcAdapter implements VCActions {
    }
 
    /**
-    * This logs an event with VC for the specified VM. The structure of the detail message is:
-    * BDE lower_case_level_name - provided message string
+    * This logs an event with VC for the specified VM.
     *
-    * We use this prefix and level construction to provide source information via GeneralUserEvent. Ideally we will
-    * move to using EventEx event type with custom BDE events registered via the UI extension.
+    * @param level error, warning or info
+    * @param vm the managed object reference of the VM the message applies to
+    * @param message the message to display in VC and serengeti cluster detail
     */
    @Override
-   public void log(VcLogLevel level, String vmMoRef, String message) {
+   public void log(EventSeverity level, String vmMoRef, String message) {
       EventManager eventManager = getEventManager();
 
       ManagedObjectReference ref = new ManagedObjectReference();
@@ -285,8 +286,8 @@ public class VcAdapter implements VCActions {
       EventEx event = new EventExImpl();
       event.setCreatedTime(Calendar.getInstance());
       event.setUserName("Big Data Extensions");
-      event.setEventTypeId("com.vmware.vhadoop.vhm.vc.VMStatusEvent");
-      event.setSeverity(level.name().toLowerCase());
+      event.setEventTypeId("com.vmware.vhadoop.vhm.vc.events."+level.name());
+      event.setSeverity(level.name());
       event.setMessage(message);
       event.setObjectId(ref.getValue());
       event.setObjectType(new TypeNameImpl("VirtualMachine"));
@@ -294,7 +295,7 @@ public class VcAdapter implements VCActions {
       try {
          eventManager.postEvent(event, null);
       } catch (InvalidEvent e) {
-         _log.log(Level.INFO, "VHM: <%VM"+vmMoRef+"%VM> - failed to log event with vCenter", e);
+         _log.log(Level.INFO, "VHM: <%VM"+vmMoRef+"%VM> - failed to log "+level.name()+" event with vCenter", e);
       }
    }
 }

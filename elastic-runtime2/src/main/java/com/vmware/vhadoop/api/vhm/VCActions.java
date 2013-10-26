@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
+import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.event.EventManager;
 
 /* Represents actions which can be invoked on the VC subsystem */
@@ -30,8 +31,6 @@ public interface VCActions {
 
    public static final String VC_POWER_ON_STATUS_KEY = "powerOnVM";
    public static final String VC_POWER_OFF_STATUS_KEY = "powerOffVM";
-
-   public static enum VcLogLevel { INFO, WARNING, ERROR };
 
    public class MasterVmEventData {
       public Boolean _enableAutomation;
@@ -88,7 +87,7 @@ public interface VCActions {
 
    public List<String> listVMsInFolder(String folderName);
 
-   public void log(VcLogLevel level, String vmMoRef, String message);
+   public void log(EventSeverity level, String vmMoRef, String message);
 
    public ExtensionManager getExtensionManager();
 }
