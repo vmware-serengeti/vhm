@@ -25,26 +25,44 @@ public class SshConnectionCache implements SshUtilities
 
    class Connection {
       String hostname;
-      /** set to 22, default SSH port */
-      int port = 22;
+      int port;
       Credentials credentials;
 
-      Connection(String hostname, Credentials credentials) {
+      Connection(String hostname, int port, Credentials credentials) {
          this.hostname = hostname;
+         this.port = port;
          this.credentials = credentials;
       }
 
-      /**
-       * Equal if hostname and username are the same
-       */
       @Override
-      public boolean equals(Object object) {
-         if (!(object instanceof Connection)) {
-            return false;
-         }
+      public int hashCode() {
+         final int prime = 31;
+         int result = 1;
+         result = prime * result + ((credentials == null) ? 0 : credentials.hashCode());
+         result = prime * result + ((hostname == null) ? 0 : hostname.hashCode());
+         return result;
+      }
 
-         Connection connection = (Connection)object;
-         return hostname.equals(hostname) && credentials.username.equals(connection.credentials.username);
+      @Override
+      public boolean equals(Object obj) {
+         if (this == obj)
+            return true;
+         if (obj == null)
+            return false;
+         if (getClass() != obj.getClass())
+            return false;
+         Connection other = (Connection) obj;
+         if (credentials == null) {
+            if (other.credentials != null)
+               return false;
+         } else if (!credentials.equals(other.credentials))
+            return false;
+         if (hostname == null) {
+            if (other.hostname != null)
+               return false;
+         } else if (!hostname.equals(other.hostname))
+            return false;
+         return true;
       }
    }
 
@@ -202,6 +220,7 @@ public class SshConnectionCache implements SshUtilities
     */
    protected boolean connectSession(Session session, Credentials credentials) {
       if (session.isConnected()) {
+         _log.finer("VHM: "+session.getHost()+" - using cached connection");
          return true;
       }
 
@@ -217,21 +236,24 @@ public class SshConnectionCache implements SshUtilities
                session.setPassword(credentials.password);
             }
 
+            _log.finer("VHM: "+session.getHost()+" - establishing ssh connection");
             session.connect();
             return true;
 
          } catch (JSchException e) {
-            _log.log(Level.WARNING, "VHM: "+session.getHost()+" - could not create ssh channel to host - " + e.getMessage());
+            _log.info("VHM: "+session.getHost()+" - could not create ssh channel to host - " + e.getMessage());
             if (i < NUM_SSH_RETRIES - 1) {
                try {
-                  _log.log(Level.WARNING, "VHM: "+session.getHost()+" - retrying ssh connection to host after delay");
+                  _log.info("VHM: "+session.getHost()+" - retrying ssh connection to host after delay");
                   Thread.sleep(RETRY_DELAY_MILLIS);
                } catch (InterruptedException e1) {
-                  _log.log(Level.WARNING, "VHM: unexpected interruption while waiting to retry ssh connection");
+                  _log.info("VHM: unexpected interruption while waiting to retry ssh connection");
                }
             }
          }
       }
+
+      _log.warning("VHM: "+session.getHost()+" - unable to establish ssh session");
 
       return false;
    }
@@ -271,12 +293,11 @@ public class SshConnectionCache implements SshUtilities
          return false;
       } else {
          /* we weren't expecting data on this stream, so read it to log what we've been given */
-         StringBuffer sb = new StringBuffer(Byte.valueOf((byte) b));
-         int c;
+         StringBuffer sb = new StringBuffer();
          do {
-            c = in.read();
-            sb.append((char) c);
-         } while (c != '\n' && c >= 0);
+            sb.append((char) b);
+            b = in.read();
+         } while (b != '\n' && b >= 0);
          _log.log(Level.INFO, "VHM: expected byte 0x0 but saw the following data: " + sb.toString());
          return false;
       }
@@ -320,11 +341,12 @@ public class SshConnectionCache implements SshUtilities
          }
 
          out.close();
+         /* set this explicitly here as that last assert provided us with the return code for the copy */
+         exitCode = 0;
       } catch (Exception e) {
          _log.log(Level.WARNING, "VHM: exception while copying data to remote host", e);
       } finally {
          if (proc != null) {
-            exitCode = proc.exitValue();
             proc.cleanup();
          }
       }
@@ -333,15 +355,8 @@ public class SshConnectionCache implements SshUtilities
    }
 
    @Override
-   public int copy(String remote, Credentials credentials, byte[] data, String remoteDirectory, String remoteName, String permissions) {
-      Connection connection = new Connection(remote, credentials);
-      return copy(connection, data, remoteDirectory, remoteName, permissions);
-   }
-
-   @Override
    public int copy(String remote, int port, Credentials credentials, byte[] data, String remoteDirectory, String remoteName, String permissions) {
-      Connection connection = new Connection(remote, credentials);
-      connection.port = port;
+      Connection connection = new Connection(remote, port, credentials);
       return copy(connection, data, remoteDirectory, remoteName, permissions);
    }
 
@@ -353,6 +368,10 @@ public class SshConnectionCache implements SshUtilities
       do {
          try {
             exitCode = proc.waitFor(INPUTSTREAM_TIMEOUT_MILLIS);
+            if (exitCode != RemoteProcess.UNDEFINED_EXIT_STATUS) {
+               /* we only loop if the command hasn't completed */
+               break;
+            }
          } catch (InterruptedException e) {
             _log.info("VHM: unexpected interruption while waiting for remote command to complete");
          }
@@ -372,15 +391,8 @@ public class SshConnectionCache implements SshUtilities
    }
 
    @Override
-   public int execute(String remote, Credentials credentials, String command, OutputStream stdout) throws IOException {
-      Connection connection = new Connection(remote, credentials);
-      return execute(connection, command, stdout);
-   }
-
-   @Override
    public int execute(String remote, int port, Credentials credentials, String command, OutputStream stdout) throws IOException {
-      Connection connection = new Connection(remote, credentials);
-      connection.port = port;
+      Connection connection = new Connection(remote, port, credentials);
       return execute(connection, command, stdout);
    }
 
@@ -405,7 +417,10 @@ public class SshConnectionCache implements SshUtilities
       try {
          _log.log(Level.FINE, "About to execute: " + command);
 
-         channel.setPty(true); // to enable sudo
+         if (command.startsWith("sudo")) {
+            /* sudo requires an allocated pty */
+            channel.setPty(true);
+         }
          channel.setCommand(command);
 
          /* if we have sink and source already, set the channels up */
@@ -442,15 +457,8 @@ public class SshConnectionCache implements SshUtilities
    }
 
    @Override
-   public RemoteProcess invoke(String remote, Credentials credentials, String command) throws IOException {
-      Connection connection = new Connection(remote, credentials);
-      return invoke(connection, command, null, null);
-   }
-
-   @Override
    public RemoteProcess invoke(String remote, int port, Credentials credentials, String command, OutputStream stdout) throws IOException {
-      Connection connection = new Connection(remote, credentials);
-      connection.port = port;
+      Connection connection = new Connection(remote, port, credentials);
       return invoke(connection, command, stdout, null);
    }
 }
