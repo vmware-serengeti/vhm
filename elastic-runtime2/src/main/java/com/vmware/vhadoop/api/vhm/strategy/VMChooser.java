@@ -20,6 +20,13 @@ import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
+/**
+ * VMChooser represents an abstraction for choosing VMs from a cluster to be enabled or disabled
+ * A VMChooser must implement either a choosing strategy, a ranking strategy or both.
+ * A strategy that is not implemented should return null, to differentiate from an empty set
+ * A VMChooser is able to choose VMs based on its own particular private knowledge and this may be combined
+ *   with the input from other VMChoosers
+ */
 public interface VMChooser extends ClusterMapReader {
 
    public class RankedVM implements Comparator<RankedVM> {
@@ -89,8 +96,8 @@ public interface VMChooser extends ClusterMapReader {
    
    /**
     * Selects VMs to enable from the specified cluster in no particular order. The logic determining which VMs is provided by implementors.
-    * If there is a reason why VMs should not be chosen, other than already being powered on, they should not be returned. 
-    *   This means that the method is not guaranteed to return a set of delta elements
+    * If there is a reason why VMs should not be chosen, other than already being powered on, they should not be returned.
+    *   The method is not guaranteed to return a set of delta elements
     * @param clusterId - the target cluster
     * @param delta - the number of VMs to enable
     * @return - set of VM ids to enable or null if not implemented
@@ -100,7 +107,7 @@ public interface VMChooser extends ClusterMapReader {
    /**
     * Selects VMs to disable from the specified cluster in no particular order. The logic determining which VMs is provided by implementors.
     * If there is a reason why VMs should not be chosen, other than already being powered off, they should not be returned. 
-    *   This means that the method is not guaranteed to return a set of delta elements.
+    *   The method is not guaranteed to return a set of delta elements
     * @param clusterId - the target cluster
     * @param delta - the number of VMs to disable
     * @return - set of VM ids to disable or null if not implemented

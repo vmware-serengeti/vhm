@@ -65,34 +65,54 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       return MANUAL_SCALE_STRATEGY_KEY;
    }
    
-   private Set<String> getVmIdsFromRankedVMs(Iterator<RankedVM> orderedSet, int numToRetain) {
-      Set<String> result = new HashSet<String>();
-      for (int i=0; i<numToRetain && orderedSet.hasNext(); i++) {
-         result.add(orderedSet.next().getVmId());
-      }
-      return result;
-   }
+   /* TODO: Experimental code to have ManualScaleStrategy use multiple VMChoosers */
    
+//   private Set<String> getVmIdsFromRankedVMs(Iterator<RankedVM> orderedSet, int numToRetain) {
+//      Set<String> result = new HashSet<String>();
+//      for (int i=0; i<numToRetain && orderedSet.hasNext(); i++) {
+//         result.add(orderedSet.next().getVmId());
+//      }
+//      return result;
+//   }
+//   
+//   private Set<String> chooseVMsToEnable(String clusterId, int delta) {
+//      Set<RankedVM> combination = new TreeSet<RankedVM>();
+//      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
+//         Set<RankedVM> rankedVMs = vmChooser.rankVMsToEnable(clusterId);
+//         if (rankedVMs != null) {
+//            RankedVM.combine(combination, rankedVMs);
+//         }
+//      }
+//      return getVmIdsFromRankedVMs(combination.iterator(), delta);
+//   }
+//
+//   private Set<String> chooseVMsToDisable(String clusterId, int delta) {
+//      Set<RankedVM> combination = new TreeSet<RankedVM>();
+//      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
+//         Set<RankedVM> rankedVMs = vmChooser.rankVMsToDisable(clusterId);
+//         if (rankedVMs != null) {
+//            RankedVM.combine(combination, rankedVMs);
+//         }
+//      }
+//      return getVmIdsFromRankedVMs(combination.iterator(), delta);
+//   }
+
    private Set<String> chooseVMsToEnable(String clusterId, int delta) {
-      Set<RankedVM> combination = new TreeSet<RankedVM>();
       for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-         Set<RankedVM> rankedVMs = vmChooser.rankVMsToEnable(clusterId);
-         if (rankedVMs != null) {
-            RankedVM.combine(combination, rankedVMs);
+         if (vmChooser instanceof BalancedVMChooser) {
+            return ((BalancedVMChooser)vmChooser).chooseVMsToEnable(clusterId, delta);
          }
       }
-      return getVmIdsFromRankedVMs(combination.iterator(), delta);
+      return null;
    }
 
    private Set<String> chooseVMsToDisable(String clusterId, int delta) {
-      Set<RankedVM> combination = new TreeSet<RankedVM>();
       for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-         Set<RankedVM> rankedVMs = vmChooser.rankVMsToDisable(clusterId);
-         if (rankedVMs != null) {
-            RankedVM.combine(combination, rankedVMs);
+         if (vmChooser instanceof BalancedVMChooser) {
+            return ((BalancedVMChooser)vmChooser).chooseVMsToDisable(clusterId, delta);
          }
       }
-      return getVmIdsFromRankedVMs(combination.iterator(), delta);
+      return null;
    }
 
    class CallableStrategy extends ClusterScaleOperation {
