@@ -32,11 +32,10 @@ import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
-import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 
-public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProducer {
+public class ThreadPoolExecutionStrategy implements ExecutionStrategy {
 
    private class ClusterTaskContext {
       ScaleStrategy _scaleStrategy;

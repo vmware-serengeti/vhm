@@ -18,6 +18,7 @@ package com.vmware.vhadoop.vhm.strategy;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
@@ -40,7 +41,7 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
       return result;
    }
 
-   public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState) {
+   public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState, boolean limitToDelta) {
       _log.info("DumbVMChooser choosing VMs for cluster "+clusterId+" where delta="+delta+", powerState="+!targetPowerState);
 
       Set<String> vmIds = null;
@@ -52,41 +53,41 @@ public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser
          unlockClusterMap(clusterMap);
       }
 
-      if (vmIds != null) {
+      if ((vmIds != null) && limitToDelta) {
          return chooseVMs(vmIds, delta, targetPowerState);
       }
       return null;
    }
+   
+   public Set<RankedVM> rankVMs(final String clusterId, final boolean targetPowerState) {
+      Set<RankedVM> orderedResult = new TreeSet<RankedVM>();
+      Set<String> chosenVMs = chooseVMs(clusterId, 0, targetPowerState, false);
+      if (chosenVMs == null) {
+         return null;
+      }
+      for (String vmId : chosenVMs) {
+         orderedResult.add(new RankedVM(vmId, 0));    /* All equal rank */
+      }
+      return orderedResult;
+   }
 
    @Override
    public Set<String> chooseVMsToEnable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, delta, true);
+      return chooseVMs(clusterId, delta, true, true);
    }
 
    @Override
    public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, delta, false);
+      return chooseVMs(clusterId, delta, false, true);
    }
 
    @Override
-   public String chooseVMToEnableOnHost(final Set<String> candidates) {
-      /* Not implemented */
-      return null;
+   public Set<RankedVM> rankVMsToEnable(String clusterId) {
+      return rankVMs(clusterId, true);
    }
 
    @Override
-   public String chooseVMToDisableOnHost(final Set<String> candidates) {
-      /* Not implemented */
-      return null;
+   public Set<RankedVM> rankVMsToDisable(String clusterId) {
+      return rankVMs(clusterId, false);
    }
-
-//   @Override
-//   public Set<String> chooseVMsToEnable(final Set<String> candidates, final int delta) {
-//      return chooseVMs(candidates, delta, true);
-//   }
-//
-//   @Override
-//   public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-//      return chooseVMs(candidates, delta, false);
-//   }
 }

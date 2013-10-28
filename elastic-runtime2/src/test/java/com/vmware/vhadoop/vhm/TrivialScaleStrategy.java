@@ -148,4 +148,9 @@ public class TrivialScaleStrategy extends AbstractClusterMapReader implements Sc
       return new Class[]{ClusterScaleEvent.class};       /* Handle all events */
    }
 
+   @Override
+   public void setVMChooserCallback(VMChooserCallback callback) {
+      /* No need for this */
+   }
+
 }

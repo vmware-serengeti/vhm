@@ -301,7 +301,7 @@ public class BootstrapMain
    }
 
    ScaleStrategy[] getScaleStrategies(final ThreadLocalCompoundStatus tlcs) {
-      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new BalancedVMChooser(), new JobTrackerEDPolicy(getHadoopInterface(tlcs), getVCInterface(tlcs)));
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new JobTrackerEDPolicy(getHadoopInterface(tlcs), getVCInterface(tlcs)));
       return new ScaleStrategy[] { manualScaleStrategy };
    }
 
@@ -340,6 +340,7 @@ public class BootstrapMain
          _log.severe("Fatal error registering MQClient as an event producer");
          return null;
       }
+      vhm.registerVMChooser(new BalancedVMChooser());
 
       return vhm;
    }

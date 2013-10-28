@@ -60,7 +60,9 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          Host host = targets.poll();
          if (host == null) {
             /* there are no candidates left, so return what we have */
-            _log.warning("VHM: no more hosts with candidate VMs, shortfall is "+(remaining+1));
+            if (delta != Integer.MAX_VALUE) {
+               _log.warning("VHM: no more hosts with candidate VMs, shortfall is "+(remaining+1));
+            }
             return result;
          }
 
@@ -143,6 +145,19 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       return result;
    }
 
+   public Set<RankedVM> rankVMs(final String clusterId, final boolean targetPowerState) {
+      Set<RankedVM> orderedResult = new TreeSet<RankedVM>();
+      Set<String> chosenVMs = chooseVMs(clusterId, Integer.MAX_VALUE, targetPowerState);
+      if (chosenVMs == null) {
+         return null;
+      }
+      int rank = 0;
+      for (String vmId : chosenVMs) {
+         orderedResult.add(new RankedVM(vmId, rank++));
+      }
+      return orderedResult;
+   }
+
    @Override
    public Set<String> chooseVMsToEnable(final String clusterId, final int delta) {
       return chooseVMs(clusterId, delta, true);
@@ -154,74 +169,12 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    }
 
    @Override
-   public String chooseVMToEnableOnHost(final Set<String> candidates) {
-      /* TODO: decide whether we ever want a more sophisticated solution */
-      if ((candidates == null) || candidates.isEmpty()) {
-         return null;
-      }
-
-      /* this is a temporary solution that prevents us from returning the same VM on a host every time */
-      List<String> vms = new ArrayList<String>(candidates);
-      Collections.shuffle(vms);
-      return vms.get(0);
+   public Set<RankedVM> rankVMsToEnable(String clusterId) {
+      return rankVMs(clusterId, true);
    }
 
    @Override
-   public String chooseVMToDisableOnHost(final Set<String> candidates) {
-      /* TODO: decide whether we ever want a more sophisticated solution */
-      if ((candidates == null) || candidates.isEmpty()) {
-         return null;
-      }
-
-      /* this is a temporary solution that prevents us from returning the same VM on a host every time */
-      List<String> vms = new ArrayList<String>(candidates);
-      Collections.shuffle(vms);
-      return vms.get(0);
+   public Set<RankedVM> rankVMsToDisable(String clusterId) {
+      return rankVMs(clusterId, false);
    }
-
-//   @Override
-//   public Set<String> chooseVMsToEnable(final Set<String> candidates, final int delta) {
-//      return chooseVMs(candidates, delta, true);
-//   }
-//
-//   @Override
-//   public Set<String> chooseVMsToDisable(final Set<String> candidates, final int delta) {
-//      return chooseVMs(candidates, delta, false);
-//   }
-//
-//   public Set<String> chooseVMs(final Set<String> candidates, final int delta, final boolean targetPowerState) {
-//      if (candidates.isEmpty()) {
-//         return new TreeSet<String>();
-//      }
-//
-//      Map<String,Host> hosts = new HashMap<String,Host>();
-//
-//      ClusterMap clusterMap = getAndReadLockClusterMap();
-//      try {
-//         for (String vm : candidates) {
-//            String hostid = clusterMap.getHostIdForVm(vm);
-//            Host h = hosts.get(hostid);
-//            if (h == null) {
-//               h = new Host();
-//               h.candidates = new HashSet<String>();
-//               Set<String> vmIds = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterMap.getClusterIdForVm(vm), hostid, true);
-//               h.on = (vmIds == null) ? 0 : vmIds.size();
-//            }
-//
-//            h.candidates.add(vm);
-//            hosts.put(hostid, h);
-//         }
-//      } finally {
-//         unlockClusterMap(clusterMap);
-//      }
-//
-//      PriorityQueue<Host> targets = new PriorityQueue<Host>(hosts.size(), new Comparator<Host>() {
-//         @Override
-//         public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
-//      });
-//
-//      targets.addAll(hosts.values());
-//
-//      return selectVMs(targets, delta, targetPowerState);
-//   }
 }

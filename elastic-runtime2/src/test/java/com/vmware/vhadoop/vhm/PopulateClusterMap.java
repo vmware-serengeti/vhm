@@ -53,8 +53,7 @@ public class PopulateClusterMap {
             properties.getProperty("routeKeyCommand"),
             properties.getProperty("routeKeyStatus")));
 
-      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(
-            new DumbVMChooser(), new DumbEDPolicy(vcActions));
+      ScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbEDPolicy(vcActions));
 
       ExtraInfoToClusterMapper strategyMapper = new ExtraInfoToClusterMapper() {
          @Override
@@ -80,6 +79,7 @@ public class PopulateClusterMap {
 
       _vhm.registerEventProducer(_cscl);
       _vhm.registerEventProducer(_mqClient);
+      _vhm.registerVMChooser(new DumbVMChooser());
 
       _vhm.start();
 

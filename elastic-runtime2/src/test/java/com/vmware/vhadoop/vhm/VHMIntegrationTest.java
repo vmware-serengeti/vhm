@@ -139,11 +139,12 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       
       /* TrivialScaleStrategy is the default used as is picked if vmd._masterVmData._enableAutomation is true (see above) */
       _trivialScaleStrategy = new TrivialScaleStrategy(STRATEGY_KEY);
-      ManualScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbVMChooser(), new DumbEDPolicy(_vcActions));
+      ManualScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbEDPolicy(_vcActions));
       _vhm = new VHM(_vcActions, new ScaleStrategy[]{_trivialScaleStrategy, manualScaleStrategy}, 
             _strategyMapper, new ThreadLocalCompoundStatus());
       assertTrue(_vhm.registerEventProducer(_clusterStateChangeListener));
       assertTrue(_vhm.registerEventProducer(this));
+      _vhm.registerVMChooser(new DumbVMChooser());
       _vhm.start();
    }
 

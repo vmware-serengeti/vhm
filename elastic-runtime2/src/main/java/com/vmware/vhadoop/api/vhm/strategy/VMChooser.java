@@ -15,56 +15,109 @@
 
 package com.vmware.vhadoop.api.vhm.strategy;
 
+import java.util.Comparator;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
 public interface VMChooser extends ClusterMapReader {
+
+   public class RankedVM implements Comparator<RankedVM> {
+      String _vmId;
+      Integer _rank;
+      
+      public static void combine(Set<RankedVM> combineInto, Set<RankedVM> input) {
+         for (RankedVM fromCombineInto : combineInto) {
+            for (RankedVM fromInput : input) {
+               if (fromCombineInto.combine(fromInput)) {
+                  continue;
+               }
+            }
+         }
+         input.removeAll(combineInto);
+         combineInto.addAll(input);
+      }
+      
+      public RankedVM(String vmId, int rank) {
+         _vmId = vmId;
+         _rank = rank;
+      }
+      
+      public boolean combine(RankedVM combineWith) {
+         if (combineWith._vmId.equals(_vmId)) {
+            return false;
+         }
+         _rank += combineWith._rank;
+         return true;
+      }
+
+      public String getVmId() {
+         return _vmId;
+      }
+
+      @Override
+      public int compare(RankedVM arg0, RankedVM arg1) {
+         return arg0._rank - arg1._rank;
+      }
+
+      @Override
+      public int hashCode() {
+         final int prime = 31;
+         int result = 1;
+         result = prime * result + ((_vmId == null) ? 0 : _vmId.hashCode());
+         return result;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+         if (this == obj)
+            return true;
+         if (obj == null)
+            return false;
+         if (getClass() != obj.getClass())
+            return false;
+         RankedVM other = (RankedVM) obj;
+         if (_vmId == null) {
+            if (other._vmId != null)
+               return false;
+         } else if (!_vmId.equals(other._vmId))
+            return false;
+         return true;
+      }
+      
+   }
+   
    /**
-    * Selects VMs to enable from the specified cluster. The logic determining which VMs is provided by implementors.
-    * Synonymous with chooseVMsToEnable(listVMsForCluster(clusterId), delta)
+    * Selects VMs to enable from the specified cluster in no particular order. The logic determining which VMs is provided by implementors.
+    * If there is a reason why VMs should not be chosen, other than already being powered on, they should not be returned. 
+    *   This means that the method is not guaranteed to return a set of delta elements
     * @param clusterId - the target cluster
     * @param delta - the number of VMs to enable
-    * @return - set of VM ids to enable
+    * @return - set of VM ids to enable or null if not implemented
     */
    Set<String> chooseVMsToEnable(String clusterId, int delta);
 
    /**
-    * Selects VMs to disable from the specified cluster. The logic determining which VMs is provided by implementors.
-    * Synonymous with chooseVMsToDisable(listVMsForCluster(clusterId), delta)
+    * Selects VMs to disable from the specified cluster in no particular order. The logic determining which VMs is provided by implementors.
+    * If there is a reason why VMs should not be chosen, other than already being powered off, they should not be returned. 
+    *   This means that the method is not guaranteed to return a set of delta elements.
     * @param clusterId - the target cluster
     * @param delta - the number of VMs to disable
-    * @return - set of VM ids to disable
+    * @return - set of VM ids to disable or null if not implemented
     */
    Set<String> chooseVMsToDisable(String clusterId, int delta);
 
    /**
-    * Selects VMs to enable from the specified set. The logic determining which VMs is provided by implementors.
-    * @param candidates - the candidate VMs
-    * @param delta - the number of VMs to enable
-    * @return - set of VM ids to enable (subset of candidates)
+    * Ranks VMs to disable from the specified cluster. All powered-off VMs in the cluster should be returned
+    * @param clusterId - the target cluster
+    * @return - ordered set of eligible VM IDs or null if not implemented
     */
-//   Set<String> chooseVMsToEnable(Set<String> candidates, int delta);
-
+   Set<RankedVM> rankVMsToEnable(String clusterId);
+   
    /**
-    * Selects VMs to disable from the specified set. The logic determining which VMs is provided by implementors.
-    * @param candidates - the candidate VMs
-    * @param delta - the number of VMs to disable
-    * @return - set of VM ids to disable (subset of candidates)
+    * Ranks VMs to disable from the specified cluster. All powered-on VMs in the cluster should be returned
+    * @param clusterId - the target cluster
+    * @return - ordered set of eligible VM IDs or null if not implemented
     */
-//   Set<String> chooseVMsToDisable(Set<String> candidates, int delta);
-
-   /**
-    * Selects a single VM out of the specified set to enable. All the candidates must be on the same host.
-    * @param candidates - the candidate VMs
-    * @return - set of VM ids to enable (subset of candidates)
-    */
-   String chooseVMToEnableOnHost(Set<String> candidates);
-
-   /**
-    * Selects a single VM out of the specified set to disable. All the candidates must be on the same host.
-    * @param candidates - the candidate VMs
-    * @return - set of VM ids to disable (subset of candidates)
-    */
-   String chooseVMToDisableOnHost(Set<String> candidates);
+   Set<RankedVM> rankVMsToDisable(String clusterId);
 }

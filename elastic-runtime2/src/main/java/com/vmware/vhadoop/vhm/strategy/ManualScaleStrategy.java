@@ -16,7 +16,9 @@
 package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
@@ -28,6 +30,7 @@ import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
+import com.vmware.vhadoop.api.vhm.strategy.VMChooser.RankedVM;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
@@ -37,26 +40,59 @@ import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 
 public class ManualScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
    private static final Logger _log = Logger.getLogger(ManualScaleStrategy.class.getName());
-   private final VMChooser _vmChooser;
    private final EDPolicy _enableDisablePolicy;
+   private VMChooserCallback _vmChooserCallback;
 
    public static final String MANUAL_SCALE_STRATEGY_KEY = "manual";
 
-   public ManualScaleStrategy(VMChooser vmChooser, EDPolicy edPolicy) {
-      _vmChooser = vmChooser;
+   public ManualScaleStrategy(EDPolicy edPolicy) {
       _enableDisablePolicy = edPolicy;
    }
 
    @Override
    public void initialize(ClusterMapReader parent) {
       super.initialize(parent);
-      _vmChooser.initialize(parent);
       _enableDisablePolicy.initialize(parent);
+   }
+
+   @Override
+   public void setVMChooserCallback(VMChooserCallback callback) {
+      _vmChooserCallback = callback;
    }
 
    @Override
    public String getKey() {
       return MANUAL_SCALE_STRATEGY_KEY;
+   }
+   
+   private Set<String> getVmIdsFromRankedVMs(Iterator<RankedVM> orderedSet, int numToRetain) {
+      Set<String> result = new HashSet<String>();
+      for (int i=0; i<numToRetain && orderedSet.hasNext(); i++) {
+         result.add(orderedSet.next().getVmId());
+      }
+      return result;
+   }
+   
+   private Set<String> chooseVMsToEnable(String clusterId, int delta) {
+      Set<RankedVM> combination = new TreeSet<RankedVM>();
+      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
+         Set<RankedVM> rankedVMs = vmChooser.rankVMsToEnable(clusterId);
+         if (rankedVMs != null) {
+            RankedVM.combine(combination, rankedVMs);
+         }
+      }
+      return getVmIdsFromRankedVMs(combination.iterator(), delta);
+   }
+
+   private Set<String> chooseVMsToDisable(String clusterId, int delta) {
+      Set<RankedVM> combination = new TreeSet<RankedVM>();
+      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
+         Set<RankedVM> rankedVMs = vmChooser.rankVMsToDisable(clusterId);
+         if (rankedVMs != null) {
+            RankedVM.combine(combination, rankedVMs);
+         }
+      }
+      return getVmIdsFromRankedVMs(combination.iterator(), delta);
    }
 
    class CallableStrategy extends ClusterScaleOperation {
@@ -109,7 +145,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             }
             Set<String> unresponsiveVmIds = null;
             if (delta > 0) {
-               vmsToED = _vmChooser.chooseVMsToEnable(clusterId, delta);
+               vmsToED = chooseVMsToEnable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns successfully enabled VM IDs from the input set of VMs*/
@@ -129,7 +165,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   }
                }
             } else if (delta < 0) {
-               vmsToED = _vmChooser.chooseVMsToDisable(clusterId, delta);
+               vmsToED = chooseVMsToDisable(clusterId, delta);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns disabled VM IDs for the cluster */

@@ -27,8 +27,17 @@ import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
 public interface ScaleStrategy extends ClusterMapReader {
 
-   String getKey();
+   interface VMChooserCallback {
+      Set<VMChooser> getVMChoosers();
+   }
 
+   String getKey();
+   
+   @Override
+   void initialize(ClusterMapReader parent);
+   
+   void setVMChooserCallback(VMChooserCallback callback);
+   
    Class<? extends ScaleStrategyContext> getStrategyContextType();
 
    abstract class ClusterScaleOperation extends AbstractClusterMapReader implements Callable<ClusterScaleCompletionEvent> {

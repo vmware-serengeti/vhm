@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.vmware.vhadoop.api.vhm.PolicyMonitor;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
@@ -31,6 +32,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
+import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
@@ -41,7 +43,7 @@ import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 
-public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer {
+public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer, PolicyMonitor {
    private static final Logger _log = Logger.getLogger(ClusterStateChangeListenerImpl.class.getName());
 
    private final int backoffPeriodMS = 5000;
@@ -59,7 +61,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    /* Place-holder that indicates that a VM has been created, so any further data about it will be an update */
    private class VmCreatedData {
    }
-
+   
    private class CachedVMConstantData extends VMConstantData {
       private Boolean _isElastic;
       private String _masterUUID;
@@ -111,7 +113,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    public void registerEventConsumer(EventConsumer consumer) {
       _eventConsumer = consumer;
    }
-
+   
    @Override
    public void start(final EventProducerStartStopCallback startStopCallback) {
       _started = true;
@@ -141,6 +143,11 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          }}, "ClusterSCL_Poll_Thread");
       _mainThread.start();
    }
+   
+   @Override
+   public List<PolicyViolationEvent> enforcePolicy(ClusterStateChangeEvent csce) {
+      return null;
+   }
 
    protected void processRawVCUpdates(List<VMEventData> vmDataList) {
       if (vmDataList == null) {
@@ -157,8 +164,13 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
             _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
             ClusterStateChangeEvent csce = translateVMEventData(vmData);
             if (csce != null) {
+               List<PolicyViolationEvent> policyViolationEvents = enforcePolicy(csce);
                _log.info("Created new "+csce+" for vm <%V" + vmData._vmMoRef);
                _eventConsumer.placeEventOnQueue(csce);
+               if (policyViolationEvents != null) {
+                  /* TODO: Should this be a separate call? Or should they all be processed together? */
+                  _eventConsumer.placeEventCollectionOnQueue(policyViolationEvents);
+               }
             }
          }
       }
