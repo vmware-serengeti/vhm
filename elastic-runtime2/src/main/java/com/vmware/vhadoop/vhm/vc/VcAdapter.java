@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.impl.vim.event.EventExImpl;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
@@ -47,10 +48,10 @@ import com.vmware.vim.vmomi.client.Client;
 public class VcAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger(VcAdapter.class.getName());
 
-   private static long CONTROL_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
-   private static long WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = 120000;   /* WaitForUpdates will block for at most this period */
-   private static long STATS_POLL_CONNECTION_TIMEOUT_MILLIS = 5000;   /* Stats collection timeout should be short */
-   private static long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = 5000;   /* If no clusters are installed, we should be pretty much dormant */
+   private static long VC_CONTROL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_CONTROL_CONNECTION_TIMEOUT_MILLIS");
+   private static long VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS");  /* WaitForUpdates will block for at most this period */
+   private static long VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS");   /* Stats collection timeout should be short */
+   private static long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = ExternalizedParameters.get().getLong("SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS");   /* If no clusters are installed, we should be pretty much dormant */
 
    private Client _controlClient; // used for VC control operations and is the parent client for the others
    private Client _waitForUpdateClient;   // used for the main waitForPropertyChange loop
@@ -82,9 +83,9 @@ public class VcAdapter implements VCActions {
    // returns true if it successfully connected to VC
    private boolean initClients(boolean useCert) {
       try {
-         _controlClient = _vcVlsi.connect(_vcCreds, useCert, null, CONTROL_CONNECTION_TIMEOUT_MILLIS);
-         _waitForUpdateClient = _vcVlsi.connect(_vcCreds, useCert, _controlClient, WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS);
-         _statsPollClient = _vcVlsi.connect(_vcCreds, useCert, _controlClient, STATS_POLL_CONNECTION_TIMEOUT_MILLIS);
+         _controlClient = _vcVlsi.connect(_vcCreds, useCert, null, VC_CONTROL_CONNECTION_TIMEOUT_MILLIS);
+         _waitForUpdateClient = _vcVlsi.connect(_vcCreds, useCert, _controlClient, VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS);
+         _statsPollClient = _vcVlsi.connect(_vcCreds, useCert, _controlClient, VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS);
          if ((_controlClient == null) || (_waitForUpdateClient == null) || (_statsPollClient == null)) {
             _log.log(Level.WARNING, "Unable to get VC client");
             return false;

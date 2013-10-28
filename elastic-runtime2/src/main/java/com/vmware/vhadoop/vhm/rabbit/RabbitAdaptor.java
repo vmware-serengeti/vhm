@@ -38,6 +38,7 @@ import com.rabbitmq.client.ShutdownSignalException;
 import com.vmware.vhadoop.api.vhm.MQClient;
 import com.vmware.vhadoop.api.vhm.QueueClient;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.rabbit.RabbitConnection.RabbitCredentials;
@@ -55,7 +56,7 @@ public class RabbitAdaptor implements MQClient {
    long _startTime = System.currentTimeMillis();
    boolean _deliberateFailureTriggered = false;
 
-   private static long CONNECTION_SHUTDOWN_TIMEOUT_MILLIS = 5000;
+   private static long CONNECTION_SHUTDOWN_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("RABBITMQ_CONNECTION_SHUTDOWN_TIMEOUT_MILLIS");
 
    private static final Logger _log = Logger.getLogger(RabbitAdaptor.class.getName());
 

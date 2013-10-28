@@ -15,7 +15,6 @@
 
 package com.vmware.vhadoop.vhm.strategy;
 
-import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +26,7 @@ import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
@@ -37,8 +37,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
    private final HadoopActions _hadoopActions;
    private final VCActions _vcActions;
 
-   private static final long MAX_DNS_WAIT_TIME_MILLIS = 180000;
-   private static final long MAX_DNS_WAIT_SLEEP_TIME_MILLIS = 5000;
+   private static final long MAX_DNS_WAIT_TIME_MILLIS = ExternalizedParameters.get().getLong("MAX_DNS_WAIT_TIME_MILLIS");
+   private static final long MAX_DNS_WAIT_SLEEP_TIME_MILLIS = ExternalizedParameters.get().getLong("MAX_DNS_WAIT_SLEEP_TIME_MILLIS");
 
    public JobTrackerEDPolicy(HadoopActions hadoopActions, VCActions vcActions) {
       _hadoopActions = hadoopActions;
@@ -50,14 +50,14 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
     * When VMs are powered down, the DNS name and IP address are wiped to ensure that no stale entries persist. As such, recommission gets
     * a list of ttVmIds for powered-off VMs, none of which will yet have a DNS name. Typically VC gets the update of a fresh DNS name after
     * the JobTracker, so once the DNS names have come through from VC, the checkTargetTTsSuccess should complete as a formality.
-    * 
+    *
     * Method returns a set of enabled VM IDs from the input set of VMs
     */
    @Override
    public Set<String> enableTTs(Set<String> ttVmIds, int totalTargetEnabled, String clusterId) throws Exception {
       HadoopClusterInfo hadoopCluster = null;
       Set<String> successfulIds = null;
-      
+
       ClusterMap clusterMap = null;
       try {
          clusterMap = getAndReadLockClusterMap();
@@ -106,8 +106,8 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
     *
     * Effective hadoop de-commission must work with dnsNames, whereas the power-off needs VM IDs. In certain error cases, there may be no
     * valid DNS name for some of the vmIds to de-commission. In this case, we must simply power those off. Note that this may leave the JT
-    * thinking that these TTs are still alive for a period of time 
-    * 
+    * thinking that these TTs are still alive for a period of time
+    *
     * Method returns set of VMs successfully decommissioned
     */
    @Override
@@ -176,7 +176,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       }
       return vmIdsWithInvalidDnsNames;
    }
-   
+
    private boolean validateDnsNames(Set<String> dnsNames) {
       return _hadoopActions.validateTtHostNames(dnsNames);
    }

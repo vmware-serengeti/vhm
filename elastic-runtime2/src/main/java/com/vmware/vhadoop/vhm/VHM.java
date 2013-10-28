@@ -41,6 +41,7 @@ import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
@@ -66,10 +67,10 @@ public class VHM implements EventConsumer {
    private volatile boolean _stopped = true;
 
    private static final Logger _log = Logger.getLogger(VHM.class.getName());
-   private static final long CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS = 10000;
+   private static final long CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS = ExternalizedParameters.get().getLong("CLUSTER_COMPLETENESS_GRACE_TIME_MILLIS");
 
-   private static long EVENT_PRODUCER_START_GRACE_TIME_MILLIS = 5000;
-   private static long EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS = 5000;
+   private static long EVENT_PRODUCER_START_GRACE_TIME_MILLIS = ExternalizedParameters.get().getLong("EVENT_PRODUCER_START_GRACE_TIME_MILLIS");
+   private static long EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS = ExternalizedParameters.get().getLong("EVENT_PRODUCER_STOP_GRACE_TIME_MILLIS");
 
    VHM(VCActions vcActions, ScaleStrategy[] scaleStrategies,
          ExtraInfoToClusterMapper strategyMapper, ThreadLocalCompoundStatus threadLocalStatus) {
@@ -525,7 +526,7 @@ public class VHM implements EventConsumer {
    /* When events are polled, this is the first method that gets the opportunity to triage them */
    private void handleEvents(Set<NotificationEvent> events) {
       final Set<NotificationEvent> newAndRequeuedEvents = new LinkedHashSet<NotificationEvent>(events);
-      
+
       /* addRemoveEvents are events that affect the shape of a cluster */
       final Set<ClusterStateChangeEvent> addRemoveEvents = getClusterAddRemoveEvents(events);
 

@@ -12,14 +12,15 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 
 public class SshConnectionCache implements SshUtilities
 {
    private static final Logger _log = Logger.getLogger(SshConnectionCache.class.getName());
 
-   private static final int NUM_SSH_RETRIES = 2;
-   private static final int RETRY_DELAY_MILLIS = 5000;
-   private static final int INPUTSTREAM_TIMEOUT_MILLIS = 100000;
+   private static final int NUM_SSH_RETRIES = ExternalizedParameters.get().getInt("SSH_INITIAL_CONNECTION_NUMBER_OF_RETRIES");
+   private static final int RETRY_DELAY_MILLIS = ExternalizedParameters.get().getInt("SSH_INITIAL_CONNECTION_RETRY_DELAY_MILLIS");
+   private static final int INPUTSTREAM_TIMEOUT_MILLIS = ExternalizedParameters.get().getInt("SSH_REMOTE_EXECUTION_TIMEOUT_MILLIS");
 
    private static final String SCP_COMMAND = "scp  -t  ";
 

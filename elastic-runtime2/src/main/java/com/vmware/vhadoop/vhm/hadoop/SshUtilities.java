@@ -5,6 +5,8 @@ import java.io.OutputStream;
 
 public interface SshUtilities
 {
+   public static final int DEFAULT_SSH_PORT = 22;
+
    class Credentials {
       String username;
       String password;
@@ -41,8 +43,6 @@ public interface SshUtilities
          return true;
       }
    }
-
-   public static final int DEFAULT_SSH_PORT = 22;
 
    int copy(String remote, int port, Credentials credentials, byte data[], String remoteDirectory, String remoteName, String permissions) throws IOException;
    int execute(String remote, int port, Credentials credentials, String command, OutputStream stdout) throws IOException;

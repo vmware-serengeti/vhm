@@ -41,6 +41,7 @@ import javax.net.ssl.SSLException;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.util.CompoundStatus;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
@@ -116,7 +117,7 @@ public class VcVlsi {
    private static final TypeNameImpl typeFolder = new TypeNameImpl(VC_MOREF_TYPE_FOLDER);
    private static final TypeNameImpl typeContainerView = new TypeNameImpl(VC_MOREF_TYPE_CONTAINER_VIEW);
 
-   private static final int propertyCollectorTimeout = 300;
+   private static final int propertyCollectorTimeout = ExternalizedParameters.get().getInt("VC_PROPERTY_COLLECTOR_TIMEOUT");
 
    static final String VHM_EXTRA_CONFIG_PREFIX = "vhmInfo.";
    static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";

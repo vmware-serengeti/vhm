@@ -40,6 +40,7 @@ import com.vmware.vhadoop.api.vhm.HadoopActions;
 import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.hadoop.HadoopConnection.HadoopConnectionProperties;
 import com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.ParamTypes;
@@ -63,25 +64,24 @@ public class HadoopAdaptor implements HadoopActions {
    private final Map<String, Map<ParamTypes, String>> _errorParamValues;  /* TODO: Will need one per connection/cluster */
    private final ThreadLocalCompoundStatus _threadLocalStatus;
 
-   /* TODO: I think it's ok that these are all constants for now. Easy to externalize in future though */
+   private static final int JOB_TRACKER_DEFAULT_SSH_PORT = ExternalizedParameters.get().getInt("JOB_TRACKER_DEFAULT_SSH_PORT");
+   private static final String JOB_TRACKER_SCP_READ_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_READ_PERMS");
+   private static final String JOB_TRACKER_SCP_EXECUTE_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_EXECUTE_PERMS");
+   private static final int JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE = ExternalizedParameters.get().getInt("JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE");
 
-   private static final int DEFAULT_SSH_PORT = 22;
-   private static final String DEFAULT_SCP_READ_PERMS = "644";
-   private static final String DEFAULT_SCP_EXECUTE_PERMS = "755";
+   private static final String JOB_TRACKER_DECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_LIST_FILE_NAME");
+   private static final String JOB_TRACKER_DECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_SCRIPT_FILE_NAME");
+   private static final String JOB_TRACKER_RECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
+   private static final String JOB_TRACKER_RECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
+   private static final String JOB_TRACKER_CHECK_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_CHECK_SCRIPT_FILE_NAME");
 
-   private static final String DECOM_LIST_FILE_NAME = "dlist.txt";
-   private static final String DECOM_SCRIPT_FILE_NAME = "decommissionTTs.sh";
-   private static final String RECOM_LIST_FILE_NAME = "rlist.txt";
-   private static final String RECOM_SCRIPT_FILE_NAME = "recommissionTTs.sh";
-   private static final String CHECK_SCRIPT_FILE_NAME = "checkTargetTTsSuccess.sh";
+   private static final String DEFAULT_SCRIPT_SRC_PATH = ExternalizedParameters.get().getString("DEFAULT_SCRIPT_SRC_PATH");
+   private static final String JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH = ExternalizedParameters.get().getString("JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH");
 
-   /* TODO: Option to change the default values? */
-   private static final String DEFAULT_SCRIPT_SRC_PATH = "src/main/resources/";
-   private static final String DEFAULT_SCRIPT_DEST_PATH = "/tmp/";
+   private static final int ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS = ExternalizedParameters.get().getInt("ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS");;
 
    static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
-   private static final int MAX_CHECK_RETRY_ITERATIONS = 4;
 
    public HadoopAdaptor(Credentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
@@ -117,15 +117,15 @@ public class HadoopAdaptor implements HadoopActions {
       return new HadoopConnectionProperties() {
          @Override
          public int getSshPort() {
-            return DEFAULT_SSH_PORT;
+            return JOB_TRACKER_DEFAULT_SSH_PORT;
          }
          @Override
          public String getScpReadPerms() {
-            return DEFAULT_SCP_READ_PERMS;
+            return JOB_TRACKER_SCP_READ_PERMS;
          }
          @Override
          public String getScpExecutePerms() {
-            return DEFAULT_SCP_EXECUTE_PERMS;
+            return JOB_TRACKER_SCP_EXECUTE_PERMS;
          }
       };
    }
@@ -232,7 +232,7 @@ public class HadoopAdaptor implements HadoopActions {
    private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs, OutputStream out) {
       int rc = -1;
       for (int i = 0; i < 2; i++) {
-         rc = connection.executeScript(scriptFileName, DEFAULT_SCRIPT_DEST_PATH, scriptArgs, out);
+         rc = connection.executeScript(scriptFileName, JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH, scriptArgs, out);
          if (i == 0 && (rc == ERROR_COMMAND_NOT_FOUND || rc == ERROR_CATCHALL)) {
             _log.log(Level.INFO, scriptFileName + " not found...");
             // Changed this to accommodate using jar file...
@@ -240,7 +240,7 @@ public class HadoopAdaptor implements HadoopActions {
             // byte[] scriptData = loadLocalScript(DEFAULT_SCRIPT_SRC_PATH + scriptFileName);
             // byte[] scriptData = loadLocalScript(fullLocalPath);
             byte[] scriptData = loadLocalScript(scriptFileName);
-            if ((scriptData != null) && (connection.copyDataToJobTracker(scriptData, DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
+            if ((scriptData != null) && (connection.copyDataToJobTracker(scriptData, JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH, scriptFileName, true) == 0)) {
                continue;
             }
          }
@@ -259,8 +259,8 @@ public class HadoopAdaptor implements HadoopActions {
          return status;
       }
 
-      String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
-      String listRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + listFileName;
+      String scriptRemoteFilePath = JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH + scriptFileName;
+      String listRemoteFilePath = JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH + listFileName;
 
       HadoopConnection connection = getConnectionForCluster(cluster);
       if (connection != null) {
@@ -268,7 +268,7 @@ public class HadoopAdaptor implements HadoopActions {
 
          OutputStream out = new ByteArrayOutputStream();
          String operationList = createVMList(ttDnsNames);
-         int rc = connection.copyDataToJobTracker(operationList.getBytes(), DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
+         int rc = connection.copyDataToJobTracker(operationList.getBytes(), JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
          if (rc == 0) {
             rc = executeScriptWithCopyRetryOnFailure(connection, scriptFileName, new String[]{listRemoteFilePath, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
          }
@@ -281,12 +281,12 @@ public class HadoopAdaptor implements HadoopActions {
 
    @Override
    public void decommissionTTs(Set<String> ttDnsNames, HadoopClusterInfo cluster) {
-      getCompoundStatus().addStatus(decomRecomTTs("Decommission", ttDnsNames, cluster, DECOM_SCRIPT_FILE_NAME, DECOM_LIST_FILE_NAME));
+      getCompoundStatus().addStatus(decomRecomTTs("Decommission", ttDnsNames, cluster, JOB_TRACKER_DECOM_SCRIPT_FILE_NAME, JOB_TRACKER_DECOM_LIST_FILE_NAME));
    }
 
    @Override
    public void recommissionTTs(Set<String> ttDnsNames, HadoopClusterInfo cluster) {
-      getCompoundStatus().addStatus(decomRecomTTs("Recommission", ttDnsNames, cluster, RECOM_SCRIPT_FILE_NAME, RECOM_LIST_FILE_NAME));
+      getCompoundStatus().addStatus(decomRecomTTs("Recommission", ttDnsNames, cluster, JOB_TRACKER_RECOM_SCRIPT_FILE_NAME, JOB_TRACKER_RECOM_LIST_FILE_NAME));
    }
 
    @Override
@@ -301,7 +301,7 @@ public class HadoopAdaptor implements HadoopActions {
          return null;
       }
       OutputStream out = new ByteArrayOutputStream();
-      int rc = executeScriptWithCopyRetryOnFailure(connection, CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
+      int rc = executeScriptWithCopyRetryOnFailure(connection, JOB_TRACKER_CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
       _log.info("Error code from executing script " + rc);
 
@@ -326,7 +326,7 @@ public class HadoopAdaptor implements HadoopActions {
    @Override
    /* Returns the set of active dnsNames based on input Set */
    public Set<String> checkTargetTTsSuccess(String opType, Set<String> ttDnsNames, int totalTargetEnabled, HadoopClusterInfo cluster) {
-      String scriptRemoteFilePath = DEFAULT_SCRIPT_DEST_PATH + CHECK_SCRIPT_FILE_NAME;
+      String scriptRemoteFilePath = JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH + JOB_TRACKER_CHECK_SCRIPT_FILE_NAME;
       String listRemoteFilePath = null;
       String opDesc = "checkTargetTTsSuccess";
 
@@ -407,7 +407,7 @@ public class HadoopAdaptor implements HadoopActions {
          if (rc != ERROR_FEWER_TTS && rc != ERROR_EXCESS_TTS && rc != UNKNOWN_ERROR) {
             break;
          }
-      } while (iterations++ < MAX_CHECK_RETRY_ITERATIONS);
+      } while (iterations++ < ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS);
 
       getCompoundStatus().addStatus(_errorCodes.interpretErrorCode(_log, rc, getErrorParamValues(cluster)));
       if (rc != SUCCESS) {
@@ -423,7 +423,7 @@ public class HadoopAdaptor implements HadoopActions {
     * @return
     */
    protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
-      return new HadoopConnection(cluster, properties, new SshConnectionCache(20));
+      return new HadoopConnection(cluster, properties, new SshConnectionCache(JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE));
    }
 
    @Override
