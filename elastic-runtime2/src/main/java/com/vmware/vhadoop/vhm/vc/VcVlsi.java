@@ -126,6 +126,7 @@ public class VcVlsi {
    static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
    static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
    static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";
+   static final String VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE = "vhmInfo.instanceRange.computeNodeNum";
    static final String VHM_EXTRA_CONFIG_JOB_TRACKER_PORT = "vhmInfo.jobtracker.port";
 
    private static final String TASK_INFO_STATE = "info.state";

@@ -16,6 +16,7 @@
 package com.vmware.vhadoop.vhm.vc;
 
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_AUTOMATION_ENABLE;
+import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_ELASTIC;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_JOB_TRACKER_PORT;
@@ -53,6 +54,9 @@ public class VcVlsiHelper {
             getMasterVmData(vmData)._enableAutomation = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
             getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
+         } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE)) {
+            int min = Integer.valueOf(value.split(":")[0]);
+            getMasterVmData(vmData)._minInstances = Math.max(0, min);
          } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
             getMasterVmData(vmData)._jobTrackerPort = Integer.valueOf(value);
          }
