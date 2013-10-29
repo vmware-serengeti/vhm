@@ -132,15 +132,15 @@ public class RabbitAdaptor implements MQClient {
                      _log.info("Rabbit queue waiting for message");
                      QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
                      VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
-                     SerengetiLimitInstruction event = new SerengetiLimitInstruction(message.getClusterId(),
-                           message.getAction(),
-                           message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
+                     SerengetiLimitInstruction event = new SerengetiLimitInstruction(message.getClusterId(), message.getAction(), message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
 
                      /* log that we've received an explicit action from the serengeti client */
                      _log.log(VhmLevel.USER, "VHM: <%C"+message.getClusterId()+"%C> - instruction received from Serengeti client: "+event.toString());
 
                      _eventConsumer.placeEventOnQueue(event);
 
+                     /* acknowledge receipt of the instruction immediately so that Serengeti isn't left hanging if the cluster scale thread is blocked by an in-flight operation */
+                     event.acknowledgeReceipt();
                   }
                } catch (InterruptedException e) {
                   /* Almost certainly stop() was invoked */
