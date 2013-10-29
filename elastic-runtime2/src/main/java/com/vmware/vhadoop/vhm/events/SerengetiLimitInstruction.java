@@ -55,6 +55,15 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       return _toSize;
    }
 
+   public void acknowledgeReceipt() {
+      if (_messageCallback != null) {
+         _log.info("Acknowledging receipt of instruction");
+         VHMJsonReturnMessage msg = new VHMJsonReturnMessage(false, false, 0, 0, null, "limit instruction received by VHM");
+         /* Note RouteKey is encaspulated in messageCallback */
+         _messageCallback.sendMessage(msg.getRawPayload());
+      }
+   }
+
    public void reportProgress(int percentage, String message) {
       if (_messageCallback != null) {
          _log.info("Reporting progress "+percentage+"%");
