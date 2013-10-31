@@ -16,9 +16,7 @@
 package com.vmware.vhadoop.vhm.strategy;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
@@ -64,55 +62,20 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    public String getKey() {
       return MANUAL_SCALE_STRATEGY_KEY;
    }
-   
-   /* TODO: Experimental code to have ManualScaleStrategy use multiple VMChoosers */
-   
-//   private Set<String> getVmIdsFromRankedVMs(Iterator<RankedVM> orderedSet, int numToRetain) {
-//      Set<String> result = new HashSet<String>();
-//      for (int i=0; i<numToRetain && orderedSet.hasNext(); i++) {
-//         result.add(orderedSet.next().getVmId());
-//      }
-//      return result;
-//   }
-//   
-//   private Set<String> chooseVMsToEnable(String clusterId, int delta) {
-//      Set<RankedVM> combination = new TreeSet<RankedVM>();
-//      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-//         Set<RankedVM> rankedVMs = vmChooser.rankVMsToEnable(clusterId);
-//         if (rankedVMs != null) {
-//            RankedVM.combine(combination, rankedVMs);
-//         }
-//      }
-//      return getVmIdsFromRankedVMs(combination.iterator(), delta);
-//   }
-//
-//   private Set<String> chooseVMsToDisable(String clusterId, int delta) {
-//      Set<RankedVM> combination = new TreeSet<RankedVM>();
-//      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-//         Set<RankedVM> rankedVMs = vmChooser.rankVMsToDisable(clusterId);
-//         if (rankedVMs != null) {
-//            RankedVM.combine(combination, rankedVMs);
-//         }
-//      }
-//      return getVmIdsFromRankedVMs(combination.iterator(), delta);
-//   }
-
-   private Set<String> chooseVMsToEnable(String clusterId, int delta) {
+         
+   private Set<String> chooseVMsForPowerState(String clusterId, int delta, Set<String> candidateVmIds, boolean targetPowerState) {
+      Set<RankedVM> combination = null;
       for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-         if (vmChooser instanceof BalancedVMChooser) {
-            return ((BalancedVMChooser)vmChooser).chooseVMsToEnable(clusterId, delta);
+         
+         Set<RankedVM> rankedVMs = targetPowerState ? 
+               vmChooser.rankVMsToEnable(clusterId, candidateVmIds) : 
+               vmChooser.rankVMsToDisable(clusterId, candidateVmIds);
+
+         if (rankedVMs != null) {
+            combination = RankedVM.combine(combination, rankedVMs);
          }
       }
-      return null;
-   }
-
-   private Set<String> chooseVMsToDisable(String clusterId, int delta) {
-      for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-         if (vmChooser instanceof BalancedVMChooser) {
-            return ((BalancedVMChooser)vmChooser).chooseVMsToDisable(clusterId, delta);
-         }
-      }
-      return null;
+      return RankedVM.selectLowestRankedIds(combination, Math.abs(delta));
    }
 
    class CallableStrategy extends ClusterScaleOperation {
@@ -138,21 +101,25 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             String clusterId = null;
             Set<String> vmsToED;
             ClusterMap clusterMap = null;
+            Set<String> poweredOffVmIds = null;
+            Set<String> poweredOnVmIds = null;
+            int numPoweredOff = 0;
+            int numPoweredOn = 0;
             try {
                clusterMap = getAndReadLockClusterMap();
                String clusterFolder = limitEvent.getClusterFolderName();
                clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
                if (clusterId != null) {               
-                  Set<String> poweredOffVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
-                  int poweredOffVms = (poweredOffVmList == null) ? 0 : poweredOffVmList.size();
-                  Set<String> poweredOnVmList = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
-                  int poweredOnVms = (poweredOnVmList == null) ? 0 : poweredOnVmList.size();
+                  poweredOffVmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
+                  numPoweredOff = (poweredOffVmIds == null) ? 0 : poweredOffVmIds.size();
+                  poweredOnVmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
+                  numPoweredOn = (poweredOnVmIds == null) ? 0 : poweredOnVmIds.size();
                   if (limitEvent.getAction().equals(SerengetiLimitInstruction.actionUnlimit)) {
-                     targetSize = poweredOnVms + poweredOffVms;
-                     delta = poweredOffVms;
+                     targetSize = numPoweredOn + numPoweredOff;
+                     delta = numPoweredOff;
                   } else {
                      targetSize = limitEvent.getToSize();
-                     delta = targetSize - poweredOnVms;
+                     delta = targetSize - numPoweredOn;
                   }
                   _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: handling manual elasticity command from Serengeti to set number of enabled compute nodes to " + targetSize);
                   returnEvent = new ClusterScaleDecision(clusterId);
@@ -165,7 +132,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             }
             Set<String> unresponsiveVmIds = null;
             if (delta > 0) {
-               vmsToED = chooseVMsToEnable(clusterId, delta);
+               vmsToED = chooseVMsForPowerState(clusterId, delta, poweredOffVmIds, true);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns successfully enabled VM IDs from the input set of VMs*/
@@ -185,7 +152,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   }
                }
             } else if (delta < 0) {
-               vmsToED = chooseVMsToDisable(clusterId, delta);
+               vmsToED = chooseVMsForPowerState(clusterId, delta, poweredOffVmIds, true);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns disabled VM IDs for the cluster */

@@ -48,6 +48,7 @@ import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 import com.vmware.vhadoop.vhm.strategy.BalancedVMChooser;
 import com.vmware.vhadoop.vhm.strategy.JobTrackerEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
+import com.vmware.vhadoop.vhm.strategy.PowerOnTimeVMChooser;
 import com.vmware.vhadoop.vhm.vc.VcAdapter;
 import com.vmware.vhadoop.vhm.vc.VcCredentials;
 
@@ -341,6 +342,7 @@ public class BootstrapMain
          return null;
       }
       vhm.registerVMChooser(new BalancedVMChooser());
+      vhm.registerVMChooser(new PowerOnTimeVMChooser());
 
       return vhm;
    }

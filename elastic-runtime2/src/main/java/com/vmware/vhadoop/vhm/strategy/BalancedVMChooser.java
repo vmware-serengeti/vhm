@@ -15,166 +15,138 @@
 
 package com.vmware.vhadoop.vhm.strategy;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
+import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
-public class BalancedVMChooser extends AbstractClusterMapReader implements VMChooser {
+public class BalancedVMChooser extends AbstractClusterMapReader implements VMChooser, ClusterMapReader {
    private static final Logger _log = Logger.getLogger(BalancedVMChooser.class.getName());
 
-   private class Host {
-      Set<String> candidates;
-      int on;
+   private class HostInfo {
+      public HostInfo(String hostId) {
+         _hostId = hostId;
+      }
+      String _hostId;
+      Set<String> _candidates = new LinkedHashSet<String>();
+      int _on;
    }
 
-   /**
-    * Selects the VMs to operate on from the candidates passed in. Candidates are passed in grouped via host and held in a priority queue.
-    * The queues comparator uses the details held per host to determine which host should be the next to have a VM operated on.
-    *
-    * Currently we operate on candidates on the host in the order they're found, however we could pair this with a call to chooseVmOnHost
-    * to provide a more discriminating mechanism.
-    *
-    * @param targets - candidate VMs, grouped by host
-    * @param delta - the number of VMs to operate on (>= 0)
-    * @param targetPowerState - true to enable VMs, false to disable
-    * @return the chosen set of VMs
-    */
-   protected Set<String> selectVMs(final Queue<Host> targets, final int delta, final boolean targetPowerState) {
-      Set<String> result = new HashSet<String>();
-      int remaining = Math.abs(delta);
-
-      while (remaining-- > 0) {
-         Host host = targets.poll();
-         if (host == null) {
-            /* there are no candidates left, so return what we have */
-            if (delta != Integer.MAX_VALUE) {
-               _log.warning("VHM: no more hosts with candidate VMs, shortfall is "+(remaining+1));
+   Set<RankedVM> rankVMs(final Queue<HostInfo> orderedHosts, final boolean targetPowerState) {
+      Set<RankedVM> result = new HashSet<RankedVM>();
+      int rank = 0;
+      HostInfo current = null;
+      
+      do {
+         current = orderedHosts.poll();
+         if (current != null) {
+            Iterator<String> itr = current._candidates.iterator();
+            if (itr.hasNext()) {
+               String vmId = itr.next();
+               current._on += targetPowerState ? 1 : -1;
+               result.add(new RankedVM(vmId, rank++));
+               itr.remove();
+               _log.info("BalancedVMChooser adding VM <%V"+vmId+"%V> from host "+current._hostId+" to results");
             }
-            return result;
-         }
-
-         Iterator<String> itr = host.candidates.iterator();
-         if (itr.hasNext()) {
-            if (targetPowerState) {
-               host.on++;
-            } else {
-               host.on--;
+            if (itr.hasNext()) {
+               orderedHosts.add(current);
             }
-            String vmid = itr.next();
-            result.add(vmid);
-            itr.remove();
-            _log.info("BalancedVMChooser adding VM <%V"+vmid+"%V> to results");
          }
-
-         /* if this host still has candidates remaining, then insert it back into the queue */
-         if (itr.hasNext()) {
-            targets.add(host);
-         }
-      }
-
+      } while (current != null);
+      
       return result;
    }
 
-   public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState) {
-      Set<String> result = null;
-      Set<String> hosts = null;
-      int numHosts = 0;
+   Map<String, HostInfo> organizeVMsByHost(final String clusterId, Set<String> candidateVmIds, final boolean targetPowerState) {
+      Map<String, HostInfo> hostMap = new HashMap<String, HostInfo>();
+      
+      if (candidateVmIds.size() <= 0) {
+         return null;
+      }
 
       ClusterMap clusterMap = null;
       try {
          clusterMap = getAndReadLockClusterMap();
-         hosts = clusterMap.listHostsWithComputeVMsForCluster(clusterId);
-         if ((hosts == null) || (hosts.size() == 0)) {
-            result = new TreeSet<String>();     /* Return empty set, but don't return here!! */
-         } else {
-            numHosts = hosts.size();
+         for (String vmId : candidateVmIds) {
+            String hostId = clusterMap.getHostIdForVm(vmId);
+            if (hostId != null) {
+               HostInfo hostInfo = hostMap.get(hostId);
+               if (hostInfo == null) {
+                  hostInfo = new HostInfo(hostId);
+                  hostMap.put(hostId, hostInfo);
+               }
+               hostInfo._candidates.add(vmId);
+            }
+         }
+         for (Entry<String, HostInfo> entry : hostMap.entrySet()) {
+            Set<String> allVmsOnHostInPowerState = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, entry.getKey(), true);
+            if (allVmsOnHostInPowerState != null) {
+               entry.getValue()._on = allVmsOnHostInPowerState.size();
+            }
+            Set<String> candidateVMs = entry.getValue()._candidates;
+            _log.info("found "+candidateVMs.size()+" candidate VMs on host "+entry.getKey());
+            for (String id : candidateVMs) {
+               _log.info("candidate VM on "+entry.getKey()+": <%V"+id);
+            }
          }
       } finally {
          unlockClusterMap(clusterMap);
       }
-
-      if (result == null) {
-         PriorityQueue<Host> targets = new PriorityQueue<Host>(numHosts, new Comparator<Host>() {
-            @Override
-            public int compare(final Host a, final Host b) { return targetPowerState ? a.on - b.on : b.on - a.on; }
-         });
-
-         /* build the entries for the priority queue */
-         for (String host : hosts) {
-            Set<String> on = clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, true);
-            Set<String> candidateVMs = targetPowerState ? clusterMap.listComputeVMsForClusterHostAndPowerState(clusterId, host, false) : on;
-
-            if ((candidateVMs != null) && (candidateVMs.size() > 0)) {
-               /* this is a temporary solution that prevents us from returning the same VM on a host every time */
-               List<String> vms = new ArrayList<String>(candidateVMs);
-               Collections.shuffle(vms);
-               candidateVMs = new LinkedHashSet<String>(vms);
-
-               _log.info("found "+candidateVMs.size()+" candidate VMs on host "+host);
-               for (String id : candidateVMs) {
-                  _log.info("candidate VM on "+host+": <%V"+id);
-               }
-               if (on != null) {
-                  _log.info("found "+on.size()+" VMs powered on, on host "+host);
-                  for (String id : on) {
-                     _log.fine("powered on VM on "+host+": <%V"+id);
-                  }
-               }
-               Host h = new Host();
-               h.candidates = candidateVMs;
-               h.on = (on == null) ? 0 : on.size();
-               targets.add(h);
-            }
+      
+      return hostMap;
+   }
+   
+   Queue<HostInfo> orderHosts(Map<String, HostInfo> hostMap, final boolean targetPowerState) {
+      PriorityQueue<HostInfo> orderedHosts = new PriorityQueue<HostInfo>(hostMap.size(), new Comparator<HostInfo>() {
+         @Override
+         public int compare(final HostInfo a, final HostInfo b) { 
+            return targetPowerState ? a._on - b._on : b._on - a._on; 
          }
-         result = selectVMs(targets, delta, targetPowerState);
+      });
+      
+      orderedHosts.addAll(hostMap.values());
+      return orderedHosts;
+   }
+
+   private Set<RankedVM> rankVMsForTargetPowerState(String clusterId, Set<String> candidateVmIds, final boolean targetPowerState) {
+      Map<String, HostInfo> organizedHosts = organizeVMsByHost(clusterId, candidateVmIds, targetPowerState);
+      if (organizedHosts != null) {
+         Queue<HostInfo> orderedHosts = orderHosts(organizedHosts, targetPowerState);
+         return rankVMs(orderedHosts, targetPowerState);
       }
-
-      return result;
-   }
-
-   public Set<RankedVM> rankVMs(final String clusterId, final boolean targetPowerState) {
-      Set<RankedVM> orderedResult = new TreeSet<RankedVM>();
-      Set<String> chosenVMs = chooseVMs(clusterId, Integer.MAX_VALUE, targetPowerState);
-      if (chosenVMs == null) {
-         return null;
-      }
-      int rank = 0;
-      for (String vmId : chosenVMs) {
-         orderedResult.add(new RankedVM(vmId, rank++));
-      }
-      return orderedResult;
+      return new HashSet<RankedVM>();
    }
 
    @Override
-   public Set<String> chooseVMsToEnable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, delta, true);
+   public Set<RankedVM> rankVMsToEnable(String clusterId, Set<String> candidateVmIds) {
+      return rankVMsForTargetPowerState(clusterId, candidateVmIds, true);
    }
 
    @Override
-   public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, delta, false);
+   public Set<RankedVM> rankVMsToDisable(String clusterId, Set<String> candidateVmIds) {
+      return rankVMsForTargetPowerState(clusterId, candidateVmIds, false);
    }
 
    @Override
-   public Set<RankedVM> rankVMsToEnable(String clusterId) {
-      return rankVMs(clusterId, true);
+   public Set<String> chooseVMsToEnable(String clusterId, Set<String> candidateVmIds) {
+      return null;
    }
 
    @Override
-   public Set<RankedVM> rankVMsToDisable(String clusterId) {
-      return rankVMs(clusterId, false);
+   public Set<String> chooseVMsToDisable(String clusterId, Set<String> candidateVmIds) {
+      return null;
    }
+   
 }

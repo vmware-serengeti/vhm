@@ -18,76 +18,54 @@ package com.vmware.vhadoop.vhm.strategy;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
-import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
-public class DumbVMChooser extends AbstractClusterMapReader implements VMChooser {
+public class DumbVMChooser implements VMChooser {
    private static final Logger _log = Logger.getLogger(DumbVMChooser.class.getName());
 
-   protected Set<String> chooseVMs(final Set<String> vms, int delta, final boolean targetPowerState) {
+   Set<String> chooseSubset(final Set<String> vms, int delta) {
       delta = Math.abs(delta);
-
       Set<String> result = new HashSet<String>();
       Iterator<String> iterator = vms.iterator();
       for (int i=0; i<delta && iterator.hasNext(); i++) {
          String vm = iterator.next();
-         _log.info("DumbVMChooser adding VM "+vm+" to results");
+         _log.info("DumbVMChooser adding VM <%V"+vm+"%V> to results");
          result.add(vm);
       }
       return result;
    }
-
-   public Set<String> chooseVMs(final String clusterId, final int delta, final boolean targetPowerState, boolean limitToDelta) {
-      _log.info("DumbVMChooser choosing VMs for cluster "+clusterId+" where delta="+delta+", powerState="+!targetPowerState);
-
-      Set<String> vmIds = null;
-      ClusterMap clusterMap = null;
-      try {
-         clusterMap = getAndReadLockClusterMap();
-         vmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, !targetPowerState);
-      } finally {
-         unlockClusterMap(clusterMap);
-      }
-
-      if ((vmIds != null) && limitToDelta) {
-         return chooseVMs(vmIds, delta, targetPowerState);
-      }
-      return null;
-   }
    
-   public Set<RankedVM> rankVMs(final String clusterId, final boolean targetPowerState) {
-      Set<RankedVM> orderedResult = new TreeSet<RankedVM>();
-      Set<String> chosenVMs = chooseVMs(clusterId, 0, targetPowerState, false);
-      if (chosenVMs == null) {
+   public Set<RankedVM> rankVMs(final String clusterId, final Set<String> candidateVmIds) {
+      Set<RankedVM> result = new HashSet<RankedVM>();
+      if (candidateVmIds == null) {
          return null;
       }
-      for (String vmId : chosenVMs) {
-         orderedResult.add(new RankedVM(vmId, 0));    /* All equal rank */
+      for (String vmId : candidateVmIds) {
+         _log.info("DumbVMChooser ranking VM <%V"+vmId+"%V> at 0");
+         result.add(new RankedVM(vmId, 0));    /* All equal rank */
       }
-      return orderedResult;
+      return result;
    }
 
    @Override
-   public Set<String> chooseVMsToEnable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, delta, true, true);
+   public Set<String> chooseVMsToEnable(String clusterId, Set<String> candidateVmIds) {
+      return chooseSubset(candidateVmIds, Integer.MAX_VALUE);
    }
 
    @Override
-   public Set<String> chooseVMsToDisable(final String clusterId, final int delta) {
-      return chooseVMs(clusterId, delta, false, true);
+   public Set<String> chooseVMsToDisable(String clusterId, Set<String> candidateVmIds) {
+      return chooseSubset(candidateVmIds, Integer.MAX_VALUE);
    }
 
    @Override
-   public Set<RankedVM> rankVMsToEnable(String clusterId) {
-      return rankVMs(clusterId, true);
+   public Set<RankedVM> rankVMsToEnable(String clusterId, Set<String> candidateVmIds) {
+      return rankVMs(clusterId, candidateVmIds);
    }
 
    @Override
-   public Set<RankedVM> rankVMsToDisable(String clusterId) {
-      return rankVMs(clusterId, false);
+   public Set<RankedVM> rankVMsToDisable(String clusterId, Set<String> candidateVmIds) {
+      return rankVMs(clusterId, candidateVmIds);
    }
 }

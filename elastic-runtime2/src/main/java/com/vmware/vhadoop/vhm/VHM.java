@@ -104,7 +104,9 @@ public class VHM implements EventConsumer {
 
    /* It is anticipated that this will only be called during initialization */
    public void registerVMChooser(VMChooser vmChooser) {
-      vmChooser.initialize(_parentClusterMapReader);
+      if (vmChooser instanceof ClusterMapReader) {
+         ((ClusterMapReader)vmChooser).initialize(_parentClusterMapReader);
+      }
       _vmChoosers.add(vmChooser);
    }
    

@@ -15,10 +15,9 @@
 
 package com.vmware.vhadoop.api.vhm.strategy;
 
-import java.util.Comparator;
+import java.util.HashSet;
+import java.util.PriorityQueue;
 import java.util.Set;
-
-import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 
 /**
  * VMChooser represents an abstraction for choosing VMs from a cluster to be enabled or disabled
@@ -27,31 +26,79 @@ import com.vmware.vhadoop.api.vhm.ClusterMapReader;
  * A VMChooser is able to choose VMs based on its own particular private knowledge and this may be combined
  *   with the input from other VMChoosers
  */
-public interface VMChooser extends ClusterMapReader {
+public interface VMChooser {
 
-   public class RankedVM implements Comparator<RankedVM> {
+   public class RankedVM implements Comparable<RankedVM> {
       String _vmId;
       Integer _rank;
-      
-      public static void combine(Set<RankedVM> combineInto, Set<RankedVM> input) {
-         for (RankedVM fromCombineInto : combineInto) {
-            for (RankedVM fromInput : input) {
-               if (fromCombineInto.combine(fromInput)) {
-                  continue;
+
+      /* The result should contain the superset of both input1 and input2
+       * If input1 is null, input2 is returned and vice versa
+       * If both are null, null is returned */
+      public static Set<RankedVM> combine(Set<RankedVM> input1, Set<RankedVM> input2) {
+         if (input1 == null) {
+            if (input2 != null) {
+               return input2;
+            } else {
+               return null;
+            }
+         } else if (input2 == null) {
+            return input1;
+         }
+         Set<RankedVM> copyInput1 = new HashSet<RankedVM>(input1);
+         for (RankedVM fromInput2 : input2) {
+            for (RankedVM fromInput1 : copyInput1) {
+               if (fromInput1.combine(fromInput2)) {
+                  break;
                }
             }
          }
-         input.removeAll(combineInto);
-         combineInto.addAll(input);
+         copyInput1.addAll(input2);
+         return copyInput1;
+      }
+
+      /* Takes a set of ranked VMs and re-ranks them sequentially from 0 */
+      public static Set<RankedVM> flattenRankValues(Set<RankedVM> toFlatten) {
+         if (toFlatten == null) {
+            return null;
+         }
+         int rank = -1;
+         RankedVM current = null;
+         RankedVM prev = null;
+         Set<RankedVM> flattened = new HashSet<RankedVM>();
+         PriorityQueue<RankedVM> orderedCopy = new PriorityQueue<RankedVM>(toFlatten); 
+         while ((current = orderedCopy.poll()) != null) {
+            if ((prev != null) && (current.getRank() == prev.getRank())) {
+               flattened.add(new RankedVM(current._vmId, rank));
+            } else {
+               flattened.add(new RankedVM(current._vmId, ++rank));
+            }
+            prev = current;
+         }
+         return flattened;
       }
       
+      /* Orders the candidates passed in by ranking and selects the lowest ranked candidates */
+      public static Set<String> selectLowestRankedIds(Set<RankedVM> candidates, int numToChoose) {
+         if (candidates == null) {
+            return null;
+         }
+         PriorityQueue<RankedVM> orderedQueue = new PriorityQueue<RankedVM>(candidates);
+         Set<String> result = new HashSet<String>();
+         RankedVM current = null;
+         for (int i=0; (i < numToChoose) && ((current = orderedQueue.poll()) != null); i++) {
+            result.add(current.getVmId());
+         }
+         return result;
+      }
+
       public RankedVM(String vmId, int rank) {
          _vmId = vmId;
          _rank = rank;
       }
       
       public boolean combine(RankedVM combineWith) {
-         if (combineWith._vmId.equals(_vmId)) {
+         if (!combineWith._vmId.equals(_vmId)) {
             return false;
          }
          _rank += combineWith._rank;
@@ -62,9 +109,18 @@ public interface VMChooser extends ClusterMapReader {
          return _vmId;
       }
 
+      public int getRank() {
+         return _rank;
+      }
+
       @Override
-      public int compare(RankedVM arg0, RankedVM arg1) {
-         return arg0._rank - arg1._rank;
+      public int compareTo(RankedVM other) {
+         return _rank - other._rank;
+      }
+      
+      @Override
+      public String toString() {
+         return "<%V"+_vmId+"%V>="+_rank;
       }
 
       @Override
@@ -91,40 +147,39 @@ public interface VMChooser extends ClusterMapReader {
             return false;
          return true;
       }
-      
    }
    
    /**
-    * Selects VMs to enable from the specified cluster in no particular order. The logic determining which VMs is provided by implementors.
-    * If there is a reason why VMs should not be chosen, other than already being powered on, they should not be returned.
-    *   The method is not guaranteed to return a set of delta elements
+    * Selects VMs to enable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
     * @param clusterId - the target cluster
-    * @param delta - the number of VMs to enable
-    * @return - set of VM ids to enable or null if not implemented
+    * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster and should all be powered off
+    * @return - set of VM ids deemed OK to enable or null if not implemented
     */
-   Set<String> chooseVMsToEnable(String clusterId, int delta);
+   Set<String> chooseVMsToEnable(String clusterId, Set<String> candidateVmIds);
 
    /**
-    * Selects VMs to disable from the specified cluster in no particular order. The logic determining which VMs is provided by implementors.
-    * If there is a reason why VMs should not be chosen, other than already being powered off, they should not be returned. 
-    *   The method is not guaranteed to return a set of delta elements
+    * Selects VMs to disable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
     * @param clusterId - the target cluster
-    * @param delta - the number of VMs to disable
-    * @return - set of VM ids to disable or null if not implemented
+    * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
+    * @return - set of VM ids deemed OK to disable or null if not implemented
     */
-   Set<String> chooseVMsToDisable(String clusterId, int delta);
+   Set<String> chooseVMsToDisable(String clusterId, Set<String> candidateVmIds);
 
    /**
-    * Ranks VMs to disable from the specified cluster. All powered-off VMs in the cluster should be returned
+    * Ranks VMs to enable from the specified cluster from the candidates provided
+    * Ranking should be provided in the form of sequential digits from 0 to n
     * @param clusterId - the target cluster
-    * @return - ordered set of eligible VM IDs or null if not implemented
+    * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
+    * @return - Set of VM IDs with associated ranking or null if not implemented
     */
-   Set<RankedVM> rankVMsToEnable(String clusterId);
+   Set<RankedVM> rankVMsToEnable(String clusterId, Set<String> candidateVmIds);
    
    /**
-    * Ranks VMs to disable from the specified cluster. All powered-on VMs in the cluster should be returned
+    * Ranks VMs to disable from the specified cluster from the candidates provided
+    * Ranking should be provided in the form of sequential digits from 0 to n
     * @param clusterId - the target cluster
-    * @return - ordered set of eligible VM IDs or null if not implemented
+    * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
+    * @return - Set of VM IDs with associated ranking or null if not implemented
     */
-   Set<RankedVM> rankVMsToDisable(String clusterId);
+   Set<RankedVM> rankVMsToDisable(String clusterId, Set<String> candidateVmIds);
 }
