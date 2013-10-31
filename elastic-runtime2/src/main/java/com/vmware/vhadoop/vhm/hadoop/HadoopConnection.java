@@ -87,7 +87,7 @@ public class HadoopConnection {
 
       _log.log(Level.INFO, "VHM: "+_hadoopCluster.getJobTrackerDnsName()+" - copying data to remote file "+remotePath+remoteFileName + " on jobtracker");
 
-      if (_hadoopCluster.getJobTrackerIpAddr() == null) {
+      if (_hadoopCluster.getJobTrackerDnsName() == null) {
          return HadoopErrorCodes.ERROR_JT_CONNECTION;
       }
 
@@ -107,7 +107,7 @@ public class HadoopConnection {
 
       _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker " + _hadoopCluster.getJobTrackerIpAddr());
 
-      if (_hadoopCluster.getJobTrackerIpAddr() == null) {
+      if (_hadoopCluster.getJobTrackerDnsName() == null) {
          return HadoopErrorCodes.ERROR_JT_CONNECTION;
       }
 
