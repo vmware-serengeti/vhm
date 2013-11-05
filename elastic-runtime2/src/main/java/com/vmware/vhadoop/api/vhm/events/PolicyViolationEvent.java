@@ -1,6 +1,5 @@
 package com.vmware.vhadoop.api.vhm.events;
 
-public interface PolicyViolationEvent extends NotificationEvent
-{
+public interface PolicyViolationEvent extends ClusterScaleEvent {
 
 }

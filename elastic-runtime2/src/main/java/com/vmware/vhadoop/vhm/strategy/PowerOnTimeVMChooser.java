@@ -67,6 +67,7 @@ public class PowerOnTimeVMChooser extends AbstractClusterMapReader implements VM
          return null;
       }
       PowerTimeExtractor<String> extractor = new PowerTimeExtractor<String>(candidateVmIds) {
+         @Override
          String testVM(String vmId, long elapsedMillis) {
             return (elapsedMillis <= _thresholdMillis) ? vmId : null;
          }
@@ -89,6 +90,7 @@ public class PowerOnTimeVMChooser extends AbstractClusterMapReader implements VM
    @Override
    public Set<RankedVM> rankVMsToDisable(String clusterId, Set<String> candidateVmIds) {
       PowerTimeExtractor<RankedVM> extractor = new PowerTimeExtractor<RankedVM>(candidateVmIds) {
+         @Override
          RankedVM testVM(String vmId, long elapsedMillis) {
             return new RankedVM(vmId, (int)elapsedMillis);
          }

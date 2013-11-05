@@ -35,12 +35,12 @@ public interface VCActions {
    public class MasterVmEventData {
       public Boolean _enableAutomation;
       public Integer _minInstances;
-      public String _instanceRange;
+      public Integer _maxInstances;
       public Integer _jobTrackerPort;
 
       @Override
       public String toString() {
-         return "enableAutomation="+_enableAutomation+", minInstances="+_minInstances+", instanceRange="+_instanceRange+", jobTrackerPort="+_jobTrackerPort;
+         return "enableAutomation="+_enableAutomation+", minInstances="+_minInstances+", maxInstances="+_maxInstances+", jobTrackerPort="+_jobTrackerPort;
       }
    }
 

@@ -15,6 +15,7 @@
 
 package com.vmware.vhadoop.vhm.vc;
 
+import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_AUTOMATION_ENABLE;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_ELASTIC;
@@ -38,7 +39,7 @@ public class VcVlsiHelper {
       return vmData._masterVmData;
    }
 
-   static void parseExtraConfig(VMEventData vmData, String key, String value) {
+   static void parseExtraConfig(VMEventData vmData, String key, String value) throws NumberFormatException {
       if (key.startsWith(VHM_EXTRA_CONFIG_PREFIX)) {
          //_log.log(Level.INFO, "PEC key:val = " + key + " : " + value);
          if (key.equals(VHM_EXTRA_CONFIG_UUID)) {
@@ -51,8 +52,17 @@ public class VcVlsiHelper {
             vmData._isElastic = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_ENABLE)) {
             getMasterVmData(vmData)._enableAutomation = value.equalsIgnoreCase("true");
+         } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
+            /* Maintained for backwards compatibility - max is always unset */
+            getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
+            getMasterVmData(vmData)._maxInstances = -1;
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE)) {
-            getMasterVmData(vmData)._instanceRange = value;
+            int separatorIndex = value.indexOf(':');
+            if ((separatorIndex < 1) || (value.length() < 3) || (value.length() > 5)) {
+               throw new NumberFormatException("Format for VC key "+VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE+" is wrong: "+value);
+            }
+            getMasterVmData(vmData)._minInstances = Integer.parseInt(value.substring(0, separatorIndex));
+            getMasterVmData(vmData)._maxInstances = Integer.parseInt(value.substring(separatorIndex+1, value.length()));;
          } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
             getMasterVmData(vmData)._jobTrackerPort = Integer.valueOf(value);
          }

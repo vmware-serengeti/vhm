@@ -59,7 +59,7 @@ public abstract class AbstractJUnitTest {
    
    VMEventData createEventData(String clusterName, String vmName, boolean isMaster, 
          Boolean powerState, String hostName, String masterVmName,
-         boolean autoCluster, Integer minClusterInstances, boolean isNewVM) {
+         boolean autoCluster, Integer minClusterInstances, Integer maxClusterInstances, boolean isNewVM) {
       VMEventData result = new VMEventData();
       if (isNewVM) {
          result._myUUID = UUID_PREFIX+vmName;
@@ -79,6 +79,7 @@ public abstract class AbstractJUnitTest {
          result._masterVmData = new MasterVmEventData();
          result._masterVmData._enableAutomation = autoCluster;
          result._masterVmData._minInstances = minClusterInstances;
+         result._masterVmData._maxInstances = maxClusterInstances;
          result._masterVmData._jobTrackerPort = DEFAULT_PORT;
       }
       result._powerState = powerState;
@@ -96,7 +97,7 @@ public abstract class AbstractJUnitTest {
             masterVmName = vmName;
             _masterVmNames.add(masterVmName);
          }
-         VMEventData eventData = createEventData(clusterName, vmName, i==0, (i==0 || defaultPowerState), hostName, masterVmName, autoCluster, minInstances, true);
+         VMEventData eventData = createEventData(clusterName, vmName, i==0, (i==0 || defaultPowerState), hostName, masterVmName, autoCluster, minInstances, -1, true);
          processNewEventData(eventData, deriveClusterIdFromClusterName(clusterName), impliedScaleEvents);
       }
       registerScaleStrategy(new TrivialScaleStrategy(DEFAULT_SCALE_STRATEGY_KEY));

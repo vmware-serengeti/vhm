@@ -110,7 +110,13 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
             Map<String, String> result = null;
             if (scvd._minInstances != null) {
                result = new HashMap<String, String>();
-               result.put("key", scvd._minInstances.toString());
+               result.put("minKey", scvd._minInstances.toString());
+            }
+            if (scvd._maxInstances != null) {
+               if (result == null) {
+                  result = new HashMap<String, String>();
+               }
+               result.put("maxKey", scvd._maxInstances.toString());
             }
             return result;
          }
@@ -125,12 +131,6 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
             if ((cvd != null) && (cvd._enableAutomation != null)) {
                if (cvd._enableAutomation) {
                   newEvents.add(new ClusterScaleStrategyNotManualEvent(clusterId, isNewCluster));
-               }
-            }
-            if (!isNewCluster && (cvd != null) && (cvd._minInstances != null)) {
-               int newMinInstances = cvd._minInstances;
-               if (newMinInstances >= 0) {
-                  newEvents.add(new ClusterDataChangedEvent(clusterId, newMinInstances));
                }
             }
             return newEvents;
@@ -501,7 +501,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    private void simulateVcExtraInfoChange(String clusterName, Boolean isAuto, Integer minInstances) {
       String masterVmName1 = getMasterVmNameForCluster(clusterName);
       VMEventData switchEvent = createEventData(clusterName, 
-            masterVmName1, true, null, null, masterVmName1, isAuto, minInstances, false);
+            masterVmName1, true, null, null, masterVmName1, isAuto, minInstances, -1, false);
       processNewEventData(switchEvent);
    }
    

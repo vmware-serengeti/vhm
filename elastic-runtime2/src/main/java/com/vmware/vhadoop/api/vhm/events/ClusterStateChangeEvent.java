@@ -75,15 +75,16 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
    public class SerengetiClusterVariableData {
       public Boolean _enableAutomation;
       public Integer _minInstances;
+      public Integer _maxInstances;
       public Integer _jobTrackerPort;
 
       public boolean isComplete() {
-         return ((_enableAutomation != null) && (_minInstances != null) && (_jobTrackerPort != null));
+         return ((_enableAutomation != null) && (_minInstances != null) && (_maxInstances != null) && (_jobTrackerPort != null));
       }
 
       @Override
       public String toString() {
-         return "SerengetiClusterVariableData{auto="+_enableAutomation+", minInstances="+_minInstances+", jobTrackerPort="+_jobTrackerPort+"}";
+         return "SerengetiClusterVariableData{auto="+_enableAutomation+", minInstances="+_minInstances+", maxInstances="+_maxInstances+", jobTrackerPort="+_jobTrackerPort+"}";
       }
    }
 

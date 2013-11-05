@@ -278,6 +278,9 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          if (mved._minInstances != null) {
             result._minInstances = mved._minInstances;
          }
+         if (mved._maxInstances != null) {
+            result._maxInstances = mved._maxInstances;
+         }
          _log.fine("Returning new SerengetiClusterVariableData: "+result+"; cachedConstant: "+cachedVariable);
          return result;
       }
