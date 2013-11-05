@@ -72,7 +72,7 @@ public class HadoopAdaptor implements HadoopActions {
    private static final String JOB_TRACKER_DECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_LIST_FILE_NAME");
    private static final String JOB_TRACKER_DECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_SCRIPT_FILE_NAME");
    private static final String JOB_TRACKER_RECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
-   private static final String JOB_TRACKER_RECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
+   private static final String JOB_TRACKER_RECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_SCRIPT_FILE_NAME");
    private static final String JOB_TRACKER_CHECK_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_CHECK_SCRIPT_FILE_NAME");
 
    private static final String DEFAULT_SCRIPT_SRC_PATH = ExternalizedParameters.get().getString("DEFAULT_SCRIPT_SRC_PATH");

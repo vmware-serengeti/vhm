@@ -152,7 +152,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   }
                }
             } else if (delta < 0) {
-               vmsToED = chooseVMsForTargetPowerState(clusterId, delta, poweredOffVmIds, true);
+               vmsToED = chooseVMsForTargetPowerState(clusterId, delta, poweredOnVmIds, false);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns disabled VM IDs for the cluster */
