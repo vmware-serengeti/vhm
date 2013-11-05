@@ -121,10 +121,12 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
    }
 
    private Set<RankedVM> rankVMsForTargetPowerState(String clusterId, Set<String> candidateVmIds, final boolean targetPowerState) {
-      Map<String, HostInfo> organizedHosts = organizeVMsByHost(clusterId, candidateVmIds, targetPowerState);
-      if (organizedHosts != null) {
-         Queue<HostInfo> orderedHosts = orderHosts(organizedHosts, targetPowerState);
-         return rankVMs(orderedHosts, targetPowerState);
+      if (candidateVmIds != null) {
+         Map<String, HostInfo> organizedHosts = organizeVMsByHost(clusterId, candidateVmIds, targetPowerState);
+         if (organizedHosts != null) {
+            Queue<HostInfo> orderedHosts = orderHosts(organizedHosts, targetPowerState);
+            return rankVMs(orderedHosts, targetPowerState);
+         }
       }
       return new HashSet<RankedVM>();
    }

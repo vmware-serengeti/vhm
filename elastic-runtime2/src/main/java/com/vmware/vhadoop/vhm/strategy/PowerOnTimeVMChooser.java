@@ -36,22 +36,24 @@ public class PowerOnTimeVMChooser extends AbstractClusterMapReader implements VM
       }
       
       Set<T> getResults() {
-         ClusterMap clusterMap = null;
-         long currentTimeMillis = System.currentTimeMillis();
          Set<T> result = new HashSet<T>();
-         try {
-            clusterMap = getAndReadLockClusterMap();
-            for (String vmId : _candidateVmIds) {
-               Long powerOnTime = clusterMap.getPowerOnTimeForVm(vmId);
-               if (powerOnTime != null) {
-                  T testResult = testVM(vmId, (currentTimeMillis - powerOnTime));
-                  if (testResult != null) {
-                     result.add(testResult);
+         if (_candidateVmIds != null) {
+            ClusterMap clusterMap = null;
+            long currentTimeMillis = System.currentTimeMillis();
+            try {
+               clusterMap = getAndReadLockClusterMap();
+               for (String vmId : _candidateVmIds) {
+                  Long powerOnTime = clusterMap.getPowerOnTimeForVm(vmId);
+                  if (powerOnTime != null) {
+                     T testResult = testVM(vmId, (currentTimeMillis - powerOnTime));
+                     if (testResult != null) {
+                        result.add(testResult);
+                     }
                   }
                }
+            } finally {
+               unlockClusterMap(clusterMap);
             }
-         } finally {
-            unlockClusterMap(clusterMap);
          }
          return result;
       }
@@ -76,8 +78,10 @@ public class PowerOnTimeVMChooser extends AbstractClusterMapReader implements VM
    /* For enabling, this VMChooser ranks evenly as powerOnTime makes no sense for powered-off VMs */
    public Set<RankedVM> rankVMsToEnable(String clusterId, Set<String> candidateVmIds) {
       Set<RankedVM> result = new HashSet<RankedVM>();
-      for (String vmId : candidateVmIds) {
-         result.add(new RankedVM(vmId, 0));
+      if (candidateVmIds != null) {
+         for (String vmId : candidateVmIds) {
+            result.add(new RankedVM(vmId, 0));
+         }
       }
       return result;
    }

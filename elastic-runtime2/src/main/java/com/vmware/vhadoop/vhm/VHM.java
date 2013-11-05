@@ -120,7 +120,6 @@ public class VHM implements EventConsumer {
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
       for (ScaleStrategy strategy : scaleStrategies) {
          _clusterMap.registerScaleStrategy(strategy);
-         strategy.initialize(_parentClusterMapReader);
          strategy.setVMChooserCallback(new VMChooserCallback() {
             @Override
             public Set<VMChooser> getVMChoosers() {
@@ -129,13 +128,14 @@ public class VHM implements EventConsumer {
             @Override
             public VMChooser getVMChooserForType(Class<? extends VMChooser> vmChooserType) {
                for (VMChooser vmChooser : _vmChoosers) {
-                  if (vmChooser.getClass().isAssignableFrom(vmChooserType)) {
+                  if (vmChooserType.isAssignableFrom(vmChooser.getClass())) {
                      return vmChooser;
                   }
                }
                return null;
             }
          });
+         strategy.initialize(_parentClusterMapReader);
       }
    }
 
