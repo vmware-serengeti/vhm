@@ -30,7 +30,7 @@ public interface VMChooser {
 
    public class RankedVM implements Comparable<RankedVM> {
       String _vmId;
-      Integer _rank;
+      Double _rank;
 
       /* The result should contain the superset of both input1 and input2
        * If input1 is null, input2 is returned and vice versa
@@ -66,7 +66,7 @@ public interface VMChooser {
          RankedVM current = null;
          RankedVM prev = null;
          Set<RankedVM> flattened = new HashSet<RankedVM>();
-         PriorityQueue<RankedVM> orderedCopy = new PriorityQueue<RankedVM>(toFlatten); 
+         PriorityQueue<RankedVM> orderedCopy = new PriorityQueue<RankedVM>(toFlatten);
          while ((current = orderedCopy.poll()) != null) {
             if ((prev != null) && (current.getRank() == prev.getRank())) {
                flattened.add(new RankedVM(current._vmId, rank));
@@ -77,8 +77,8 @@ public interface VMChooser {
          }
          return flattened;
       }
-      
-      /* Orders the candidates passed in by ranking and selects the lowest ranked candidates 
+
+      /* Orders the candidates passed in by ranking and selects the lowest ranked candidates
        * Returns null if candidates is null, else a Set */
       public static Set<String> selectLowestRankedIds(Set<RankedVM> candidates, int numToChoose) {
          if (candidates == null) {
@@ -101,12 +101,17 @@ public interface VMChooser {
          PriorityQueue<RankedVM> orderedQueue = new PriorityQueue<RankedVM>(candidates);
          return orderedQueue.poll().getVmId();
       }
-      
+
       public RankedVM(String vmId, int rank) {
          _vmId = vmId;
-         _rank = rank;
+         _rank = Double.valueOf(rank);
       }
-      
+
+      public RankedVM(String vmId, float rank) {
+         _vmId = vmId;
+         _rank = Double.valueOf(rank);
+      }
+
       public boolean combine(RankedVM combineWith) {
          if (!combineWith._vmId.equals(_vmId)) {
             return false;
@@ -120,14 +125,14 @@ public interface VMChooser {
       }
 
       public int getRank() {
-         return _rank;
+         return _rank.intValue();
       }
 
       @Override
       public int compareTo(RankedVM other) {
-         return _rank - other._rank;
+         return (int) (_rank - other._rank);
       }
-      
+
       @Override
       public String toString() {
          return "<%V"+_vmId+"%V>="+_rank;
@@ -158,7 +163,7 @@ public interface VMChooser {
          return true;
       }
    }
-   
+
    /**
     * Selects VMs to enable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
     * @param clusterId - the target cluster
@@ -183,7 +188,7 @@ public interface VMChooser {
     * @return - Set of VM IDs with associated ranking or null if not implemented
     */
    Set<RankedVM> rankVMsToEnable(String clusterId, Set<String> candidateVmIds);
-   
+
    /**
     * Ranks VMs to disable from the specified cluster from the candidates provided
     * Ranking should be provided in the form of sequential digits from 0 to n
