@@ -37,6 +37,7 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.SerengetiClusterVariableData;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
@@ -324,6 +325,10 @@ public class BootstrapMain
          }
       };
    }
+   
+   VMChooser[] getVMChoosersToRegister() {
+      return new VMChooser[]{new BalancedVMChooser(), new PowerOnTimeVMChooser()};
+   }
 
    VHM initVHM(final ThreadLocalCompoundStatus tlcs) {
       VHM vhm;
@@ -341,8 +346,9 @@ public class BootstrapMain
          _log.severe("Fatal error registering MQClient as an event producer");
          return null;
       }
-      vhm.registerVMChooser(new BalancedVMChooser());
-      vhm.registerVMChooser(new PowerOnTimeVMChooser());
+      for (VMChooser vmChooser : getVMChoosersToRegister()) {
+         vhm.registerVMChooser(vmChooser);
+      }
 
       return vhm;
    }

@@ -9,15 +9,67 @@ import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 
 public class PowerOnTimeVMChooser extends AbstractClusterMapReader implements VMChooser, ClusterMapReader {
+   private final Long _thresholdMillis;
+   
+   /* If a threshold is passed in, the choose methods will only choose VMs that have been powered on for less than the threshold */
+   public PowerOnTimeVMChooser(Long powerOnTimeThresholdMillis) {
+      _thresholdMillis = powerOnTimeThresholdMillis;
+   }
+   
+   public PowerOnTimeVMChooser() {
+      _thresholdMillis = null;
+   }
 
    @Override
    public Set<String> chooseVMsToEnable(String clusterId, Set<String> candidateVmIds) {
-      return null;
+      if (_thresholdMillis == null) {
+         return null;
+      }
+      return candidateVmIds;
+   }
+   
+   private abstract class PowerTimeExtractor<T> {
+      Set<String> _candidateVmIds = null;
+
+      PowerTimeExtractor(Set<String> candidateVmIds) {
+         _candidateVmIds = candidateVmIds;
+      }
+      
+      Set<T> getResults() {
+         ClusterMap clusterMap = null;
+         long currentTimeMillis = System.currentTimeMillis();
+         Set<T> result = new HashSet<T>();
+         try {
+            clusterMap = getAndReadLockClusterMap();
+            for (String vmId : _candidateVmIds) {
+               Long powerOnTime = clusterMap.getPowerOnTimeForVm(vmId);
+               if (powerOnTime != null) {
+                  T testResult = testVM(vmId, (currentTimeMillis - powerOnTime));
+                  if (testResult != null) {
+                     result.add(testResult);
+                  }
+               }
+            }
+         } finally {
+            unlockClusterMap(clusterMap);
+         }
+         return result;
+      }
+      
+      abstract T testVM(String vmId, long elapsedMillis);
    }
 
    @Override
    public Set<String> chooseVMsToDisable(String clusterId, Set<String> candidateVmIds) {
-      return null;
+      if (_thresholdMillis == null) {
+         return null;
+      }
+      PowerTimeExtractor<String> extractor = new PowerTimeExtractor<String>(candidateVmIds) {
+         String testVM(String vmId, long elapsedMillis) {
+            return (elapsedMillis <= _thresholdMillis) ? vmId : null;
+         }
+      };
+      return extractor.getResults();
    }
 
    @Override
@@ -32,22 +84,12 @@ public class PowerOnTimeVMChooser extends AbstractClusterMapReader implements VM
 
    @Override
    public Set<RankedVM> rankVMsToDisable(String clusterId, Set<String> candidateVmIds) {
-      ClusterMap clusterMap = null;
-      Set<RankedVM> absoluteRank = new HashSet<RankedVM>();
-      long currentTimeMillis = System.currentTimeMillis();
-      try {
-         clusterMap = getAndReadLockClusterMap();
-         for (String vmId : candidateVmIds) {
-            Long powerOnTime = clusterMap.getPowerOnTimeForVm(vmId);
-            if (powerOnTime != null) {
-               long elapsedMillis = currentTimeMillis - powerOnTime;
-               absoluteRank.add(new RankedVM(vmId, (int)elapsedMillis));
-            }
+      PowerTimeExtractor<RankedVM> extractor = new PowerTimeExtractor<RankedVM>(candidateVmIds) {
+         RankedVM testVM(String vmId, long elapsedMillis) {
+            return new RankedVM(vmId, (int)elapsedMillis);
          }
-      } finally {
-         unlockClusterMap(clusterMap);
-      }
-      return RankedVM.flattenRankValues(absoluteRank);
+      };
+      return RankedVM.flattenRankValues(extractor.getResults());
    }
 
 }

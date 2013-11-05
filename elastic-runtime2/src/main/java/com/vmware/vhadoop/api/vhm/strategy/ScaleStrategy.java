@@ -29,6 +29,8 @@ public interface ScaleStrategy extends ClusterMapReader {
 
    interface VMChooserCallback {
       Set<VMChooser> getVMChoosers();
+      
+      VMChooser getVMChooserForType(Class<? extends VMChooser> vmChooser);
    }
 
    String getKey();

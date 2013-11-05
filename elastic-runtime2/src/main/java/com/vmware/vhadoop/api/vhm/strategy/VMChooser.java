@@ -78,7 +78,8 @@ public interface VMChooser {
          return flattened;
       }
       
-      /* Orders the candidates passed in by ranking and selects the lowest ranked candidates */
+      /* Orders the candidates passed in by ranking and selects the lowest ranked candidates 
+       * Returns null if candidates is null, else a Set */
       public static Set<String> selectLowestRankedIds(Set<RankedVM> candidates, int numToChoose) {
          if (candidates == null) {
             return null;
@@ -92,6 +93,15 @@ public interface VMChooser {
          return result;
       }
 
+      /* Selects a single candidate from the set. Returns null if the set is null or empty */
+      public static String selectLowestRankedId(Set<RankedVM> candidates) {
+         if ((candidates == null || candidates.isEmpty())) {
+            return null;
+         }
+         PriorityQueue<RankedVM> orderedQueue = new PriorityQueue<RankedVM>(candidates);
+         return orderedQueue.poll().getVmId();
+      }
+      
       public RankedVM(String vmId, int rank) {
          _vmId = vmId;
          _rank = rank;

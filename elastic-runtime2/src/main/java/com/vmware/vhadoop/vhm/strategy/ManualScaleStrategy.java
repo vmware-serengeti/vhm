@@ -63,7 +63,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       return MANUAL_SCALE_STRATEGY_KEY;
    }
          
-   private Set<String> chooseVMsForPowerState(String clusterId, int delta, Set<String> candidateVmIds, boolean targetPowerState) {
+   private Set<String> chooseVMsForTargetPowerState(String clusterId, int delta, Set<String> candidateVmIds, boolean targetPowerState) {
       Set<RankedVM> combination = null;
       for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
          
@@ -132,7 +132,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             }
             Set<String> unresponsiveVmIds = null;
             if (delta > 0) {
-               vmsToED = chooseVMsForPowerState(clusterId, delta, poweredOffVmIds, true);
+               vmsToED = chooseVMsForTargetPowerState(clusterId, delta, poweredOffVmIds, true);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns successfully enabled VM IDs from the input set of VMs*/
@@ -152,7 +152,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   }
                }
             } else if (delta < 0) {
-               vmsToED = chooseVMsForPowerState(clusterId, delta, poweredOffVmIds, true);
+               vmsToED = chooseVMsForTargetPowerState(clusterId, delta, poweredOffVmIds, true);
                limitEvent.reportProgress(10, null);
                if ((vmsToED != null) && !vmsToED.isEmpty()) {
                   /* Note that this returns disabled VM IDs for the cluster */

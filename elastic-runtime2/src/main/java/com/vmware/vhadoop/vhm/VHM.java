@@ -44,6 +44,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ClusterScaleCompletionEventListener;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy.VMChooserCallback;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
@@ -120,6 +121,21 @@ public class VHM implements EventConsumer {
       for (ScaleStrategy strategy : scaleStrategies) {
          _clusterMap.registerScaleStrategy(strategy);
          strategy.initialize(_parentClusterMapReader);
+         strategy.setVMChooserCallback(new VMChooserCallback() {
+            @Override
+            public Set<VMChooser> getVMChoosers() {
+               return _vmChoosers;
+            }
+            @Override
+            public VMChooser getVMChooserForType(Class<? extends VMChooser> vmChooserType) {
+               for (VMChooser vmChooser : _vmChoosers) {
+                  if (vmChooser.getClass().isAssignableFrom(vmChooserType)) {
+                     return vmChooser;
+                  }
+               }
+               return null;
+            }
+         });
       }
    }
 
