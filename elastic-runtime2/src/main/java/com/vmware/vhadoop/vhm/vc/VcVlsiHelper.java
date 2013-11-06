@@ -54,8 +54,10 @@ public class VcVlsiHelper {
             getMasterVmData(vmData)._enableAutomation = value.equalsIgnoreCase("true");
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES)) {
             /* Maintained for backwards compatibility - max is always unset */
-            getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
-            getMasterVmData(vmData)._maxInstances = -1;
+            if (getMasterVmData(vmData)._minInstances == null) {        /* Only if not been set by the M7 code below */
+               getMasterVmData(vmData)._minInstances = Integer.valueOf(value);
+               getMasterVmData(vmData)._maxInstances = -1;
+            }
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE)) {
             int separatorIndex = value.indexOf(':');
             if ((separatorIndex < 1) || (value.length() < 3) || (value.length() > 5)) {
