@@ -35,17 +35,18 @@ import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
 import com.vmware.vhadoop.api.vhm.HealthManager;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
-import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ClusterScaleCompletionEventListener;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy.VMChooserCallback;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
+import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.AbstractClusterScaleEvent;
@@ -57,7 +58,6 @@ import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
-import com.vmware.vhadoop.util.ExternalizedParameters;
 
 public class VHM implements EventConsumer {
    private final EventProducerActions _eventProducers;
@@ -96,11 +96,11 @@ public class VHM implements EventConsumer {
       }
       _vmChoosers = new HashSet<VMChooser>();
    }
-   
+
    /* It is anticipated that this will only be called during initialization */
    public void registerHealthManager(HealthManager healthManager) {
       _healthManager = healthManager;
-      _vmChoosers.add(_healthManager);
+      registerVMChooser(_healthManager);
    }
 
    /* It is anticipated that this will only be called during initialization */
@@ -110,7 +110,7 @@ public class VHM implements EventConsumer {
       }
       _vmChoosers.add(vmChooser);
    }
-   
+
    /* It is anticipated that this will only be called during initialization */
    public void registerClusterScaleCompletionEventMonitor(ClusterScaleCompletionEventListener csceMonitor) {
       _csceMonitor = csceMonitor;
@@ -608,7 +608,7 @@ public class VHM implements EventConsumer {
 
       /* events that indicate a change in health status for a cluster */
       final Set<ClusterHealthEvent> healthEvents = getClusterHealthEvents(events);
-       
+
       /* ClusterMap is updated by VHM based on events that come in from the ClusterStateChangeListener
        * The first thing we do here is update ClusterMap to ensure that the latest state is reflected ASAP
        * Note that clusterScaleEvents can be implied by cluster state changes, so new clusterScaleEvents can be added here */
@@ -641,11 +641,11 @@ public class VHM implements EventConsumer {
             }
          });
       }
-      
+
       if ((_healthManager != null) && (healthEvents != null)) {
          _healthManager.getHealthMonitor().handleHealthEvents(_vcActions, healthEvents);
       }
-      
+
       getQueuedScaleEventsForCluster(newAndRequeuedEvents, clusterScaleEvents);
 
       /* If there are scale events to handle, we need to invoke the scale strategies for each cluster
