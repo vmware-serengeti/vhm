@@ -15,6 +15,7 @@
 
 package com.vmware.vhadoop.vhm.strategy;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -56,6 +57,16 @@ public class DumbEDPolicy extends AbstractClusterMapReader implements EDPolicy {
    @Override
    public Set<String> getActiveTTs(String clusterId) throws Exception {
       return null;
+   }
+
+   @Override
+   public Set<String> enableTTs(Map<String, Object> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
+      return enableTTs(toEnable.keySet(), totalTargetEnabled, clusterId);
+   }
+
+   @Override
+   public Set<String> disableTTs(Map<String, Object> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
+      return disableTTs(toDisable.keySet(), totalTargetEnabled, clusterId);
    }
 
 }

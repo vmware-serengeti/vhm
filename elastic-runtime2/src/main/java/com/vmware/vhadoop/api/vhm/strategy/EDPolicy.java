@@ -26,10 +26,14 @@ public interface EDPolicy extends ClusterMapReader {
    /* Note that this method may return null in the case of an error */
    Set<String> enableTTs(Set<String> toEnable, int totalTargetEnabled, String clusterId) throws Exception;
 
+   Set<String> enableTTs(Map<String, Object> toEnable, int totalTargetEnabled, String clusterId) throws Exception;
+
    /* Caller should expect this to block - returns the VM IDs that were successfully disabled */
    /* Note that this method may return null in the case of an error */
    Set<String> disableTTs(Set<String> toDisable, int totalTargetEnabled, String clusterId) throws Exception;
-   
+
+   Set<String> disableTTs(Map<String, Object> toDisable, int totalTargetEnabled, String clusterId) throws Exception;
+
    /* Note that this method may return null in the case of an error */
    Set<String> getActiveTTs(String clusterId) throws Exception;
 }

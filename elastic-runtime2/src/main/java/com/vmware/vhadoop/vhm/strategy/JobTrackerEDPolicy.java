@@ -288,4 +288,14 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
       return null;
    }
 
+   @Override
+   public Set<String> enableTTs(Map<String, Object> toEnable, int totalTargetEnabled, String clusterId) throws Exception {
+      return enableTTs(toEnable.keySet(), totalTargetEnabled, clusterId);
+   }
+
+   @Override
+   public Set<String> disableTTs(Map<String, Object> toDisable, int totalTargetEnabled, String clusterId) throws Exception {
+      return disableTTs(toDisable.keySet(), totalTargetEnabled, clusterId);
+   }
+
 }

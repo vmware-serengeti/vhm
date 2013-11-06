@@ -77,7 +77,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       }
       return RankedVM.selectLowestRankedIds(combination, Math.abs(delta));
    }
-
+   
    class CallableStrategy extends ClusterScaleOperation {
       final Set<ClusterScaleEvent> _events;
 
