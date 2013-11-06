@@ -60,7 +60,7 @@ public class VcVlsiHelper {
             }
          } else if (key.equals(VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE)) {
             int separatorIndex = value.indexOf(':');
-            if ((separatorIndex < 1) || (value.length() < 3) || (value.length() > 5)) {
+            if ((separatorIndex < 1) || (value.length() < 3)) {
                throw new NumberFormatException("Format for VC key "+VHM_EXTRA_CONFIG_AUTOMATION_INSTANCE_RANGE+" is wrong: "+value);
             }
             getMasterVmData(vmData)._minInstances = Integer.parseInt(value.substring(0, separatorIndex));
