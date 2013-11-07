@@ -283,7 +283,12 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 
    @Override
    public Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState) {
-      // TODO Auto-generated method stub
+      for (VM vm : vms) {
+         if (vm.id.equals(vmId)) {
+            return vm.power;
+         }
+      }
+
       return null;
    }
 

@@ -64,21 +64,21 @@ public class HadoopAdaptor implements HadoopActions {
    private final Map<String, Map<ParamTypes, String>> _errorParamValues;  /* TODO: Will need one per connection/cluster */
    private final ThreadLocalCompoundStatus _threadLocalStatus;
 
-   private static final int JOB_TRACKER_DEFAULT_SSH_PORT = ExternalizedParameters.get().getInt("JOB_TRACKER_DEFAULT_SSH_PORT");
-   private static final String JOB_TRACKER_SCP_READ_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_READ_PERMS");
-   private static final String JOB_TRACKER_SCP_EXECUTE_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_EXECUTE_PERMS");
-   private static final int JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE = ExternalizedParameters.get().getInt("JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE");
+   private final int JOB_TRACKER_DEFAULT_SSH_PORT = ExternalizedParameters.get().getInt("JOB_TRACKER_DEFAULT_SSH_PORT");
+   private final String JOB_TRACKER_SCP_READ_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_READ_PERMS");
+   private final String JOB_TRACKER_SCP_EXECUTE_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_EXECUTE_PERMS");
+   private final int JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE = ExternalizedParameters.get().getInt("JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE");
 
-   private static final String JOB_TRACKER_DECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_LIST_FILE_NAME");
-   private static final String JOB_TRACKER_DECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_SCRIPT_FILE_NAME");
-   private static final String JOB_TRACKER_RECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
-   private static final String JOB_TRACKER_RECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_SCRIPT_FILE_NAME");
-   private static final String JOB_TRACKER_CHECK_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_CHECK_SCRIPT_FILE_NAME");
+   private final String JOB_TRACKER_DECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_LIST_FILE_NAME");
+   private final String JOB_TRACKER_DECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_DECOM_SCRIPT_FILE_NAME");
+   private final String JOB_TRACKER_RECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
+   private final String JOB_TRACKER_RECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_SCRIPT_FILE_NAME");
+   private final String JOB_TRACKER_CHECK_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_CHECK_SCRIPT_FILE_NAME");
 
-   private static final String DEFAULT_SCRIPT_SRC_PATH = ExternalizedParameters.get().getString("DEFAULT_SCRIPT_SRC_PATH");
-   private static final String JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH = ExternalizedParameters.get().getString("JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH");
+   private final String DEFAULT_SCRIPT_SRC_PATH = ExternalizedParameters.get().getString("DEFAULT_SCRIPT_SRC_PATH");
+   private final String JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH = ExternalizedParameters.get().getString("JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH");
 
-   private static final int ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS = ExternalizedParameters.get().getInt("ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS");;
+   private final int ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS = ExternalizedParameters.get().getInt("ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS");;
 
    static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
 
