@@ -32,6 +32,7 @@ import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vim.binding.impl.vim.event.EventExImpl;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.ExtensionManager;
@@ -294,6 +295,7 @@ public class VcAdapter implements VCActions {
       event.setObjectType(new TypeNameImpl("VirtualMachine"));
 
       try {
+         _log.log(VhmLevel.USER, "VHM: <%VM"+vmMoRef+"%VM> - "+message);
          eventManager.postEvent(event, null);
       } catch (InvalidEvent e) {
          _log.log(Level.INFO, "VHM: <%VM"+vmMoRef+"%VM> - failed to log "+level.name()+" event with vCenter", e);
