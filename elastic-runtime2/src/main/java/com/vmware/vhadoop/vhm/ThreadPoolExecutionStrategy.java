@@ -107,7 +107,7 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy {
          try {
             ctc = getClusterTaskContext(clusterId, scaleStrategy);
             if (ctc._completionEventPending != null) {
-               _log.finest("Cluster scale events already being handled for cluster <%C"+clusterId);
+               _log.fine("Cluster scale events already being handled for cluster <%C"+clusterId);
             } else {
                ctc._completionEventPending =
                      _threadPool.submit(scaleStrategy.getClusterScaleOperation(clusterId, events, ctc._scaleStrategyContext));

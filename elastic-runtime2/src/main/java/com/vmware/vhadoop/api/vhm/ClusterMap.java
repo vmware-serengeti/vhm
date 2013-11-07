@@ -93,6 +93,8 @@ public interface ClusterMap {
 
    String getExtraInfo(String clusterId, String key);
    
+   Map<String, String[]> getNicAndIpAddressesForVm(String vmId);
+   
    interface VMUpdateListener {
       void updatingVM(String moRef);
    }
@@ -124,7 +126,6 @@ public interface ClusterMap {
                _powerOnTime = System.currentTimeMillis();
             } else {
                _variableData._dnsName = null;         /* VC may give us stale values for a powered-off VM on init */
-               _variableData._ipAddr = null;
             }
          }
       }
@@ -164,10 +165,6 @@ public interface ClusterMap {
          return _variableData._dnsName;
       }
 
-      public String getIpAddr() {
-         return _variableData._ipAddr;
-      }
-
       public Integer getvCPUs() {
          return _variableData._vCPUs;
       }
@@ -182,6 +179,10 @@ public interface ClusterMap {
 
       public String getMyUUID() {
          return _constantData._myUUID;
+      }
+
+      public Map<String, String[]> getNicAndIpAddressMap() {
+         return _variableData._nicAndIpAddressMap;
       }
 
       public void setMyName(String myName) {
@@ -200,8 +201,8 @@ public interface ClusterMap {
          assignVariableData()._dnsName = dnsName;
       }
 
-      public void setIpAddr(String ipAddr) {
-         assignVariableData()._ipAddr = ipAddr;
+      public void setNicAndIpAddressMap(Map<String, String[]> nicAndIpAddressMap) {
+         assignVariableData()._nicAndIpAddressMap = nicAndIpAddressMap;
       }
 
       public void setvCPUs(Integer vCPUs) {

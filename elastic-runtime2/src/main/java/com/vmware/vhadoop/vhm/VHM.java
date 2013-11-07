@@ -647,7 +647,6 @@ public class VHM implements EventConsumer {
       }
 
       getQueuedScaleEventsForCluster(newAndRequeuedEvents, clusterScaleEvents);
-
       /* If there are scale events to handle, we need to invoke the scale strategies for each cluster
        * The ordering in which we process the clusters doesn't matter as they will be done concurrently */
       if (clusterScaleEvents.size() > 0) {

@@ -131,7 +131,7 @@ public class HadoopAdaptor implements HadoopActions {
    }
 
    private HadoopConnection getConnectionForCluster(HadoopClusterInfo cluster) {
-      if ((cluster == null) || (cluster.getJobTrackerIpAddr() == null)) {
+      if ((cluster == null) || (cluster.getJobTrackerDnsName() == null)) {
          return null;
       }
       HadoopConnection result = _connections.get(cluster.getClusterId());

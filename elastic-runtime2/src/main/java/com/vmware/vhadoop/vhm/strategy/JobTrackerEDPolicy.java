@@ -66,7 +66,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
+      if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerDnsName() != null)) {
          CompoundStatus status = getCompoundStatus();
          long initTime = System.currentTimeMillis();
 
@@ -125,7 +125,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      if ((dnsNameMap != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
+      if ((dnsNameMap != null) && (hadoopCluster != null) && (hadoopCluster.getJobTrackerDnsName() != null)) {
          CompoundStatus status = getCompoundStatus();
          long initTime = System.currentTimeMillis();
 
@@ -282,7 +282,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
          unlockClusterMap(clusterMap);
       }
 
-      if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerIpAddr() != null)) {
+      if ((hadoopCluster != null) && (hadoopCluster.getJobTrackerDnsName() != null)) {
          return _hadoopActions.getActiveTTs(hadoopCluster, 0);
       }
       return null;

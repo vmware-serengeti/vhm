@@ -232,7 +232,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       String clusterId = deriveClusterIdFromClusterName(clusterName0);
       HadoopClusterInfo hci = _clusterMap.getHadoopInfoForCluster(clusterId);
       assertNotNull(hci);
-      assertEquals(deriveMasterIpAddrFromClusterId(clusterId), hci.getJobTrackerIpAddr());
+      assertEquals(deriveMasterDnsNameFromClusterId(clusterId), hci.getJobTrackerDnsName());
       assertEquals((Integer)DEFAULT_PORT, hci.getJobTrackerPort());
       String masterVmName = getMasterVmNameForCluster(clusterName0);
       String masterDnsName = getDnsNameFromVmName(masterVmName);

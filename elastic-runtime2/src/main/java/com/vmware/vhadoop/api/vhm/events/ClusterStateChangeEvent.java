@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.api.vhm.events;
 
+import java.util.Map;
+
 /* If the ClusterStateChangeListenerImpl notices a delta change, it generates one of these events for the VHM to consume */
 public interface ClusterStateChangeEvent extends NotificationEvent {
 
@@ -43,13 +45,14 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
    public class VMVariableData {
       public String _myName;
       public Integer _vCPUs;
-      public String _ipAddr;
+      public Map<String, String[]> _nicAndIpAddressMap;
       public String _dnsName;
       public Boolean _powerState;
       public String _hostMoRef;
 
       protected String getVariableValues() {
-         return "name="+_myName+", vCPUs="+_vCPUs+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", powerState="+_powerState+", hostMoRef="+_hostMoRef;
+         return "name="+_myName+", vCPUs="+_vCPUs+", nicAndIpAddressMap="+_nicAndIpAddressMap+
+               ", dnsName="+_dnsName+", powerState="+_powerState+", hostMoRef="+_hostMoRef;
       }
 
       @Override

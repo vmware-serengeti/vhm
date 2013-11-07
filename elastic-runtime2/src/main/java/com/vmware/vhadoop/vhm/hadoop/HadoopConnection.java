@@ -105,7 +105,7 @@ public class HadoopConnection {
    public int executeScript(String scriptFileName, String destinationPath, String[] scriptArgs, OutputStream out) {
       int exitStatus = UNKNOWN_ERROR;
 
-      _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker " + _hadoopCluster.getJobTrackerIpAddr());
+      _log.log(Level.INFO, "Executing remote script: " + destinationPath + scriptFileName + " on jobtracker " + _hadoopCluster.getJobTrackerDnsName());
 
       if (_hadoopCluster.getJobTrackerDnsName() == null) {
          return HadoopErrorCodes.ERROR_JT_CONNECTION;
@@ -136,7 +136,7 @@ public class HadoopConnection {
    }
 
    public String getJobTrackerAddr() {
-      return _hadoopCluster.getJobTrackerIpAddr();
+      return _hadoopCluster.getJobTrackerDnsName();
    }
 
    public String getExcludeFilePath() {

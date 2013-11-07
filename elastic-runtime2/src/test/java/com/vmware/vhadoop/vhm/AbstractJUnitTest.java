@@ -15,6 +15,7 @@
 
 package com.vmware.vhadoop.vhm;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -34,6 +35,7 @@ public abstract class AbstractJUnitTest {
    final String CLUSTER_NAME_PREFIX = "myTestCluster_";
    final String VM_NAME_PREFIX = "myTestVm_";
    final String DNS_PREFIX = "DNS_";
+   final String NIC_PREFIX = "NIC_";
    final String IPADDR_PREFIX = "IPADDR_";
    final String UUID_PREFIX = "UUID_";
    final String MOREF_PREFIX = "MOREF_";
@@ -66,7 +68,9 @@ public abstract class AbstractJUnitTest {
       }
       result._dnsName = getDnsNameFromVmName(vmName);
       result._hostMoRef = MOREF_PREFIX+hostName;
-      result._ipAddr = IPADDR_PREFIX+vmName;
+      result._nicAndIpAddressMap = new HashMap<String, String[]>();
+      result._nicAndIpAddressMap.put(NIC_PREFIX+vmName, 
+            new String[]{IPADDR_PREFIX+vmName+"1", IPADDR_PREFIX+vmName+"2"});
       result._masterMoRef = MOREF_PREFIX+masterVmName;
       result._masterUUID = UUID_PREFIX+vmName;
       result._masterUUID = getClusterIdForMasterVmName(masterVmName);
@@ -162,9 +166,9 @@ public abstract class AbstractJUnitTest {
       return getClusterIdForMasterVmName(clusterName+"_"+VM_NAME_PREFIX+0);
    }
    
-   Object deriveMasterIpAddrFromClusterId(String clusterId) {
+   Object deriveMasterDnsNameFromClusterId(String clusterId) {
       String removedUUID = clusterId.substring(clusterId.indexOf('_')+1);
-      return IPADDR_PREFIX+removedUUID;
+      return DNS_PREFIX+removedUUID;
    }
 
    String getVmIdFromVmName(String vmName) {

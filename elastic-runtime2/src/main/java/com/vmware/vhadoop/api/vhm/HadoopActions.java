@@ -38,13 +38,11 @@ public interface HadoopActions {
    public class HadoopClusterInfo {
       private String _clusterId;
       private String _jobTrackerDnsName;
-      private String _jobTrackerIpAddr;
       private Integer _jobTrackerPort;
       
-      public HadoopClusterInfo(String clusterId, String jobTrackerDnsName, String jobTrackerIpAddr, Integer jobTrackerPort) {
+      public HadoopClusterInfo(String clusterId, String jobTrackerDnsName, Integer jobTrackerPort) {
          _clusterId = clusterId;
          _jobTrackerDnsName = jobTrackerDnsName;
-         _jobTrackerIpAddr = jobTrackerIpAddr;
          _jobTrackerPort = jobTrackerPort;
       }
       
@@ -54,10 +52,6 @@ public interface HadoopActions {
       
       public String getJobTrackerDnsName() {
          return _jobTrackerDnsName;
-      }
-
-      public String getJobTrackerIpAddr() {
-         return _jobTrackerIpAddr;
       }
 
       public Integer getJobTrackerPort() {
@@ -70,7 +64,6 @@ public interface HadoopActions {
          int result = 1;
          result = prime * result + ((_clusterId == null) ? 0 : _clusterId.hashCode());
          result = prime * result + ((_jobTrackerDnsName == null) ? 0 : _jobTrackerDnsName.hashCode());
-         result = prime * result + ((_jobTrackerIpAddr == null) ? 0 : _jobTrackerIpAddr.hashCode());
          result = prime * result + ((_jobTrackerPort == null) ? 0 : _jobTrackerPort.hashCode());
          return result;
       }
@@ -93,11 +86,6 @@ public interface HadoopActions {
             if (other._jobTrackerDnsName != null)
                return false;
          } else if (!_jobTrackerDnsName.equals(other._jobTrackerDnsName))
-            return false;
-         if (_jobTrackerIpAddr == null) {
-            if (other._jobTrackerIpAddr != null)
-               return false;
-         } else if (!_jobTrackerIpAddr.equals(other._jobTrackerIpAddr))
             return false;
          if (_jobTrackerPort == null) {
             if (other._jobTrackerPort != null)

@@ -54,11 +54,14 @@ import com.vmware.vim.binding.vim.SessionManager;
 import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
+import com.vmware.vim.binding.vim.vm.GuestInfo.NicInfo;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
 import com.vmware.vim.binding.vim.fault.HostConnectFault;
 import com.vmware.vim.binding.vim.fault.VimFault;
+import com.vmware.vim.binding.vim.net.IpConfigInfo;
+import com.vmware.vim.binding.vim.net.IpConfigInfo.IpAddress;
 import com.vmware.vim.binding.vim.option.OptionValue;
 import com.vmware.vim.binding.vim.version.version8;
 import com.vmware.vim.binding.vim.view.ContainerView;
@@ -105,7 +108,7 @@ public class VcVlsi {
    static final String VC_PROP_VM_NUM_CPU = "config.hardware.numCPU";
    static final String VC_PROP_VM_POWER_STATE = "runtime.powerState";
    static final String VC_PROP_VM_HOST = "runtime.host";
-   static final String VC_PROP_VM_GUEST_IP = "guest.ipAddress";
+   static final String VC_PROP_VM_GUEST_NIC_INFO = "guest.net";
    static final String VC_PROP_VM_GUEST_HOSTNAME = "guest.hostName";
 
    static final String VC_MOREF_TYPE_TASK = "Task";
@@ -507,6 +510,28 @@ public class VcVlsi {
    private void cleanupWaitForUpdates(PropertyFilter propFilter) {
       propFilter.cleanup();
    }
+   
+   private static Map<String, String[]> getNicInfo(NicInfo[] nicInfoArray) {
+      Map<String, String[]> nicAndIpAddressMap = new HashMap<String, String[]>();
+      if (nicInfoArray != null) {
+         for (NicInfo nicInfo : nicInfoArray) {
+            String networkName = nicInfo.getNetwork();
+            IpConfigInfo ipConfigInfo = nicInfo.getIpConfig();
+            if ((ipConfigInfo != null) && (networkName != null)) {
+               IpAddress[] ipAddressObjects = ipConfigInfo.getIpAddress();
+               if (ipAddressObjects != null) {
+                  String[] ipAddressArray = new String[ipAddressObjects.length];
+                  int cntr = 0;
+                  for (IpAddress ipAddress : ipAddressObjects) {
+                     ipAddressArray[cntr++] = ipAddress.getIpAddress();
+                  }
+                  nicAndIpAddressMap.put(networkName, ipAddressArray);
+               }
+            }
+         }
+      }
+      return nicAndIpAddressMap;
+   }
 
    private static VMEventData parseObjUpdate(Logger logger, ObjectUpdate obj) {
       VMEventData vmData = new VMEventData();
@@ -541,8 +566,8 @@ public class VcVlsi {
                   }
                } else if (pcName.equals(VC_PROP_VM_HOST)) {
                   vmData._hostMoRef = ((ManagedObjectReference)pcValue).getValue();
-               } else if (pcName.equals(VC_PROP_VM_GUEST_IP)) {
-                  vmData._ipAddr = (String)pcValue;
+               } else if (pcName.equals(VC_PROP_VM_GUEST_NIC_INFO)) {
+                  vmData._nicAndIpAddressMap = getNicInfo((NicInfo[])pcValue);
                } else if (pcName.equals(VC_PROP_VM_GUEST_HOSTNAME)) {
                   vmData._dnsName = (String)pcValue;
                } else if (pcName.equals(VC_PROP_VM_EXTRA_CONFIG)) {
@@ -585,7 +610,7 @@ public class VcVlsi {
       }
       if (version.equals("")) {
          String [] props = {VC_PROP_VM_NAME, VC_PROP_VM_EXTRA_CONFIG, VC_PROP_VM_UUID, VC_PROP_VM_NUM_CPU,
-               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST, VC_PROP_VM_GUEST_IP, VC_PROP_VM_GUEST_HOSTNAME};
+               VC_PROP_VM_POWER_STATE, VC_PROP_VM_HOST, VC_PROP_VM_GUEST_NIC_INFO, VC_PROP_VM_GUEST_HOSTNAME};
          setupWaitForUpdates(vcClient, folder, typeVM, props);
       }
       ServiceInstanceContent sic = getServiceInstanceContent(vcClient);

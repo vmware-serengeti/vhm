@@ -59,7 +59,7 @@ public interface VCActions {
       public String _masterUUID;
       public Boolean _powerState;
       public String _masterMoRef;
-      public String _ipAddr;
+      public Map<String, String[]> _nicAndIpAddressMap;
       public String _dnsName;
       public Integer _vCPUs;
 
@@ -69,8 +69,8 @@ public interface VCActions {
       @Override
       public String toString() {
          return "<%V"+_vmMoRef+"%V>, isLeaving="+_isLeaving+", isElastic="+_isElastic+", myName="+_myName+", myUUID="+_myUUID+", hostMoRef="+_hostMoRef+", serengetiFolder="+
-                     _serengetiFolder+", masterUUID="+_masterUUID+", powerState="+_powerState+", masterMoRef="+_masterMoRef+", ipAddr="+_ipAddr+", dnsName="+_dnsName+", vCPUs="+_vCPUs+
-                     ", masterVMData={"+_masterVmData+"}";
+                     _serengetiFolder+", masterUUID="+_masterUUID+", powerState="+_powerState+", masterMoRef="+_masterMoRef+", _nicAndIpAddressMap="+_nicAndIpAddressMap+
+                     ", dnsName="+_dnsName+", vCPUs="+_vCPUs+", masterVMData={"+_masterVmData+"}";
       }
    }
 

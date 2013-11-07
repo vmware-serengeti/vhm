@@ -303,4 +303,10 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public Map<String, String[]> getNicAndIpAddressesForVm(String vmId) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }

@@ -367,7 +367,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vi != null) {
          String dnsName = variableData._dnsName;
          String hostMoRef = variableData._hostMoRef;
-         String ipAddr = variableData._ipAddr;
+         Map<String, String[]> nicAndIpAddressMap = variableData._nicAndIpAddressMap;
          String myName = variableData._myName;
          Boolean powerState = variableData._powerState;
          Integer vCPUs = variableData._vCPUs;
@@ -393,13 +393,13 @@ public abstract class AbstractClusterMap implements ClusterMap {
             }
          }
          if ((vi.getPowerState() != null) && (!vi.getPowerState())) {
-            dnsName = ipAddr = "";        /* Any time we know the VM is powered off, remove stale values */
+            dnsName = "";        /* Any time we know the VM is powered off, remove stale values */
          }
          if (testForVMUpdate(vi.getDnsName(), dnsName, vmId, "dnsName")) {
             vi.setDnsName(dnsName);
          }
-         if (testForVMUpdate(vi.getIpAddr(), ipAddr, vmId, "ipAddr")) {
-            vi.setIpAddr(ipAddr);
+         if (testForVMUpdate(vi.getNicAndIpAddressMap(), nicAndIpAddressMap, vmId, "nicAndIpAddressMap")) {
+            vi.setNicAndIpAddressMap(nicAndIpAddressMap);
          }
          if (testForVMUpdate(vi.getvCPUs(), vCPUs, vmId, "vCPUs")) {
             vi.setvCPUs(vCPUs);
@@ -562,11 +562,11 @@ public abstract class AbstractClusterMap implements ClusterMap {
             String host = (vmInfo.getHostMoRef() == null) ? "N/A" : vmInfo.getHostMoRef();
             String masterUUID = (vmInfo.getClusterId() == null) ? "N/A" : vmInfo.getClusterId();
             String role = vmInfo.getVmType().name();
-            String ipAddr = (vmInfo.getIpAddr() == null) ? "N/A" : vmInfo.getIpAddr();
+            Map<String, String[]> nicAndIpAddressMap = (vmInfo.getNicAndIpAddressMap() == null) ? null : vmInfo.getNicAndIpAddressMap();
             String dnsName = (vmInfo.getDnsName() == null) ? "N/A" : vmInfo.getDnsName();
             String jtPort = "";
             _log.log(logLevel, "<%C"+masterUUID+"%C>: <%V"+vmInfo.getMoRef()+"%V> - vm state: " + role + powerState + vCPUs +
-                  " host=" + host + " IP=" + ipAddr + "(" + dnsName + ")" + jtPort);
+                  " host=" + host + " nicAndIps=" + nicAndIpAddressMap + "(" + dnsName + ")" + jtPort);
          }
       }
    }
@@ -697,6 +697,18 @@ public abstract class AbstractClusterMap implements ClusterMap {
       ClusterInfo ci = getCluster(clusterId);
       if (ci != null) {
          return ci.getExtraInfoValue(key);
+      }
+      return null;
+   }
+   
+   @Override
+   public Map<String, String[]> getNicAndIpAddressesForVm(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
+      if (vmInfoMapHasData()) {
+         VMInfo vm = getVMInfoMap().get(vmId);
+         if (vm != null) {
+            return vm.getNicAndIpAddressMap();
+         }
       }
       return null;
    }

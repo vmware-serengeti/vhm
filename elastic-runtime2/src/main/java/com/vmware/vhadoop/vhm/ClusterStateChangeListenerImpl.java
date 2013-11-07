@@ -220,7 +220,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    private VMVariableData getVmVariableData(VMEventData rawData, VMVariableData cachedVariable) {
       if ((rawData._dnsName == null) &&
             (rawData._hostMoRef == null) &&
-            (rawData._ipAddr == null) &&
+            (rawData._nicAndIpAddressMap == null) &&
             (rawData._myName == null) &&
             (rawData._powerState == null) &&
             (rawData._vCPUs == null)) {
@@ -233,8 +233,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if (rawData._hostMoRef != null) {
          result._hostMoRef = rawData._hostMoRef;
       }
-      if (rawData._ipAddr != null) {
-         result._ipAddr = rawData._ipAddr;
+      if (rawData._nicAndIpAddressMap != null) {
+         result._nicAndIpAddressMap = rawData._nicAndIpAddressMap;
       }
       if (rawData._myName != null) {
          result._myName = rawData._myName;

@@ -165,8 +165,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             Boolean powerState = checkPowerStateOfVm(vi.getMoRef(), true);
             if ((vi != null) && (powerState != null) && powerState) {
                /* Constant and Variable data references are guaranteed to be non-null. iPAddress or dnsName may be null */
-               result = new HadoopClusterInfo(ci.getClusterId(), vi.getDnsName(),
-                     vi.getIpAddr(), ci.getJobTrackerPort());
+               result = new HadoopClusterInfo(ci.getClusterId(), vi.getDnsName(), ci.getJobTrackerPort());
             }
          }
       }
