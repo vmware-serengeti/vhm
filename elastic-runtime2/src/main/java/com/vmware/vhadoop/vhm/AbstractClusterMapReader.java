@@ -34,11 +34,11 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       _threadLocalStatus = tlcs;
       _initialized = true;
    }
-   
+
    public AbstractClusterMapReader() {
       _initialized = false;
    }
-   
+
    protected CompoundStatus getCompoundStatus() {
       if (_threadLocalStatus == null) {
          return new CompoundStatus("DUMMY_STATUS");
@@ -50,7 +50,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
    protected ThreadLocalCompoundStatus getThreadLocalCompoundStatus() {
       return _threadLocalStatus;
    }
-   
+
    @Override
    public void initialize(final ClusterMapReader parent) {
       if (parent instanceof AbstractClusterMapReader) {
@@ -67,7 +67,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
          throw new RuntimeException("ClusterMapReader not initialized!");
       }
    }
-   
+
    @Override
    /* Gets a read lock on ClusterMap - call unlock when done */
    public ClusterMap getAndReadLockClusterMap() {
@@ -88,10 +88,21 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       long pollSleepTime = 500;
       boolean timedOut = false;
       ClusterMap clusterMap = null;
+
+      if (vmIds == null || vmIds.isEmpty()) {
+         return;
+      }
+
       do {
          try {
             clusterMap = _clusterMapAccess.lockClusterMap();
-            boolean completed = clusterMap.checkPowerStateOfVms(vmIds, expectedPowerState);
+            Boolean completed = clusterMap.checkPowerStateOfVms(vmIds, expectedPowerState);
+
+            if (completed == null) {
+               status.registerTaskFailed(false, "Timeout waiting for powerStateChange");
+               break;
+            }
+
             if (completed) {
                status.registerTaskSucceeded();
                break;
