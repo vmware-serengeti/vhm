@@ -93,6 +93,7 @@ public interface ClusterMap {
 
    String getExtraInfo(String clusterId, String key);
    
+   /* Returns NIC name as key and IpAddresses for NIC as value */
    Map<String, String[]> getNicAndIpAddressesForVm(String vmId);
    
    interface VMUpdateListener {

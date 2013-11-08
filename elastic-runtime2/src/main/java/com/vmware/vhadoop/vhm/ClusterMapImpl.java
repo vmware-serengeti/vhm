@@ -95,4 +95,5 @@ public class ClusterMapImpl extends BaseClusterMap {
    public HadoopClusterInfo getHadoopInfoForCluster(String clusterId) {
       return getHadoopInfoForClusterBase(clusterId);
    }
+
 }

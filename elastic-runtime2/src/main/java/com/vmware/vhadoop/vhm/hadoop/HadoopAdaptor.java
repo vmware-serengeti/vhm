@@ -81,7 +81,7 @@ public class HadoopAdaptor implements HadoopActions {
    private final int ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS = ExternalizedParameters.get().getInt("ACTIVE_TASK_TRACKERS_CHECK_RETRY_ITERATIONS");;
 
    static final String STATUS_INTERPRET_ERROR_CODE = "interpretErrorCode";
-
+   public static final String ACTIVE_TTS_STATUS_KEY = "getActiveStatus";
 
    public HadoopAdaptor(Credentials credentials, JTConfigInfo jtConfig, ThreadLocalCompoundStatus tlcs) {
       _connectionProperties = getDefaultConnectionProperties();
@@ -357,7 +357,7 @@ public class HadoopAdaptor implements HadoopActions {
        	   _log.log(Level.INFO, "Affected TTs: "+ttDnsNames);
          }
 
-         getActiveStatus = new CompoundStatus(EDPolicy.ACTIVE_TTS_STATUS_KEY);
+         getActiveStatus = new CompoundStatus(ACTIVE_TTS_STATUS_KEY);
 
     	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
 

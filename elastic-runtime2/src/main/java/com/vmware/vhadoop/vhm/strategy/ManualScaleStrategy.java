@@ -54,7 +54,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    }
 
    @Override
-   public void setVMChooserCallback(VMChooserCallback callback) {
+   public void setVMChooserCallback(final VMChooserCallback callback) {
       _vmChooserCallback = callback;
    }
 

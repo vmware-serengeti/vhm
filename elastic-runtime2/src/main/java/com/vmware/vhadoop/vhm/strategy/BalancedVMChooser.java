@@ -44,7 +44,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       int _on;
    }
 
-   Set<RankedVM> rankVMs(final Queue<HostInfo> orderedHosts, final boolean targetPowerState) {
+   private Set<RankedVM> rankVMs(final Queue<HostInfo> orderedHosts, final boolean targetPowerState) {
       Set<RankedVM> result = new HashSet<RankedVM>();
       int rank = 0;
       HostInfo current = null;
@@ -69,10 +69,10 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       return result;
    }
 
-   Map<String, HostInfo> organizeVMsByHost(final String clusterId, Set<String> candidateVmIds, final boolean targetPowerState) {
+   private Map<String, HostInfo> organizeVMsByHost(final String clusterId, final Set<String> candidateVmIds, final boolean targetPowerState) {
       Map<String, HostInfo> hostMap = new HashMap<String, HostInfo>();
       
-      if (candidateVmIds.size() <= 0) {
+      if (candidateVmIds.isEmpty()) {
          return null;
       }
 
@@ -108,7 +108,7 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
       return hostMap;
    }
    
-   Queue<HostInfo> orderHosts(Map<String, HostInfo> hostMap, final boolean targetPowerState) {
+   private Queue<HostInfo> orderHosts(Map<String, HostInfo> hostMap, final boolean targetPowerState) {
       PriorityQueue<HostInfo> orderedHosts = new PriorityQueue<HostInfo>(hostMap.size(), new Comparator<HostInfo>() {
          @Override
          public int compare(final HostInfo a, final HostInfo b) { 

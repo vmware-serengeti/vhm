@@ -28,13 +28,22 @@ import java.util.Set;
  */
 public interface VMChooser {
 
+   /**
+    * A tuple that associates a rank with a VM id and contains useful utility methods
+    * The class does not respect natural ordering:
+    *   The @Comparable compares rank, not VM id
+    *   Equals() compares VM id, not rank
+    */
    public class RankedVM implements Comparable<RankedVM> {
       String _vmId;
       Double _rank;
 
-      /* The result should contain the superset of both input1 and input2
+      /**
+       * Utility method that sums the ranks of the two input sets into a single set
+       * The result should contain the superset of both input1 and input2
        * If input1 is null, input2 is returned and vice versa
-       * If both are null, null is returned */
+       * If both are null, null is returned 
+       */
       public static Set<RankedVM> combine(Set<RankedVM> input1, Set<RankedVM> input2) {
          if (input1 == null) {
             if (input2 != null) {
@@ -57,7 +66,12 @@ public interface VMChooser {
          return copyInput1;
       }
 
-      /* Takes a set of ranked VMs and re-ranks them sequentially from 0 */
+      /**
+       * Utility method that takes a set of RankedVM objects with any value as the rank
+       * The method changes the rank values to ranking based on index
+       *   Eg. Rank values of 1, 6, 6, 9, 10, 15, 15, 20 would become 1, 2, 2, 3, 4, 5, 5, 6
+       * Returns null if input Set is null, otherwise a Set of RankedVM objects of the same size as the input Set
+       */
       public static Set<RankedVM> flattenRankValues(Set<RankedVM> toFlatten) {
          if (toFlatten == null) {
             return null;
@@ -78,8 +92,10 @@ public interface VMChooser {
          return flattened;
       }
 
-      /* Orders the candidates passed in by ranking and selects the lowest ranked candidates
-       * Returns null if candidates is null, else a Set */
+      /**
+       * Utility method that orders the candidates passed in by rank value and selects the lowest ranked candidates
+       * Returns a Set of size numToChoose or candidates.size(), whichever is the smaller. Returns null if input set is null
+       */
       public static Set<String> selectLowestRankedIds(Set<RankedVM> candidates, int numToChoose) {
          if (candidates == null) {
             return null;
@@ -93,7 +109,10 @@ public interface VMChooser {
          return result;
       }
 
-      /* Selects a single candidate from the set. Returns null if the set is null or empty */
+      /** 
+       * Utility method that selects the lowest ranked candidate from the input set 
+       * Returns null if the set is null or empty 
+       */
       public static String selectLowestRankedId(Set<RankedVM> candidates) {
          if ((candidates == null || candidates.isEmpty())) {
             return null;
@@ -112,7 +131,7 @@ public interface VMChooser {
          _rank = Double.valueOf(rank);
       }
 
-      public boolean combine(RankedVM combineWith) {
+      private boolean combine(RankedVM combineWith) {
          if (!combineWith._vmId.equals(_vmId)) {
             return false;
          }
@@ -166,6 +185,7 @@ public interface VMChooser {
 
    /**
     * Selects VMs to enable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
+    * 
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster and should all be powered off
     * @return - set of VM ids deemed OK to enable or null if not implemented
@@ -174,6 +194,7 @@ public interface VMChooser {
 
    /**
     * Selects VMs to disable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
+    * 
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
     * @return - set of VM ids deemed OK to disable or null if not implemented
@@ -183,6 +204,7 @@ public interface VMChooser {
    /**
     * Ranks VMs to enable from the specified cluster from the candidates provided
     * Ranking should be provided in the form of sequential digits from 0 to n
+    * 
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
     * @return - Set of VM IDs with associated ranking or null if not implemented
@@ -192,6 +214,7 @@ public interface VMChooser {
    /**
     * Ranks VMs to disable from the specified cluster from the candidates provided
     * Ranking should be provided in the form of sequential digits from 0 to n
+    * 
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
     * @return - Set of VM IDs with associated ranking or null if not implemented

@@ -91,7 +91,7 @@ public class VHM implements EventConsumer {
       _parentClusterMapReader = new AbstractClusterMapReader(_clusterMapAccess, threadLocalStatus) {};
       initScaleStrategies(scaleStrategies);
       _executionStrategy = new ThreadPoolExecutionStrategy();
-      if (!registerEventProducer(_executionStrategy)) {
+      if ((_executionStrategy instanceof EventProducer) && !registerEventProducer((EventProducer)_executionStrategy)) {
          throw new RuntimeException("Fatal error registering ThreadPoolExecutionStrategy as an event producer");
       }
       _vmChoosers = new HashSet<VMChooser>();
@@ -99,8 +99,10 @@ public class VHM implements EventConsumer {
 
    /* It is anticipated that this will only be called during initialization */
    public void registerHealthManager(HealthManager healthManager) {
-      _healthManager = healthManager;
-      registerVMChooser(_healthManager);
+   	if (_healthManager == null) {
+         _healthManager = healthManager;
+         registerVMChooser(_healthManager);
+      }
    }
 
    /* It is anticipated that this will only be called during initialization */
@@ -113,8 +115,10 @@ public class VHM implements EventConsumer {
 
    /* It is anticipated that this will only be called during initialization */
    public void registerClusterScaleCompletionEventMonitor(ClusterScaleCompletionEventListener csceMonitor) {
-      _csceMonitor = csceMonitor;
-      registerVMChooser(_csceMonitor);
+      if (_csceMonitor == null) {
+         _csceMonitor = csceMonitor;
+         registerVMChooser(_csceMonitor);
+      }
    }
 
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
@@ -310,6 +314,7 @@ public class VHM implements EventConsumer {
             if (_healthManager != null) {
                Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(event);
                if (healthEvents != null) {
+                  _log.info("HealthManager adding health events to queue: "+healthEvents);
                   _eventQueue.addAll(healthEvents);
                }
             }
@@ -328,8 +333,9 @@ public class VHM implements EventConsumer {
             addEventToQueue(event);
          }
          if (_healthManager != null) {
-            Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(events);
+            Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(Collections.unmodifiableList(events));
             if (healthEvents != null) {
+               _log.info("HealthManager adding health events to queue: "+healthEvents);
                _eventQueue.addAll(healthEvents);
             }
          }

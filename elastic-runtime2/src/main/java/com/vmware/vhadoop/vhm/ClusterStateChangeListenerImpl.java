@@ -15,6 +15,7 @@
 
 package com.vmware.vhadoop.vhm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
@@ -32,6 +33,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
+import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.VhmLevel;
@@ -61,7 +63,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    /* Place-holder that indicates that a VM has been created, so any further data about it will be an update */
    private class VmCreatedData {
    }
-   
+
    private class CachedVMConstantData extends VMConstantData {
       private Boolean _isElastic;
       private String _masterUUID;
@@ -113,7 +115,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    public void registerEventConsumer(EventConsumer consumer) {
       _eventConsumer = consumer;
    }
-   
+
    @Override
    public void start(final EventProducerStartStopCallback startStopCallback) {
       _started = true;
@@ -145,7 +147,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    }
    
    @Override
-   public List<PolicyViolationEvent> enforcePolicy(ClusterStateChangeEvent csce) {
+   public List<PolicyViolationEvent> enforcePolicy(final ClusterStateChangeEvent csce) {
+      /* Not implemented */
       return null;
    }
 
@@ -164,12 +167,17 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
             _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
             ClusterStateChangeEvent csce = translateVMEventData(vmData);
             if (csce != null) {
-               List<PolicyViolationEvent> policyViolationEvents = enforcePolicy(csce);
                _log.info("Created new "+csce+" for vm <%V" + vmData._vmMoRef);
-               _eventConsumer.placeEventOnQueue(csce);
+               List<PolicyViolationEvent> policyViolationEvents = enforcePolicy(csce);
                if (policyViolationEvents != null) {
-                  /* TODO: Should this be a separate call? Or should they all be processed together? */
-                  _eventConsumer.placeEventCollectionOnQueue(policyViolationEvents);
+                  /* Give all events to the consumer in one call */
+                  _log.info("New PolicyViolationEvent(s) created for vm <%V" + vmData._vmMoRef+"%V>: "+policyViolationEvents);
+                  List<NotificationEvent> newEvents = new ArrayList<NotificationEvent>();
+                  newEvents.add(csce);
+                  newEvents.addAll(policyViolationEvents);
+                  _eventConsumer.placeEventCollectionOnQueue(newEvents);
+               } else {
+                  _eventConsumer.placeEventOnQueue(csce);
                }
             }
          }

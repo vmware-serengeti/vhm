@@ -16,6 +16,7 @@
 package com.vmware.vhadoop.vhm;
 
 import java.util.Set;
+import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.ClusterMap;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
@@ -23,6 +24,8 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 
 public abstract class AbstractClusterMapReader implements ClusterMapReader {
+
+   private static final Logger _log = Logger.getLogger(AbstractClusterMapReader.class.getName());
 
    ClusterMapAccess _clusterMapAccess;
    private ThreadLocalCompoundStatus _threadLocalStatus;
@@ -94,24 +97,33 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       }
 
       do {
+         boolean completed = true;
+         
          try {
             clusterMap = _clusterMapAccess.lockClusterMap();
-            Boolean completed = clusterMap.checkPowerStateOfVms(vmIds, expectedPowerState);
-
-            if (completed == null) {
-               status.registerTaskFailed(false, "Timeout waiting for powerStateChange");
-               break;
+            
+            for (String vmId : vmIds) {
+               Boolean result = clusterMap.checkPowerStateOfVm(vmId, expectedPowerState);
+               if (result == null) {
+                  _log.fine("checkPowerState cannot find VM <%V"+vmId);
+               } else if (!result) {
+                  completed = false;
+                  break;
+               }
             }
+         } finally {
+            _clusterMapAccess.unlockClusterMap(clusterMap);
+         }
 
-            if (completed) {
-               status.registerTaskSucceeded();
-               break;
-            }
+         if (completed) {
+            status.registerTaskSucceeded();
+            break;
+         }
+
+         try {
             Thread.sleep(Math.min(pollSleepTime, timeout));
          } catch (InterruptedException e) {
             status.registerTaskIncomplete(false, "blockOnPowerStateChange was interrupted unexpectedly");
-         } finally {
-            _clusterMapAccess.unlockClusterMap(clusterMap);
          }
          timedOut = System.currentTimeMillis() > timeoutTime;
       } while (!timedOut);
