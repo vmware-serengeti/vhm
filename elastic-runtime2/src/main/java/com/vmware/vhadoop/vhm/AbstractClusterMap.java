@@ -367,7 +367,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vi != null) {
          String dnsName = variableData._dnsName;
          String hostMoRef = variableData._hostMoRef;
-         Map<String, String[]> nicAndIpAddressMap = variableData._nicAndIpAddressMap;
+         Map<String, Set<String>> nicAndIpAddressMap = variableData._nicAndIpAddressMap;
          String myName = variableData._myName;
          Boolean powerState = variableData._powerState;
          Integer vCPUs = variableData._vCPUs;
@@ -562,7 +562,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
             String host = (vmInfo.getHostMoRef() == null) ? "N/A" : vmInfo.getHostMoRef();
             String masterUUID = (vmInfo.getClusterId() == null) ? "N/A" : vmInfo.getClusterId();
             String role = vmInfo.getVmType().name();
-            Map<String, String[]> nicAndIpAddressMap = (vmInfo.getNicAndIpAddressMap() == null) ? null : vmInfo.getNicAndIpAddressMap();
+            Map<String, Set<String>> nicAndIpAddressMap = (vmInfo.getNicAndIpAddressMap() == null) ? null : vmInfo.getNicAndIpAddressMap();
             String dnsName = (vmInfo.getDnsName() == null) ? "N/A" : vmInfo.getDnsName();
             String jtPort = "";
             _log.log(logLevel, "<%C"+masterUUID+"%C>: <%V"+vmInfo.getMoRef()+"%V> - vm state: " + role + powerState + vCPUs +
@@ -702,7 +702,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
    }
    
    @Override
-   public Map<String, String[]> getNicAndIpAddressesForVm(String vmId) {
+   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (vmInfoMapHasData()) {
          VMInfo vm = getVMInfoMap().get(vmId);

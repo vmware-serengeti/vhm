@@ -18,6 +18,7 @@ package com.vmware.vhadoop.vhm.vc;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,6 +28,7 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -511,8 +513,8 @@ public class VcVlsi {
       propFilter.cleanup();
    }
    
-   private static Map<String, String[]> getNicInfo(NicInfo[] nicInfoArray) {
-      Map<String, String[]> nicAndIpAddressMap = new HashMap<String, String[]>();
+   private static Map<String, Set<String>> getNicInfo(NicInfo[] nicInfoArray) {
+      Map<String, Set<String>> nicAndIpAddressMap = new HashMap<String, Set<String>>();
       if (nicInfoArray != null) {
          for (NicInfo nicInfo : nicInfoArray) {
             String networkName = nicInfo.getNetwork();
@@ -520,12 +522,14 @@ public class VcVlsi {
             if ((ipConfigInfo != null) && (networkName != null)) {
                IpAddress[] ipAddressObjects = ipConfigInfo.getIpAddress();
                if (ipAddressObjects != null) {
-                  String[] ipAddressArray = new String[ipAddressObjects.length];
-                  int cntr = 0;
-                  for (IpAddress ipAddress : ipAddressObjects) {
-                     ipAddressArray[cntr++] = ipAddress.getIpAddress();
+                  Set<String> ipAddressSet = new HashSet<String>();
+                  for (IpAddress ipAddressObj : ipAddressObjects) {
+                     String ipAddress = ipAddressObj.getIpAddress();
+                     if (ipAddress != null) {
+                        ipAddressSet.add(ipAddress);
+                     }
                   }
-                  nicAndIpAddressMap.put(networkName, ipAddressArray);
+                  nicAndIpAddressMap.put(networkName, ipAddressSet);
                }
             }
          }

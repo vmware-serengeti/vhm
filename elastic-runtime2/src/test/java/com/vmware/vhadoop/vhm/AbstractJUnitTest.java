@@ -15,6 +15,7 @@
 
 package com.vmware.vhadoop.vhm;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -68,9 +69,9 @@ public abstract class AbstractJUnitTest {
       }
       result._dnsName = getDnsNameFromVmName(vmName);
       result._hostMoRef = MOREF_PREFIX+hostName;
-      result._nicAndIpAddressMap = new HashMap<String, String[]>();
+      result._nicAndIpAddressMap = new HashMap<String, Set<String>>();
       result._nicAndIpAddressMap.put(NIC_PREFIX+vmName, 
-            new String[]{IPADDR_PREFIX+vmName+"1", IPADDR_PREFIX+vmName+"2"});
+            new HashSet<String>(Arrays.asList(new String[]{IPADDR_PREFIX+vmName+"1", IPADDR_PREFIX+vmName+"2"})));
       result._masterMoRef = MOREF_PREFIX+masterVmName;
       result._masterUUID = UUID_PREFIX+vmName;
       result._masterUUID = getClusterIdForMasterVmName(masterVmName);

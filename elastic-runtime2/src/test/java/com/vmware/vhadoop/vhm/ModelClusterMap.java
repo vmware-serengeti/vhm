@@ -294,7 +294,7 @@ public class ModelClusterMap implements ClusterMap
    }
 
    @Override
-   public Map<String, String[]> getNicAndIpAddressesForVm(String vmId) {
+   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
       // TODO Auto-generated method stub
       return null;
    }

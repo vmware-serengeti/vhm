@@ -59,7 +59,7 @@ public interface VCActions {
       public String _masterUUID;
       public Boolean _powerState;
       public String _masterMoRef;
-      public Map<String, String[]> _nicAndIpAddressMap;
+      public Map<String, Set<String>> _nicAndIpAddressMap;
       public String _dnsName;
       public Integer _vCPUs;
 

@@ -94,7 +94,7 @@ public interface ClusterMap {
    String getExtraInfo(String clusterId, String key);
    
    /* Returns NIC name as key and IpAddresses for NIC as value */
-   Map<String, String[]> getNicAndIpAddressesForVm(String vmId);
+   Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId);
    
    interface VMUpdateListener {
       void updatingVM(String moRef);
@@ -182,7 +182,7 @@ public interface ClusterMap {
          return _constantData._myUUID;
       }
 
-      public Map<String, String[]> getNicAndIpAddressMap() {
+      public Map<String, Set<String>> getNicAndIpAddressMap() {
          return _variableData._nicAndIpAddressMap;
       }
 
@@ -202,7 +202,7 @@ public interface ClusterMap {
          assignVariableData()._dnsName = dnsName;
       }
 
-      public void setNicAndIpAddressMap(Map<String, String[]> nicAndIpAddressMap) {
+      public void setNicAndIpAddressMap(Map<String, Set<String>> nicAndIpAddressMap) {
          assignVariableData()._nicAndIpAddressMap = nicAndIpAddressMap;
       }
 
