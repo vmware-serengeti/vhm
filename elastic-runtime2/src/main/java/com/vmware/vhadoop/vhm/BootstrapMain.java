@@ -330,17 +330,13 @@ public class BootstrapMain
       return new VMChooser[]{new BalancedVMChooser(), new PowerOnTimeVMChooser()};
    }
    
-   ClusterStateChangeListenerImpl getClusterStateChangeListener(VCActions vcActions, String SerengetiFolderName) {
-      return new ClusterStateChangeListenerImpl(vcActions, SerengetiFolderName);
-   }
-
    VHM initVHM(final ThreadLocalCompoundStatus tlcs) {
       VHM vhm;
 
       MQClient mqClient = getRabbitInterface();
 
       vhm = new VHM(getVCInterface(tlcs), getScaleStrategies(tlcs), getStrategyMapper(), tlcs);
-      ClusterStateChangeListenerImpl cscl = getClusterStateChangeListener(getVCInterface(tlcs), _properties.getProperty("uuid"));
+      ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(getVCInterface(tlcs), _properties.getProperty("uuid"));
 
       if (!vhm.registerEventProducer(cscl)) {
          _log.severe("Fatal error registering ClusterStateChangeListenerImpl as an event producer");

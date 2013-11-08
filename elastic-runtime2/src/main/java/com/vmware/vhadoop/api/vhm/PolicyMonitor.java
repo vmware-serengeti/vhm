@@ -14,9 +14,9 @@
 ***************************************************************************/
 package com.vmware.vhadoop.api.vhm;
 
-import java.util.List;
+import java.util.Set;
 
-import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
+import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 
 /**
@@ -26,13 +26,13 @@ import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 public interface PolicyMonitor {
 
    /**
-    * When a cluster state change occurs, enforcePolicy is invoked with the event describing the change
+    * When an event arrives on the VHM queue, enforcePolicy is invoked with the event
     * The method should not modify the event passed in
-    * @PolicyViolationEvent events returned are placed on the VHM event queue along with the @ClusterStateChangeEvent object
+    * @PolicyViolationEvent events returned are placed on the VHM event queue along with the @NotificationEvent passed in
     * 
-    * @param csce A ClusterStateChangeEvent before it reaches the VHM queue
-    * @return A list of PolicyViolationEvents or null
+    * @param csce A @NotificationEvent as it arrives on the VHM queue
+    * @return A Set of @PolicyViolationEvents or null
     */
-   List<PolicyViolationEvent> enforcePolicy(final ClusterStateChangeEvent csce);
+   Set<PolicyViolationEvent> enforcePolicy(final NotificationEvent csce);
 
 }

@@ -37,7 +37,6 @@ import java.util.logging.Logger;
 import org.apache.commons.io.IOUtils;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions;
-import com.vmware.vhadoop.api.vhm.strategy.EDPolicy;
 import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
 import com.vmware.vhadoop.util.ExternalizedParameters;

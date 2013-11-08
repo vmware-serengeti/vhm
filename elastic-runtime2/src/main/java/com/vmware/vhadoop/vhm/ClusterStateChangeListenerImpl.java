@@ -15,13 +15,11 @@
 
 package com.vmware.vhadoop.vhm;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.vmware.vhadoop.api.vhm.PolicyMonitor;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
@@ -33,8 +31,6 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
-import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
-import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
@@ -45,7 +41,7 @@ import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.vc.VcVlsi;
 
-public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer, PolicyMonitor {
+public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader implements EventProducer {
    private static final Logger _log = Logger.getLogger(ClusterStateChangeListenerImpl.class.getName());
 
    private final int backoffPeriodMS = 5000;
@@ -146,12 +142,6 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       _mainThread.start();
    }
    
-   @Override
-   public List<PolicyViolationEvent> enforcePolicy(final ClusterStateChangeEvent csce) {
-      /* Not implemented */
-      return null;
-   }
-
    protected void processRawVCUpdates(List<VMEventData> vmDataList) {
       if (vmDataList == null) {
          if (_started) {
@@ -168,17 +158,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
             ClusterStateChangeEvent csce = translateVMEventData(vmData);
             if (csce != null) {
                _log.info("Created new "+csce+" for vm <%V" + vmData._vmMoRef);
-               List<PolicyViolationEvent> policyViolationEvents = enforcePolicy(csce);
-               if (policyViolationEvents != null) {
-                  /* Give all events to the consumer in one call */
-                  _log.info("New PolicyViolationEvent(s) created for vm <%V" + vmData._vmMoRef+"%V>: "+policyViolationEvents);
-                  List<NotificationEvent> newEvents = new ArrayList<NotificationEvent>();
-                  newEvents.add(csce);
-                  newEvents.addAll(policyViolationEvents);
-                  _eventConsumer.placeEventCollectionOnQueue(newEvents);
-               } else {
-                  _eventConsumer.placeEventOnQueue(csce);
-               }
+               _eventConsumer.placeEventOnQueue(csce);
             }
          }
       }

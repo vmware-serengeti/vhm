@@ -18,7 +18,6 @@ package com.vmware.vhadoop.vhm.vc;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;

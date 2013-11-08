@@ -34,6 +34,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
 import com.vmware.vhadoop.api.vhm.HealthManager;
+import com.vmware.vhadoop.api.vhm.PolicyMonitor;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
@@ -42,7 +43,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
-import com.vmware.vhadoop.api.vhm.strategy.ClusterScaleCompletionEventListener;
+import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy.VMChooserCallback;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
@@ -69,7 +70,7 @@ public class VHM implements EventConsumer {
    private final MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
    private final ClusterMapReader _parentClusterMapReader;
    private HealthManager _healthManager;
-   private ClusterScaleCompletionEventListener _csceMonitor;
+   private PolicyMonitor _policyMonitor;
    private final Set<VMChooser> _vmChoosers;
    private volatile boolean _running = false;
    private volatile boolean _stopped = true;
@@ -106,19 +107,21 @@ public class VHM implements EventConsumer {
    }
 
    /* It is anticipated that this will only be called during initialization */
+   public void registerPolicyMonitor(PolicyMonitor policyMonitor) {
+      if (_policyMonitor == null) {
+         _policyMonitor = policyMonitor;
+         if (_policyMonitor instanceof ClusterMapReader) {
+            ((ClusterMapReader)_policyMonitor).initialize(_parentClusterMapReader);
+         }
+      }
+   }
+
+   /* It is anticipated that this will only be called during initialization */
    public void registerVMChooser(VMChooser vmChooser) {
       if (vmChooser instanceof ClusterMapReader) {
          ((ClusterMapReader)vmChooser).initialize(_parentClusterMapReader);
       }
       _vmChoosers.add(vmChooser);
-   }
-
-   /* It is anticipated that this will only be called during initialization */
-   public void registerClusterScaleCompletionEventMonitor(ClusterScaleCompletionEventListener csceMonitor) {
-      if (_csceMonitor == null) {
-         _csceMonitor = csceMonitor;
-         registerVMChooser(_csceMonitor);
-      }
    }
 
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
@@ -301,6 +304,23 @@ public class VHM implements EventConsumer {
          _eventQueue.addAll(toKeepQueue);
       }
    }
+   
+   private void injectDerivedEvents(NotificationEvent event) {
+      if (_healthManager != null) {
+         Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(event);
+         if (healthEvents != null) {
+            _log.info("HealthManager adding health events to queue: "+healthEvents);
+            _eventQueue.addAll(healthEvents);
+         }
+      }
+      if (_policyMonitor != null) {
+         Set<PolicyViolationEvent> policyViolations = _policyMonitor.enforcePolicy(event);
+         if (policyViolations != null) {
+            _log.info("PolicyMonitor adding policy violations to queue: "+policyViolations);
+            _eventQueue.addAll(policyViolations);
+         }
+      }
+   }
 
    /* This can be called by multiple threads */
    @Override
@@ -311,15 +331,22 @@ public class VHM implements EventConsumer {
       if (event != null) {
          synchronized(_eventQueue) {
             addEventToQueue(event);
-            if (_healthManager != null) {
-               Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(event);
-               if (healthEvents != null) {
-                  _log.info("HealthManager adding health events to queue: "+healthEvents);
-                  _eventQueue.addAll(healthEvents);
-               }
-            }
+            injectDerivedEvents(event);
             _eventQueue.notify();
          }
+      }
+   }
+   
+   /* This bypasses the injected derived events processing, which should only see new events */
+   private void requeueExistingEvents(List<? extends NotificationEvent> events) {
+      if (!_initialized) {
+         return;
+      }
+      synchronized(_eventQueue) {
+         for (NotificationEvent event : events) {
+            addEventToQueue(event);
+         }
+         _eventQueue.notify();
       }
    }
 
@@ -331,13 +358,7 @@ public class VHM implements EventConsumer {
       synchronized(_eventQueue) {
          for (NotificationEvent event : events) {
             addEventToQueue(event);
-         }
-         if (_healthManager != null) {
-            Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(Collections.unmodifiableList(events));
-            if (healthEvents != null) {
-               _log.info("HealthManager adding health events to queue: "+healthEvents);
-               _eventQueue.addAll(healthEvents);
-            }
+            injectDerivedEvents(event);
          }
          _eventQueue.notify();
       }
@@ -630,9 +651,6 @@ public class VHM implements EventConsumer {
                handleClusterStateChangeEvents(updateEvents, clusterScaleEvents);
                for (ClusterScaleCompletionEvent event : completionEvents) {
                   _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
-                  if (_csceMonitor != null) {
-                     _csceMonitor.registerNewEvent(event);
-                  }
                   if (event instanceof ClusterScaleDecision) {
                      /* The option exists for a scaleStrategy to ask for an event to be re-queued, causing it to be re-invoked */
                      List<NotificationEvent> eventsToRequeue = ((ClusterScaleDecision)event).getEventsToRequeue();
@@ -671,7 +689,7 @@ public class VHM implements EventConsumer {
                if (!clusterCompleteness) {
                   if (unconsolidatedEvents.size() > 0) {
                      _log.info("ClusterInfo not yet complete. Putting event collection back on queue for cluster <%C"+clusterId);
-                     placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+                     requeueExistingEvents(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
                   }
                   continue;
                }
@@ -704,13 +722,13 @@ public class VHM implements EventConsumer {
                      switchToManualEvent.reportCompletion();
                   } else {
                      /* Continue to block Serengeti CLI by putting the event back on the queue */
-                     placeEventCollectionOnQueue(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
+                     requeueExistingEvents(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
                   }
                /* Call out to the execution strategy to handle the scale events for the cluster - non blocking */
                } else if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {
                   /* If we couldn't schedule handling of the events, put them back on the queue in their un-consolidated form */
                   _log.finest("Putting event collection back onto VHM queue - size="+unconsolidatedEvents.size());
-                  placeEventCollectionOnQueue(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
+                  requeueExistingEvents(new ArrayList<ClusterScaleEvent>(unconsolidatedEvents));
                }
             }
          }

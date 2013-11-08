@@ -14,7 +14,6 @@
 ***************************************************************************/
 package com.vmware.vhadoop.api.vhm;
 
-import java.util.List;
 import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
@@ -42,22 +41,12 @@ public interface HealthManager extends VMChooser {
    HealthMonitor getHealthMonitor();
    
    /**
-    * If an event collection is passed to VHM, checkHealth gets a chance to peek at it and generate corresponding @ClusterHealthEvent events
-    * This happens before the events reach the VHM queue, to allow @ClusterHealthEvent objects to be injected as early as possible
-    * The collection passed in is an unmodifiable list and no events should be modified
-    * 
-    * @param events Unmodifiable list of events to review
-    * @return Cluster health events or null
-    */
-   Set<ClusterHealthEvent> checkHealth(final List<? extends NotificationEvent> events);
-
-   /**
     * If an event is passed to VHM, checkHealth gets a chance to generate corresponding @ClusterHealthEvent events
     * This happens before the event reaches the VHM queue, to allow @ClusterHealthEvent objects to be injected as early as possible
     * The event passed should not be modified
     * 
-    * @param event A notification event to review
-    * @return Cluster health events or null
+    * @param event A @NotificationEvent to review
+    * @return @ClusterHealthEvent objects or null
     */
    Set<ClusterHealthEvent> checkHealth(final NotificationEvent event);
 
