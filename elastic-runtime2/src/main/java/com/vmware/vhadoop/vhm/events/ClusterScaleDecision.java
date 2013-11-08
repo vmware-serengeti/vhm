@@ -46,8 +46,10 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
    }
 
    public void addDecision(Set<String> vmIds, Decision decision) {
-      for (String vmId : vmIds) {
-         _decisions.put(vmId, decision);
+      if (vmIds != null) {
+         for (String vmId : vmIds) {
+            _decisions.put(vmId, decision);
+         }
       }
    }
 

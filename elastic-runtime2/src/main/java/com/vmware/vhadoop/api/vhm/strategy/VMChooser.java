@@ -110,7 +110,7 @@ public interface VMChooser {
       }
 
       /** 
-       * Utility method that selects the lowest ranked candidate from the input set 
+       * Utility method that selects the lowest ranked candidate from the input set
        * Returns null if the set is null or empty 
        */
       public static String selectLowestRankedId(Set<RankedVM> candidates) {
