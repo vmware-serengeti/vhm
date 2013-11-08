@@ -295,10 +295,10 @@ public class VcAdapter implements VCActions {
       event.setObjectType(new TypeNameImpl("VirtualMachine"));
 
       try {
-         _log.log(VhmLevel.USER, "VHM: <%VM"+vmMoRef+"%VM> - "+message);
+         _log.log(VhmLevel.USER, "VHM: <%V"+vmMoRef+"%V> - "+message);
          eventManager.postEvent(event, null);
       } catch (InvalidEvent e) {
-         _log.log(Level.INFO, "VHM: <%VM"+vmMoRef+"%VM> - failed to log "+level.name()+" event with vCenter", e);
+         _log.log(Level.INFO, "VHM: <%V"+vmMoRef+"%V> - failed to log "+level.name()+" event with vCenter", e);
       }
    }
 }
