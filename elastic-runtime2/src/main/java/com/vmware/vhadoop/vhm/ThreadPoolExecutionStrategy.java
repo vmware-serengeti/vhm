@@ -178,6 +178,9 @@ public class ThreadPoolExecutionStrategy implements ExecutionStrategy, EventProd
                }
                _log.info("ThreadPoolExecutionStrategy stopping...");
                startStopCallback.notifyStopped(ThreadPoolExecutionStrategy.this);
+               if (_threadPool != null) {
+                  _threadPool.shutdownNow();
+               }
             }
          }
       }, "ScaleStrategyCompletionListener");
