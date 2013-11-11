@@ -424,6 +424,9 @@ public class SshConnectionCache implements SshUtilities
          }
          channel.setCommand(command);
 
+         /* this calls getOutput/Error/InputStream which seems to overwrite anything set by setOutputStream, so needs to be done first */
+         RemoteProcess proc = new RemoteProcess(channel);
+
          /* if we have sink and source already, set the channels up */
          if (stdout != null) {
             channel.setOutputStream(stdout);
@@ -433,8 +436,6 @@ public class SshConnectionCache implements SshUtilities
          }
 
          channel.connect();
-
-         RemoteProcess proc = new RemoteProcess(channel);
 
          /* if we have sink and source then the corresponding streams are already linked so shouldn't be read directly */
          if (stdout != null) {

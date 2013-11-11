@@ -122,7 +122,7 @@ public class HadoopConnection {
          _log.info("VHM: "+_hadoopCluster.getJobTrackerDnsName()+" - failed to execute command on target");
       }
 
-      _log.log(Level.FINEST, "Output from SSH script execution:\n{0}\n", out.toString());
+      _log.log(Level.FINEST, "Output from SSH script execution:\n"+out.toString()+"\n");
 
       return exitStatus;
    }
