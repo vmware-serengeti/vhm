@@ -203,7 +203,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
             } finally {
                unlockClusterMap(clusterMap);
             }
-            _log.info("Looking for valid DNS names for "+LogFormatter.constructListOfLoggableVms(getVmIdsWithInvalidDnsNames(newDnsNameMap)));
+            _log.info("Looking for valid hostname reported by "+LogFormatter.constructListOfLoggableVms(getVmIdsWithInvalidDnsNames(newDnsNameMap)));
             try {
                /* Try faster initially */
                Thread.sleep(Math.min((1000 * ++retryTimes), MAX_DNS_WAIT_SLEEP_TIME_MILLIS));
