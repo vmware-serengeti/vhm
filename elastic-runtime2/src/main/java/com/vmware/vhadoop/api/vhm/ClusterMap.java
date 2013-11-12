@@ -91,6 +91,8 @@ public interface ClusterMap {
 
    Long getPowerOnTimeForVm(String vmId);
 
+   Long getPowerOffTimeForVm(String vmId);
+
    String getExtraInfo(String clusterId, String key);
    
    /* Returns NIC name as key and IpAddresses for NIC as value */
@@ -111,6 +113,7 @@ public interface ClusterMap {
       private final VMVariableData _variableData;
       private final String _clusterId;
       private long _powerOnTime; // most recent timestamp when VHM learned VM is on
+      private long _powerOffTime; // most recent timestamp when VHM learned VM is off
       private VMUpdateListener _updateListener;
 
       /* VMInfo is created with a completed VMConstantData and a potentially incomplete or even null variableData
@@ -124,7 +127,7 @@ public interface ClusterMap {
          _clusterId = clusterId;
          if (_variableData._powerState != null) {
             if (_variableData._powerState) {
-               _powerOnTime = System.currentTimeMillis();
+               _powerOnTime = System.currentTimeMillis();      /* Initialize to a reasonable value, even if this isn't the actual power-on time */
             } else {
                _variableData._dnsName = null;         /* VC may give us stale values for a powered-off VM on init */
             }
@@ -178,6 +181,10 @@ public interface ClusterMap {
          return _powerOnTime;
       }
 
+      public long getPowerOffTime() {
+         return _powerOffTime;
+      }
+
       public String getMyUUID() {
          return _constantData._myUUID;
       }
@@ -213,6 +220,11 @@ public interface ClusterMap {
       public void setPowerOnTime(long currentTimeMillis) {
          assignVariableData();
          _powerOnTime = currentTimeMillis;
+      }
+
+      public void setPowerOffTime(long currentTimeMillis) {
+         assignVariableData();
+         _powerOffTime = currentTimeMillis;
       }
    }
 

@@ -382,9 +382,11 @@ public abstract class AbstractClusterMap implements ClusterMap {
          if (testForVMUpdate(vi.getPowerState(), powerState, vmId, "powerState")) {
             vi.setPowerState(powerState);
             if (powerState) {
+               vi.setPowerOffTime(0);
                vi.setPowerOnTime(System.currentTimeMillis());
             } else {
                vi.setPowerOnTime(0);
+               vi.setPowerOffTime(System.currentTimeMillis());
             }
             if (clusterId != null) {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: VM <%V"+vmId+"%V> - powered "+(powerState?"on":"off"));
@@ -686,6 +688,18 @@ public abstract class AbstractClusterMap implements ClusterMap {
          VMInfo vm = getVMInfoMap().get(vmId);
          if (vm != null) {
             return vm.getPowerOnTime();
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public Long getPowerOffTimeForVm(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
+      if (vmInfoMapHasData()) {
+         VMInfo vm = getVMInfoMap().get(vmId);
+         if (vm != null) {
+            return vm.getPowerOffTime();
          }
       }
       return null;

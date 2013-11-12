@@ -298,4 +298,10 @@ public class ModelClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public Long getPowerOffTimeForVm(String vmId) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }
