@@ -240,8 +240,9 @@ public class VHM implements EventConsumer {
             } else {
                _log.warning("VHM: event producers start failed during reset");
             }
+         } else {
+            _log.warning("VHM: event producers stop failed during reset");
          }
-         _log.warning("VHM: event producers stop failed during reset");
          return false;
       }
 
@@ -304,7 +305,7 @@ public class VHM implements EventConsumer {
          _eventQueue.addAll(toKeepQueue);
       }
    }
-   
+
    private void injectDerivedEvents(NotificationEvent event) {
       if (_healthManager != null) {
          Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(event);
@@ -336,7 +337,7 @@ public class VHM implements EventConsumer {
          }
       }
    }
-   
+
    /* This bypasses the injected derived events processing, which should only see new events */
    private void requeueExistingEvents(List<? extends NotificationEvent> events) {
       if (!_initialized) {
