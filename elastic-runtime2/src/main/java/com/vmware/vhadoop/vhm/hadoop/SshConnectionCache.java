@@ -345,7 +345,10 @@ public class SshConnectionCache implements SshUtilities
          /* set this explicitly here as that last assert provided us with the return code for the copy */
          exitCode = 0;
       } catch (Exception e) {
-         _log.log(Level.WARNING, "VHM: exception while copying data to remote host", e);
+         String msg = "VHM: "+connection.hostname+" - exception copying data to remote host";
+         _log.log(Level.WARNING, msg+": "+e.getMessage());
+         _log.log(Level.INFO, msg, e);
+
       } finally {
          if (proc != null) {
             proc.cleanup();
@@ -450,6 +453,7 @@ public class SshConnectionCache implements SshUtilities
          return proc;
       } catch (Exception e) {
          String msg = "VHM: "+connection.hostname+" - exception invoking remote command on host";
+         _log.log(Level.WARNING, msg+": "+e.getMessage());
          _log.log(Level.INFO, msg, e);
 
          channel.disconnect();
