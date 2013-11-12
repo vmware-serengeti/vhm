@@ -58,7 +58,6 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
                current._on += targetPowerState ? 1 : -1;
                result.add(new RankedVM(vmId, rank++));
                itr.remove();
-               _log.info("BalancedVMChooser adding VM <%V"+vmId+"%V> from host "+current._hostId+" to results");
             }
             if (itr.hasNext()) {
                orderedHosts.add(current);
@@ -125,9 +124,12 @@ public class BalancedVMChooser extends AbstractClusterMapReader implements VMCho
          Map<String, HostInfo> organizedHosts = organizeVMsByHost(clusterId, candidateVmIds, targetPowerState);
          if (organizedHosts != null) {
             Queue<HostInfo> orderedHosts = orderHosts(organizedHosts, targetPowerState);
-            return rankVMs(orderedHosts, targetPowerState);
+            Set<RankedVM> result = rankVMs(orderedHosts, targetPowerState);
+            _log.info("BalancedVMChooser done ranking VMs for "+(targetPowerState ? "enabling" : "disabling")+": "+result);
+            return result;
          }
       }
+      _log.info("BalancedVMChooser could not find any VMs to rank");
       return new HashSet<RankedVM>();
    }
 

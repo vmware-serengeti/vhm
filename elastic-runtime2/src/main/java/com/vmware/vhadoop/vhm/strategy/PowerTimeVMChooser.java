@@ -30,7 +30,8 @@ public class PowerTimeVMChooser extends AbstractClusterMapReader implements VMCh
    private final Long _powerOnTimeThresholdMillis;
    private final Long _powerOffTimeThresholdMillis;
    
-   /* If a threshold is passed in, the choose methods will only choose VMs that have been powered on for less than the threshold */
+   /* If a threshold is passed in, the choose methods will only choose VMs that have been powered on for less than the threshold
+      The rank methods will rank anything that exceeds the threshold as the same rank */
    public PowerTimeVMChooser(Long powerOnTimeThresholdMillis, Long powerOffTimeThresholdMillis) {
       _powerOnTimeThresholdMillis = powerOnTimeThresholdMillis;
       _powerOffTimeThresholdMillis = powerOffTimeThresholdMillis;
@@ -131,7 +132,7 @@ public class PowerTimeVMChooser extends AbstractClusterMapReader implements VMCh
             /* VMs that are over the threshold should be ranked evenly at 0, vms under the threshold should have a rank inverse to the elapsedMillis */
             long elapsedMillis = currentTimeMillis - powerOffTime;
             _log.fine("Ranking VM <%V"+vmId+"%V> with elapsedMillis="+elapsedMillis);
-            int rank = (elapsedMillis > _powerOffTimeThresholdMillis) ? 0 : Integer.MAX_VALUE - (int)elapsedMillis;
+            int rank = ((_powerOffTimeThresholdMillis != null) && (elapsedMillis > _powerOffTimeThresholdMillis)) ? 0 : Integer.MAX_VALUE - (int)elapsedMillis;
             return new RankedVM(vmId, rank);
          }
       };
@@ -151,7 +152,7 @@ public class PowerTimeVMChooser extends AbstractClusterMapReader implements VMCh
             /* VMs that are over the threshold should be ranked evenly at MAX_VALUE, vms under the threshold should have a rank in the same order as elapsedMillis */
             long elapsedMillis = currentTimeMillis - powerOnTime;
             _log.fine("Ranking VM <%V"+vmId+"%V> with elapsedMillis="+elapsedMillis);
-            int rank = (elapsedMillis <= _powerOnTimeThresholdMillis) ? (int)elapsedMillis : Integer.MAX_VALUE;
+            int rank = ((_powerOnTimeThresholdMillis != null) && (elapsedMillis > _powerOnTimeThresholdMillis)) ? Integer.MAX_VALUE : (int)elapsedMillis;
             return new RankedVM(vmId, rank);
          }
       };
