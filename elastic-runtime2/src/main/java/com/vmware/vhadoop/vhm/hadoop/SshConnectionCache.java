@@ -3,11 +3,16 @@ package com.vmware.vhadoop.vhm.hadoop;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -70,16 +75,25 @@ public class SshConnectionCache implements SshUtilities
    class RemoteProcess extends Process {
       public final static int UNDEFINED_EXIT_STATUS = -1;
 
+      Session session;
       ChannelExec channel;
       InputStream stdout;
       InputStream stderr;
       OutputStream stdin;
 
-      public RemoteProcess(ChannelExec channel) throws IOException {
+      public RemoteProcess(ChannelExec channel) throws IOException, JSchException {
          this.channel = channel;
          this.stdin = channel.getOutputStream();
          this.stderr = channel.getErrStream();
          this.stdout = channel.getInputStream();
+
+         this.session = channel.getSession();
+      }
+
+      @Override
+      protected void finalize() throws Throwable {
+         super.finalize();
+         cleanup();
       }
 
       @Override
@@ -102,6 +116,8 @@ public class SshConnectionCache implements SshUtilities
          do {
             int status = channel.getExitStatus();
             if (status != -1) {
+               cleanup();
+
                return status;
             }
 
@@ -121,6 +137,8 @@ public class SshConnectionCache implements SshUtilities
          do {
             int status = channel.getExitStatus();
             if (status != -1) {
+               cleanup();
+
                return status;
             }
 
@@ -146,8 +164,28 @@ public class SshConnectionCache implements SshUtilities
          cleanup();
       }
 
-      public void cleanup() {
+      public synchronized void cleanup() {
+         if (channel == null) {
+            return;
+         }
+
          channel.disconnect();
+         synchronized (cache) {
+            synchronized (channelMap) {
+               Set<Channel> channels = channelMap.get(session);
+               if (channels != null) {
+                  channels.remove(channel);
+                  if (channels.isEmpty() && !cache.containsValue(session)) {
+                     channelMap.remove(session);
+                     _log.fine("Disconnecting session during RemoteProcess cleanup for "+session.getUserName()+"@"+session.getHost());
+                     session.disconnect();
+                  }
+               }
+            }
+         }
+
+         channel = null;
+
          if (stdin != null) {
             try {
                stdin.close();
@@ -169,6 +207,7 @@ public class SshConnectionCache implements SshUtilities
    }
 
    private Map<Connection,Session> cache;
+   private Map<Session,Set<Channel>> channelMap = new HashMap<Session,Set<Channel>>();
    private final JSch _jsch = new JSch();
    private int capacity;
    private float loadFactor = 0.75f;
@@ -176,18 +215,26 @@ public class SshConnectionCache implements SshUtilities
    public SshConnectionCache(int capacity) {
       this.capacity = capacity;
       int baseSize = (int)Math.ceil(capacity / loadFactor) + 2;
-      cache = new LinkedHashMap<Connection,Session>(baseSize, loadFactor, true) {
+      cache = Collections.synchronizedMap(new LinkedHashMap<Connection,Session>(baseSize, loadFactor, true) {
          private static final long serialVersionUID = 1328753943644428132L;
 
          @Override
          protected boolean removeEldestEntry (Map.Entry<Connection,Session> eldest) {
             boolean remove = size() > SshConnectionCache.this.capacity;
             /* if we're removing this session it has to be disconnected to avoid leaking sockets */
-            eldest.getValue().disconnect();
+            if (remove) {
+               Session session = eldest.getValue();
+               synchronized (channelMap) {
+                  _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
+                  if (!channelMap.containsKey(session)) {
+                     session.disconnect();
+                  }
+               }
+            }
 
             return remove;
          }
-      };
+      });
    }
 
    /**
@@ -207,7 +254,9 @@ public class SshConnectionCache implements SshUtilities
 
          return session;
       } catch (JSchException e) {
-         _log.warning("VHM: "+connection.hostname+" - could not create ssh session container - " + e.getMessage());
+         String msg = "VHM: "+connection.hostname+" - could not create ssh session container";
+         _log.warning(msg + " - "+ e.getMessage());
+         _log.log(Level.INFO, msg, e);
       }
 
       return null;
@@ -268,11 +317,20 @@ public class SshConnectionCache implements SshUtilities
       Session session = cache.get(connection);
       if (session == null) {
          session = createSession(connection);
+         if (session == null) {
+            return null;
+         }
          cache.put(connection, session);
+         channelMap.put(session, new HashSet<Channel>());
       }
 
       if (!connectSession(session, connection.credentials)) {
          cache.remove(connection);
+         channelMap.remove(connection);
+         if (session != null) {
+            /* ensure that even if it's something odd causing connectSession to fail we clean up */
+            session.disconnect();
+         }
          session = null;
       }
 
@@ -346,7 +404,7 @@ public class SshConnectionCache implements SshUtilities
          exitCode = 0;
       } catch (Exception e) {
          String msg = "VHM: "+connection.hostname+" - exception copying data to remote host";
-         _log.log(Level.WARNING, msg+": "+e.getMessage());
+         _log.log(Level.WARNING, msg+" - "+e.getMessage());
          _log.log(Level.INFO, msg, e);
 
       } finally {
@@ -366,29 +424,39 @@ public class SshConnectionCache implements SshUtilities
 
    protected int execute(Connection connection, String command, OutputStream stdout) throws IOException {
       int exitCode = RemoteProcess.UNDEFINED_EXIT_STATUS;
-      RemoteProcess proc = invoke(connection, command, stdout, null);
+      RemoteProcess proc = null;
 
-      long deadline = System.currentTimeMillis() + INPUTSTREAM_TIMEOUT_MILLIS;
-      do {
-         try {
-            exitCode = proc.waitFor(INPUTSTREAM_TIMEOUT_MILLIS);
-            if (exitCode != RemoteProcess.UNDEFINED_EXIT_STATUS) {
-               /* we only loop if the command hasn't completed */
-               break;
+      try {
+         proc = invoke(connection, command, stdout, null);
+         long deadline = System.currentTimeMillis() + INPUTSTREAM_TIMEOUT_MILLIS;
+         do {
+            try {
+               exitCode = proc.waitFor(INPUTSTREAM_TIMEOUT_MILLIS);
+               if (exitCode != RemoteProcess.UNDEFINED_EXIT_STATUS) {
+                  /* we only loop if the command hasn't completed */
+                  break;
+               }
+            } catch (InterruptedException e) {
+               _log.info("VHM: unexpected interruption while waiting for remote command to complete");
             }
-         } catch (InterruptedException e) {
-            _log.info("VHM: unexpected interruption while waiting for remote command to complete");
+         } while (deadline > System.currentTimeMillis());
+
+         /* Caller is responsible for cleaning up resources passed in, but make sure all the data's been passed along */
+         if (stdout != null) {
+            try {
+               stdout.flush();
+            } catch (IOException e) { /* squash */ }
          }
-      } while (deadline > System.currentTimeMillis());
+      } catch (Exception e) {
+         String msg = "VHM: "+connection.hostname+" - exception executing command on remote host";
+         _log.log(Level.WARNING, msg+" - "+e.getMessage());
+         _log.log(Level.INFO, msg, e);
 
-      /* Caller is responsible for cleaning up resources passed in, but make sure all the data's been passed along */
-      if (stdout != null) {
-         try {
-            stdout.flush();
-         } catch (IOException e) { /* squash */ }
+      } finally {
+         if (proc != null) {
+            proc.cleanup();
+         }
       }
-
-      proc.cleanup();
 
       _log.log(Level.FINE, "Exit status from exec is: " + exitCode);
       return exitCode;
@@ -402,22 +470,34 @@ public class SshConnectionCache implements SshUtilities
 
    public RemoteProcess invoke(Connection connection, String command, OutputStream stdout, InputStream stdin) throws IOException {
       /* get the cached session for the remote user/host or create a new one */
-      Session session = getSession(connection);
-      if (session == null) {
-         throw new IOException("unable to establish session to remote host "+connection.hostname);
-      }
-
-      /* open a new exec channel - this is tightly coupled to the execution of the command and will be closed on command completion */
       ChannelExec channel;
-      try {
-         channel = (ChannelExec) session.openChannel("exec");
-      } catch (JSchException e) {
-         String msg = "VHM: "+connection.hostname+" - exception opening SSH execution channel to host";
-         _log.log(Level.INFO, msg, e);
-         throw new IOException(msg);
+
+      /* we synchronize on cache so that we don't have the potential to evict and disconnect a session in between confirming that
+       * it's functional and recording an opening in the channel map */
+      synchronized (cache) {
+         synchronized (channelMap) {
+            Session session = getSession(connection);
+            if (session == null) {
+               throw new IOException("unable to establish session to remote host "+connection.hostname);
+            }
+
+            /* open a new exec channel - this is tightly coupled to the execution of the command and will be closed on command completion */
+            try {
+               channel = (ChannelExec) session.openChannel("exec");
+               Set<Channel> channels = channelMap.get(session);
+               if (channels != null) {
+                  channels.add(channel);
+               }
+            } catch (JSchException e) {
+               String msg = "VHM: "+connection.hostname+" - exception opening SSH execution channel to host";
+               _log.log(Level.INFO, msg, e);
+               throw new IOException(msg);
+            }
+         }
       }
 
       /* execute the remote command and set up our remote process wrapper */
+      RemoteProcess proc = null;
       try {
          _log.log(Level.FINE, "About to execute: " + command);
 
@@ -428,7 +508,7 @@ public class SshConnectionCache implements SshUtilities
          channel.setCommand(command);
 
          /* this calls getOutput/Error/InputStream which seems to overwrite anything set by setOutputStream, so needs to be done first */
-         RemoteProcess proc = new RemoteProcess(channel);
+         proc = new RemoteProcess(channel);
 
          /* if we have sink and source already, set the channels up */
          if (stdout != null) {
@@ -457,6 +537,10 @@ public class SshConnectionCache implements SshUtilities
          _log.log(Level.INFO, msg, e);
 
          channel.disconnect();
+
+         if (proc != null) {
+            proc.cleanup();
+         }
 
          throw new IOException(msg);
       }
