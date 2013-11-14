@@ -16,6 +16,7 @@
 package com.vmware.vhadoop.api.vhm.strategy;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.PriorityQueue;
 import java.util.Set;
 
@@ -42,7 +43,7 @@ public interface VMChooser {
        * Utility method that sums the ranks of the two input sets into a single set
        * The result should contain the superset of both input1 and input2
        * If input1 is null, input2 is returned and vice versa
-       * If both are null, null is returned 
+       * If both are null, null is returned
        */
       public static Set<RankedVM> combine(Set<RankedVM> input1, Set<RankedVM> input2) {
          if (input1 == null) {
@@ -79,7 +80,7 @@ public interface VMChooser {
          int rank = -1;
          RankedVM current = null;
          RankedVM prev = null;
-         Set<RankedVM> flattened = new HashSet<RankedVM>();
+         Set<RankedVM> flattened = new LinkedHashSet<RankedVM>();
          PriorityQueue<RankedVM> orderedCopy = new PriorityQueue<RankedVM>(toFlatten);
          while ((current = orderedCopy.poll()) != null) {
             if ((prev != null) && (current.getRank() == prev.getRank())) {
@@ -109,9 +110,9 @@ public interface VMChooser {
          return result;
       }
 
-      /** 
+      /**
        * Utility method that selects the lowest ranked candidate from the input set
-       * Returns null if the set is null or empty 
+       * Returns null if the set is null or empty
        */
       public static String selectLowestRankedId(Set<RankedVM> candidates) {
          if ((candidates == null || candidates.isEmpty())) {
@@ -185,7 +186,7 @@ public interface VMChooser {
 
    /**
     * Selects VMs to enable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
-    * 
+    *
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster and should all be powered off
     * @return - set of VM ids deemed OK to enable or null if not implemented
@@ -194,7 +195,7 @@ public interface VMChooser {
 
    /**
     * Selects VMs to disable from the specified candidates in no particular order. The logic determining which VMs is provided by implementors.
-    * 
+    *
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
     * @return - set of VM ids deemed OK to disable or null if not implemented
@@ -204,7 +205,7 @@ public interface VMChooser {
    /**
     * Ranks VMs to enable from the specified cluster from the candidates provided
     * Ranking should be provided in the form of sequential digits from 0 to n
-    * 
+    *
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
     * @return - Set of VM IDs with associated ranking or null if not implemented
@@ -214,7 +215,7 @@ public interface VMChooser {
    /**
     * Ranks VMs to disable from the specified cluster from the candidates provided
     * Ranking should be provided in the form of sequential digits from 0 to n
-    * 
+    *
     * @param clusterId - the target cluster
     * @param candidateVmIds - the candidate VMs from which to choose, which should all belong to the specified cluster
     * @return - Set of VM IDs with associated ranking or null if not implemented
