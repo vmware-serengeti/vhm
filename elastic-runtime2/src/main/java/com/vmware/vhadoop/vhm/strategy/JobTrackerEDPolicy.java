@@ -92,7 +92,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                   }
                   _log.info("TIMING: Power on to DNS resolution in "+(checkTime-initTime)+"ms; TT verification in "+(System.currentTimeMillis()-checkTime)+"ms");
                } else {
-                  status.registerTaskFailed(false, "no DNS names could be obtained for Task Trackers");
+                  status.registerTaskFailed(false, "hostnames published by task trackers could not be obtained");
                }
             } else {
                _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: unexpected vCenter error powering on task trackers");
@@ -197,7 +197,7 @@ public class JobTrackerEDPolicy extends AbstractClusterMapReader implements EDPo
                }
                result = new HashSet<String>(newDnsNameMap.values());
                if (!result.contains(null) && !result.contains("") && validateDnsNames(result)) {
-                  _log.info("Found valid DNS names for all VMs");
+                  _log.info("Found valid hostnames for all VMs");
                   return result;
                }
             } finally {
