@@ -138,13 +138,11 @@ public class StandaloneSimpleVCActions implements VCActions {
 
    @Override
    public void raiseAlarm(String vmMoRef, String detail) {
-      // TODO Auto-generated method stub
-
+      log(EventSeverity.warning, vmMoRef, detail);
    }
 
    @Override
    public void clearAlarm(String vmMoRef) {
-      // TODO Auto-generated method stub
-
+      log(EventSeverity.info, vmMoRef, "all clear");
    }
 }

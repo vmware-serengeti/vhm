@@ -149,19 +149,25 @@ public class VcAdapter implements VCActions {
       Folder root;
       try {
          root = _vcVlsi.getFolderForName(_controlClient, null, _rootFolderName);
+
          ManagedObjectReference[] existing = manager.getAlarm(root._getRef());
-         if (existing != null) {
-            for (ManagedObjectReference m : existing) {
-               Alarm a = _controlClient.createStub(Alarm.class, m);
-               if (a.getInfo().getName().equals(ALARM_NAME)) {
-                  _alarm = a;
-                  return _alarm;
-               }
+         for (ManagedObjectReference m : existing) {
+            Alarm a = _controlClient.createStub(Alarm.class, m);
+            if (a.getInfo().getName().equals(ALARM_NAME)) {
+               _alarm = a;
+               return _alarm;
             }
          }
       } catch (InvalidProperty e) {
-         // TODO Auto-generated catch block
-         e.printStackTrace();
+         _log.info("VHM: unable to get reference to alarm "+ALARM_NAME+" on vApp folder "+_rootFolderName);
+         _log.log(Level.FINER, "VHM: exception while getting reference to top level alarm", e);
+      } catch (NullPointerException e) {
+         /* almost any of the values returned from vlsi client or their subsequent calls could be null but
+          * will not be most of the time. It's much clearer to just have one catch here than tests on
+          * ever access given we do the same thing in response.
+          */
+         _log.info("VHM: unable to get reference to alarm "+ALARM_NAME+" on vApp folder "+_rootFolderName);
+         _log.log(Level.FINER, "VHM: exception while getting reference to top level alarm", e);
       }
 
       return null;
@@ -353,13 +359,13 @@ public class VcAdapter implements VCActions {
 
    @Override
    public void clearAlarm(String vmMoRef) {
+      /* switch the VM back to green */
+      log(EventSeverity.info, vmMoRef, "all health issues previously reported by Big Data Extensions are in remission");
+
       AlarmManager alarmMgr = getAlarmManager();
       if (alarmMgr == null) {
          return;
       }
-
-      /* switch the VM back to green */
-      log(EventSeverity.info, vmMoRef, "all health issues previously reported by Big Data Extensions are in remission");
 
       /* acknowledge the alarm */
       Alarm alarm = getAlarm();
