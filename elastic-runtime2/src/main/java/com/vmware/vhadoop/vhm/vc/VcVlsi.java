@@ -55,7 +55,6 @@ import com.vmware.vim.binding.vim.SessionManager;
 import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
-import com.vmware.vim.binding.vim.vm.GuestInfo.NicInfo;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.EventManager;
@@ -67,6 +66,7 @@ import com.vmware.vim.binding.vim.option.OptionValue;
 import com.vmware.vim.binding.vim.version.version8;
 import com.vmware.vim.binding.vim.view.ContainerView;
 import com.vmware.vim.binding.vim.view.ViewManager;
+import com.vmware.vim.binding.vim.vm.GuestInfo.NicInfo;
 import com.vmware.vim.binding.vmodl.DynamicProperty;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
 import com.vmware.vim.binding.vmodl.TypeName;
@@ -464,7 +464,7 @@ public class VcVlsi {
       return resultRefs;
    }
 
-   private Folder getFolderForName(Client client, Folder baseFolder, String restrictToName) throws InvalidProperty {
+   Folder getFolderForName(Client client, Folder baseFolder, String restrictToName) throws InvalidProperty {
       if (baseFolder == null) {
          baseFolder = getRootFolder(client);
       }
@@ -511,7 +511,7 @@ public class VcVlsi {
    private void cleanupWaitForUpdates(PropertyFilter propFilter) {
       propFilter.cleanup();
    }
-   
+
    private static Map<String, Set<String>> getNicInfo(NicInfo[] nicInfoArray) {
       Map<String, Set<String>> nicAndIpAddressMap = new HashMap<String, Set<String>>();
       if (nicInfoArray != null) {

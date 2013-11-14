@@ -86,9 +86,13 @@ public interface VCActions {
 
    public AlarmManager getAlarmManager();
 
+   public ExtensionManager getExtensionManager();
+
    public List<String> listVMsInFolder(String folderName);
 
    public void log(EventSeverity level, String vmMoRef, String message);
 
-   public ExtensionManager getExtensionManager();
+   public void raiseAlarm(String vmMoRef, String detail);
+
+   public void clearAlarm(String vmMoRef);
 }

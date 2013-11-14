@@ -36,14 +36,18 @@ import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vim.binding.impl.vim.event.EventExImpl;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.ExtensionManager;
+import com.vmware.vim.binding.vim.Folder;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.Task;
+import com.vmware.vim.binding.vim.alarm.Alarm;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.event.EventEx;
 import com.vmware.vim.binding.vim.event.EventManager;
 import com.vmware.vim.binding.vim.fault.InvalidEvent;
+import com.vmware.vim.binding.vmodl.ManagedObject;
 import com.vmware.vim.binding.vmodl.ManagedObjectReference;
+import com.vmware.vim.binding.vmodl.query.InvalidProperty;
 import com.vmware.vim.vmomi.client.Client;
 
 public class VcAdapter implements VCActions {
@@ -54,6 +58,8 @@ public class VcAdapter implements VCActions {
    private static long VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS");   /* Stats collection timeout should be short */
    private static long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = ExternalizedParameters.get().getLong("SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS");   /* If no clusters are installed, we should be pretty much dormant */
 
+   private static String ALARM_NAME = "Big Data Extensions - compute VM health";
+
    private Client _controlClient; // used for VC control operations and is the parent client for the others
    private Client _waitForUpdateClient;   // used for the main waitForPropertyChange loop
    private Client _statsPollClient;   // used for VC stats collection
@@ -61,6 +67,8 @@ public class VcAdapter implements VCActions {
    private final VcCredentials _vcCreds;
    private final String _rootFolderName; // root folder for this VHM instance
    private String _waitForUpdatesVersion = "";
+
+   private Alarm _alarm = null;
 
    private ThreadLocalCompoundStatus _threadLocalStatus;
 
@@ -126,6 +134,41 @@ public class VcAdapter implements VCActions {
          return connect();
       }
       return success;
+   }
+
+   private Alarm getAlarm() {
+      if (_alarm != null) {
+         return _alarm;
+      }
+
+      AlarmManager manager = getAlarmManager();
+      if (manager == null) {
+         return null;
+      }
+
+      Folder root;
+      try {
+         root = _vcVlsi.getFolderForName(_controlClient, null, _rootFolderName);
+         ManagedObjectReference[] existing = manager.getAlarm(root._getRef());
+         if (existing != null) {
+            for (ManagedObjectReference m : existing) {
+               Alarm a = _controlClient.createStub(Alarm.class, m);
+               if (a.getInfo().getName().equals(ALARM_NAME)) {
+                  _alarm = a;
+                  return _alarm;
+               }
+            }
+         }
+      } catch (InvalidProperty e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+
+      return null;
+   }
+
+   public  <T extends ManagedObject> T createStub(Class<T> klass, ManagedObjectReference ref) {
+      return _controlClient.createStub(klass, ref);
    }
 
    public VcAdapter(VcCredentials vcCreds, String rootFolderName) {
@@ -299,6 +342,33 @@ public class VcAdapter implements VCActions {
          eventManager.postEvent(event, null);
       } catch (InvalidEvent e) {
          _log.log(Level.INFO, "VHM: <%V"+vmMoRef+"%V> - failed to log "+level.name()+" event with vCenter", e);
+      }
+   }
+
+
+   @Override
+   public void raiseAlarm(String vmMoRef, String message) {
+      log(EventSeverity.warning, vmMoRef, message);
+   }
+
+   @Override
+   public void clearAlarm(String vmMoRef) {
+      AlarmManager alarmMgr = getAlarmManager();
+      if (alarmMgr == null) {
+         return;
+      }
+
+      /* switch the VM back to green */
+      log(EventSeverity.info, vmMoRef, "all health issues previously reported by Big Data Extensions are in remission");
+
+      /* acknowledge the alarm */
+      Alarm alarm = getAlarm();
+      if (alarm != null) {
+         ManagedObjectReference moRef = new ManagedObjectReference();
+         moRef.setValue(vmMoRef);
+         moRef.setType("VirtualMachine");
+
+         alarmMgr.acknowledgeAlarm(alarm._getRef(), moRef);
       }
    }
 }

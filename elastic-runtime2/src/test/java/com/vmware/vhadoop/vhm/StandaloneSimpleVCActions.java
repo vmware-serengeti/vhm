@@ -135,4 +135,16 @@ public class StandaloneSimpleVCActions implements VCActions {
       _latestArgs.put("log", new Object[]{});
       return;
    }
+
+   @Override
+   public void raiseAlarm(String vmMoRef, String detail) {
+      // TODO Auto-generated method stub
+
+   }
+
+   @Override
+   public void clearAlarm(String vmMoRef) {
+      // TODO Auto-generated method stub
+
+   }
 }
