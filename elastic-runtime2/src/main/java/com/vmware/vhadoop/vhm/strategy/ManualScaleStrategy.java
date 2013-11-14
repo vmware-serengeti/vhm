@@ -30,8 +30,8 @@ import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategyContext;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser.RankedVM;
 import com.vmware.vhadoop.util.CompoundStatus;
-import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.util.CompoundStatus.TaskStatus;
+import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
@@ -62,13 +62,13 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
    public String getKey() {
       return MANUAL_SCALE_STRATEGY_KEY;
    }
-         
+
    private Set<String> chooseVMsForTargetPowerState(String clusterId, int delta, Set<String> candidateVmIds, boolean targetPowerState) {
       Set<RankedVM> combination = null;
       for (VMChooser vmChooser : _vmChooserCallback.getVMChoosers()) {
-         
-         Set<RankedVM> rankedVMs = targetPowerState ? 
-               vmChooser.rankVMsToEnable(clusterId, candidateVmIds) : 
+
+         Set<RankedVM> rankedVMs = targetPowerState ?
+               vmChooser.rankVMsToEnable(clusterId, candidateVmIds) :
                vmChooser.rankVMsToDisable(clusterId, candidateVmIds);
 
          if (rankedVMs != null) {
@@ -77,7 +77,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
       }
       return RankedVM.selectLowestRankedIds(combination, Math.abs(delta));
    }
-   
+
    class CallableStrategy extends ClusterScaleOperation {
       final Set<ClusterScaleEvent> _events;
 
@@ -109,7 +109,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                clusterMap = getAndReadLockClusterMap();
                String clusterFolder = limitEvent.getClusterFolderName();
                clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
-               if (clusterId != null) {               
+               if (clusterId != null) {
                   poweredOffVmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
                   numPoweredOff = (poweredOffVmIds == null) ? 0 : poweredOffVmIds.size();
                   poweredOnVmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
@@ -141,9 +141,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                      _log.fine("Enabled TTs: "+enabledTTs);
                      unresponsiveVmIds = diffIds(vmsToED, enabledTTs);
                      limitEvent.reportProgress(30, null);
-                     returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.ENABLE);
+                     returnEvent.addDecision(enabledTTs, ClusterScaleCompletionEvent.ENABLE);
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_ON_STATUS_KEY})) {
-                        blockOnPowerStateChange(vmsToED, true, 120000);
+                        blockOnPowerStateChange(enabledTTs, true, 120000);
                      }
                      limitEvent.reportProgress(90, null);
                   } else {
@@ -161,9 +161,9 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                      _log.fine("Disabled TTs: "+disabledTTs);
                      unresponsiveVmIds = diffIds(vmsToED, disabledTTs);
                      limitEvent.reportProgress(30, null);
-                     returnEvent.addDecision(vmsToED, ClusterScaleCompletionEvent.DISABLE);
+                     returnEvent.addDecision(disabledTTs, ClusterScaleCompletionEvent.DISABLE);
                      if (tlStatus.screenStatusesForSpecificFailures(new String[]{VCActions.VC_POWER_OFF_STATUS_KEY})) {
-                        blockOnPowerStateChange(vmsToED, false, 120000);
+                        blockOnPowerStateChange(disabledTTs, false, 120000);
                      }
                      limitEvent.reportProgress(90, null);
                   } else {
