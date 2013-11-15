@@ -15,7 +15,10 @@
 
 package com.vmware.vhadoop.vhm.events;
 
+import java.util.logging.Logger;
+
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
+import com.vmware.vhadoop.util.LogFormatter;
 
 public class ClusterUpdateEvent extends AbstractNotificationEvent implements ClusterStateChangeEvent {
    private String _vmId;
@@ -33,5 +36,21 @@ public class ClusterUpdateEvent extends AbstractNotificationEvent implements Clu
 
    public SerengetiClusterVariableData getClusterVariableData() {
       return _clusterVariableData;
+   }
+
+   String getParamListString(Logger logger) {
+      String basic = "vmId=<%V"+_vmId+"%V>";
+      String detail = LogFormatter.isDetailLogging(logger) ? ", ClusterVariableData="+_clusterVariableData : "";
+      return basic+detail;
+   }
+
+   @Override
+   public String toString(Logger logger) {
+      return "ClusterUpdateEvent{"+getParamListString(logger)+"}";
+   }
+
+   @Override
+   public String toString() {
+      return toString(null);
    }
 }

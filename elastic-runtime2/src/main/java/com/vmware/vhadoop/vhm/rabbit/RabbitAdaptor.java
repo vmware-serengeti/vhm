@@ -131,6 +131,7 @@ public class RabbitAdaptor implements MQClient {
                   while (_started) {
                      _log.info("Rabbit queue waiting for message");
                      QueueingConsumer.Delivery delivery = _connection.getConsumer().nextDelivery();
+                     _log.finest("Raw JSON: "+new String(delivery.getBody()));
                      VHMJsonInputMessage message = new VHMJsonInputMessage(delivery.getBody());
                      SerengetiLimitInstruction event = new SerengetiLimitInstruction(message.getClusterId(), message.getAction(), message.getInstanceNum(), new RabbitConnectionCallback(message.getRouteKey(), _connection));
 

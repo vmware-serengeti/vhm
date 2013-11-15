@@ -56,6 +56,7 @@ import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.ClusterUpdateEvent;
 import com.vmware.vhadoop.vhm.events.NewVmEvent;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction.SerengetiLimitAction;
 import com.vmware.vhadoop.vhm.events.VmRemovedFromClusterEvent;
 import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
@@ -582,7 +583,7 @@ public class VHM implements EventConsumer {
       for (ClusterScaleEvent clusterScaleEvent : consolidatedEvents) {
          if (clusterScaleEvent instanceof SerengetiLimitInstruction) {
             SerengetiLimitInstruction returnVal = (SerengetiLimitInstruction)clusterScaleEvent;
-            if (returnVal.getAction().equals(SerengetiLimitInstruction.actionWaitForManual)) {
+            if (returnVal.getAction().equals(SerengetiLimitAction.actionWaitForManual)) {
                return returnVal;
             }
          }
@@ -597,7 +598,7 @@ public class VHM implements EventConsumer {
       Set<ClusterScaleEvent> impliedScaleEventsForCluster = new LinkedHashSet<ClusterScaleEvent>();    /* Preserve order */
 
       for (ClusterStateChangeEvent event : eventsToProcess) {
-         _log.info("ClusterStateChangeEvent received: "+event.getClass().getName());
+         _log.info("ClusterStateChangeEvent received: "+event.toString(_log));
 
          /* ClusterMap will process the event and may add an implied scale event (see ExtraInfoToClusterMapper) */
          String clusterId = _clusterMap.handleClusterEvent(event, impliedScaleEventsForCluster);

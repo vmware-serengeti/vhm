@@ -35,6 +35,7 @@ import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.AbstractClusterMapReader;
 import com.vmware.vhadoop.vhm.events.ClusterScaleDecision;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction.SerengetiLimitAction;
 
 public class ManualScaleStrategy extends AbstractClusterMapReader implements ScaleStrategy {
    private static final Logger _log = Logger.getLogger(ManualScaleStrategy.class.getName());
@@ -114,7 +115,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   numPoweredOff = (poweredOffVmIds == null) ? 0 : poweredOffVmIds.size();
                   poweredOnVmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, true);
                   numPoweredOn = (poweredOnVmIds == null) ? 0 : poweredOnVmIds.size();
-                  if (limitEvent.getAction().equals(SerengetiLimitInstruction.actionUnlimit)) {
+                  if (limitEvent.getAction().equals(SerengetiLimitAction.actionUnlimit)) {
                      targetSize = numPoweredOn + numPoweredOff;
                      delta = numPoweredOff;
                   } else {

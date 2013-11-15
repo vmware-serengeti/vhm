@@ -154,7 +154,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          }
       } else {
          for (VMEventData vmData : vmDataList) {
-            _log.log(Level.INFO, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
+            _log.log(Level.FINEST, "Detected change in vm <%V" + vmData._vmMoRef + "%V> leaving= " + vmData._isLeaving);
             ClusterStateChangeEvent csce = translateVMEventData(vmData);
             if (csce != null) {
                _log.info("Created new "+csce+" for vm <%V" + vmData._vmMoRef);

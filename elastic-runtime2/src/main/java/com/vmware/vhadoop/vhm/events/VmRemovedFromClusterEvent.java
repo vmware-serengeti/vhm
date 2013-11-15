@@ -15,6 +15,8 @@
 
 package com.vmware.vhadoop.vhm.events;
 
+import java.util.logging.Logger;
+
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 
 public class VmRemovedFromClusterEvent extends AbstractNotificationEvent implements ClusterStateChangeEvent {
@@ -27,5 +29,15 @@ public class VmRemovedFromClusterEvent extends AbstractNotificationEvent impleme
 
    public String getVmId() {
       return _vmId;
+   }
+
+   @Override
+   public String toString(Logger logger) {
+      return "VmRemovedFromClusterEvent{vmId="+_vmId+"}";
+   }
+   
+   @Override
+   public String toString() {
+      return toString(null);
    }
 }

@@ -36,6 +36,7 @@ import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.vhm.TrivialClusterScaleEvent.ChannelReporter;
 import com.vmware.vhadoop.vhm.TrivialScaleStrategy.TrivialClusterScaleOperation;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction.SerengetiLimitAction;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor.RabbitConnectionCallback;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
@@ -533,7 +534,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
       SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
             getFolderNameForClusterName(clusterName1), 
-            SerengetiLimitInstruction.actionWaitForManual, 0, 
+            SerengetiLimitAction.actionWaitForManual, 0, 
             new RabbitConnectionCallback(routeKey1, testConnection));
 
       /* Send the manual event on the message queue */
@@ -577,7 +578,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
      
       SerengetiLimitInstruction limitEvent2 = new SerengetiLimitInstruction(
             getFolderNameForClusterName(clusterName2), 
-            SerengetiLimitInstruction.actionWaitForManual, 0, 
+            SerengetiLimitAction.actionWaitForManual, 0, 
             new RabbitConnectionCallback(routeKey2, testConnection));
 
       /* Verify that the scale strategy is now manual */
@@ -650,7 +651,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
       SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
             getFolderNameForClusterName(clusterName1), 
-            SerengetiLimitInstruction.actionWaitForManual, 0, 
+            SerengetiLimitAction.actionWaitForManual, 0, 
             new RabbitConnectionCallback(routeKey1, testConnection));
 
       /* Simulate a cluster scale event being triggered from an EventProducer. 

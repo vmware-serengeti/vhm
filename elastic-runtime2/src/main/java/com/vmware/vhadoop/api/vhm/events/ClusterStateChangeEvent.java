@@ -17,6 +17,7 @@ package com.vmware.vhadoop.api.vhm.events;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 /* If the ClusterStateChangeListenerImpl notices a delta change, it generates one of these events for the VHM to consume */
 public interface ClusterStateChangeEvent extends NotificationEvent {
@@ -91,5 +92,7 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
          return "SerengetiClusterVariableData{auto="+_enableAutomation+", minInstances="+_minInstances+", maxInstances="+_maxInstances+", jobTrackerPort="+_jobTrackerPort+"}";
       }
    }
+
+   public String toString(Logger logger);
 
 }

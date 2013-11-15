@@ -43,6 +43,7 @@ import java.util.UnknownFormatConversionException;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 public class LogFormatter extends Formatter {
    public static final Map<String, String> _vmIdToNameMapper = Collections.synchronizedMap(new HashMap<String, String>());
@@ -233,4 +234,15 @@ public class LogFormatter extends Formatter {
       return sb.toString();
    }
 
+   public static boolean isDetailLogging(Logger logger) {
+      if (logger == null) {
+         return false;
+      }
+      Level logLevel = logger.getLevel();
+      Logger parent = logger;
+      while ((logLevel == null) && (parent = parent.getParent()) != null) {
+         logLevel = parent.getLevel();
+      }
+      return (logLevel != null) && ((logLevel.equals(Level.FINE) || logLevel.equals(Level.FINER) || logLevel.equals(Level.FINEST)));
+   }
 }

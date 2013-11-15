@@ -22,20 +22,32 @@ import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
 public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
-   public static final String actionSetTarget = "SetTarget";
-   public static final String actionUnlimit = "Unlimit";
-   public static final String actionWaitForManual = "WaitForManual";
-
+   public enum SerengetiLimitAction {
+      actionSetTarget("SetTarget"),
+      actionUnlimit("Unlimit"),
+      actionWaitForManual("WaitForManual");
+      
+      String _value;
+      private SerengetiLimitAction(String value) {
+         _value = value;
+      }
+      
+      @Override
+      public String toString() {
+         return _value;
+      }
+   };
+   
    private static final String reason = "serengeti limit instruction";
 
-   private final String _action;
+   private final SerengetiLimitAction _action;
    private final String _clusterFolderName;
    private final int _toSize;
    private final QueueClient _messageCallback;
 
    private static final Logger _log = Logger.getLogger(SerengetiLimitInstruction.class.getName());
 
-   public SerengetiLimitInstruction(String clusterFolderName, String action, int toSize, QueueClient messageCallback) {
+   public SerengetiLimitInstruction(String clusterFolderName, SerengetiLimitAction action, int toSize, QueueClient messageCallback) {
       super(reason);
       _action = action;
       _clusterFolderName = clusterFolderName;
@@ -43,7 +55,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       _messageCallback = messageCallback;
    }
 
-   public String getAction() {
+   public SerengetiLimitAction getAction() {
       return _action;
    }
 
@@ -103,15 +115,15 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    public String toString() {
       StringBuilder buf = new StringBuilder();
       if (_action != null) {
-         if (_action.equals("SetTarget")) {
+         if (_action.equals(SerengetiLimitAction.actionSetTarget)) {
             return buf.append("set number of enabled compute nodes to ").append(_toSize).toString();
-         } else if (_action.equals("Unlimit")) {
+         } else if (_action.equals(SerengetiLimitAction.actionUnlimit)) {
             return buf.append("enable all compute nodes").toString();
-         } else if (_action.equals("WaitForManual")) {
+         } else if (_action.equals(SerengetiLimitAction.actionWaitForManual)) {
             return buf.append("switch to manual mode").toString();
          }
 
-         return _action;
+         return _action.toString();
       }
 
       return "";

@@ -34,11 +34,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.gson.Gson;
-import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
+import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction.SerengetiLimitAction;
 
 public class VHMJsonInputMessage {
    private static final Logger _log = Logger.getLogger(VHMJsonInputMessage.class.getName());
    public static final int TARGET_SIZE_UNLIMITED = -1;
+   public static final int SUPPORTED_VERSION = 3;
    
    // TODO:  move to separate file?
    private class VHMCommandMessage {
@@ -56,21 +57,19 @@ public class VHMJsonInputMessage {
       String jsonString = new String(data);
 
       try {
+         boolean recognizedAction = false;
          _command = gson.fromJson(jsonString, VHMCommandMessage.class);
-         if (_command.version < 3) {
-            _command.action =  SerengetiLimitInstruction.actionSetTarget;
-         }
-         if (_command.instance_num == TARGET_SIZE_UNLIMITED) {
-            _command.action =  SerengetiLimitInstruction.actionUnlimit;
-         }
-
-         if ((_command.version < 1) || (_command.version > 3)) {
+         if (_command.version != SUPPORTED_VERSION) {
             _log.log(Level.WARNING, "Unknown version = " + _command.version);
             throw new RuntimeException();
          }
-         if (!_command.action.equals(SerengetiLimitInstruction.actionSetTarget) &&
-               !_command.action.equals(SerengetiLimitInstruction.actionUnlimit) &&
-               !_command.action.equals(SerengetiLimitInstruction.actionWaitForManual)) {
+         for (SerengetiLimitAction value : SerengetiLimitAction.values()) {
+            if (_command.action.equals(value.toString())) {
+               recognizedAction = true;
+               break;
+            }
+         }
+         if (!recognizedAction) {
             _log.log(Level.WARNING, "Unknown action = " + _command.action);
             throw new RuntimeException();
          }
@@ -81,8 +80,16 @@ public class VHMJsonInputMessage {
       }
    }
 
-   public String getAction() {
-      return _command.action;
+   public SerengetiLimitAction getAction() {
+      if (_command.action == null) {
+         return null;
+      }
+      for (SerengetiLimitAction value : SerengetiLimitAction.values()) {
+         if (_command.action.equals(value.toString())) {
+            return value;
+         }
+      }
+      return null;
    }
 
    public String getClusterId() {

@@ -15,7 +15,10 @@
 
 package com.vmware.vhadoop.vhm.events;
 
+import java.util.logging.Logger;
+
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
+import com.vmware.vhadoop.util.LogFormatter;
 
 public class NewVmEvent extends AbstractNotificationEvent implements ClusterStateChangeEvent {
    private final String _vmId;
@@ -45,5 +48,21 @@ public class NewVmEvent extends AbstractNotificationEvent implements ClusterStat
 
    public VMConstantData getConstantData() {
       return _constantData;
+   }
+      
+   String getParamListString(Logger logger) {
+      String basic = "vmId=<%V"+_vmId+"%V>, clusterId=<%C"+_clusterId+"%C>";
+      String detail = LogFormatter.isDetailLogging(logger) ? ", VmConstantData="+_constantData+", vmVariableData="+_variableData : "";
+      return basic+detail;
+   }
+
+   @Override
+   public String toString(Logger logger) {
+      return "NewVmEvent{"+getParamListString(logger)+"}";
+   }
+   
+   @Override
+   public String toString() {
+      return toString(null);
    }
 }

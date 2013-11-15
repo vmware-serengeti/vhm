@@ -15,6 +15,10 @@
 
 package com.vmware.vhadoop.vhm.events;
 
+import java.util.logging.Logger;
+
+import com.vmware.vhadoop.util.LogFormatter;
+
 public class NewMasterVMEvent extends NewVmEvent {
    private final SerengetiClusterConstantData _clusterConstantData;
    private final SerengetiClusterVariableData _clusterVariableData;
@@ -32,5 +36,22 @@ public class NewMasterVMEvent extends NewVmEvent {
 
    public SerengetiClusterVariableData getClusterVariableData() {
       return _clusterVariableData;
+   }
+
+   @Override
+   String getParamListString(Logger logger) {
+      String basic = super.getParamListString(logger);
+      String detail = LogFormatter.isDetailLogging(logger) ? ", clusterConstantData="+_clusterConstantData+", clusterVariableData="+_clusterVariableData : "";
+      return basic+detail;
+   }
+
+   @Override
+   public String toString(Logger logger) {
+      return "NewMasterVMEvent{"+getParamListString(logger)+"}";
+   }
+
+   @Override
+   public String toString() {
+      return toString(null);
    }
 }
