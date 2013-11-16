@@ -194,7 +194,8 @@ public class HadoopAdaptor implements HadoopActions {
 	   try {
 		   result = IOUtils.toByteArray(is);
 	   } catch (IOException e) {
-		   _log.log(Level.SEVERE, "VHM: exception converting class loader resource "+ fileName + " to byte array", e);
+		   _log.log(Level.SEVERE, "VHM: exception converting class loader resource "+ fileName + " to byte array - "+ e.getMessage());
+         _log.log(Level.INFO, "VHM: exception converting class loader resource "+ fileName + " to byte array", e);
 	   }
 
       try {

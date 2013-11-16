@@ -149,7 +149,8 @@ public class RabbitAdaptor implements MQClient {
                   _log.info("Rabbit queue shutting down");
                   /* This is not fatal, this is an expected expection when shutting down */
                } catch (Throwable t) {
-                  _log.log(Level.SEVERE, "VHM: unexpected exception from Rabbit queue ", t);
+                  _log.log(Level.SEVERE, "VHM: unexpected exception from RabbitMQ queue - "+ t.getMessage());
+                  _log.log(Level.INFO, "VHM: unexpected exception from Rabbit queue ", t);
                   startStopCallback.notifyFailed(RabbitAdaptor.this);
                }
             }

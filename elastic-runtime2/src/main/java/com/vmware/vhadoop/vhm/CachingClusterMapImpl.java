@@ -18,19 +18,19 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 
 @SuppressWarnings("unchecked")
 /* This is a version of ClusterMap that caches results from public methods
- * 
+ *
  * Not every ClusterMap method is implemented in this class as some are trivial and not worth caching
- * 
- * The caching works as follows: 
+ *
+ * The caching works as follows:
  *   AbstractClusterMap has two maps: One with information about clusters (ClusterInfo map) and one with information about vms (VMInfo map)
  *   The public methods implemented here will access one or both of these maps and other than input parameters to the method,
- *     this is their only other input. 
+ *     this is their only other input.
  *   Therefore, any time a change is made to one of these maps or an entry within it, all of the cached data for methods that use that map
  *     as input data should be flushed. Changes to the maps are tracked using the VMCollectionUpdateListener and ClusterCollectionUpdateListener
- *     Changes to entries within the maps are tracked using VMUpdateListener and ClusterUpdateListener. 
+ *     Changes to entries within the maps are tracked using VMUpdateListener and ClusterUpdateListener.
  *   Note ClusterMap code MUST use get/set methods to modify the state of ClusterInfo and VMInfo objects in order for the tracking to work
  *     so these types are declared in the ClusterMap interface to prevent direct access to internal fields.
- *   Most methods access either the VMInfo map or ClusterInfo map, but some methods access both. To avoid unnecessary flushing, 
+ *   Most methods access either the VMInfo map or ClusterInfo map, but some methods access both. To avoid unnecessary flushing,
  *     there are therefore 3 cache maps that correspond to these 3 types of access pattern.
  *   The caches use the method name and its input parameters as the key and the object returned as the value
  *   The caching works by looking first in the appropriate map. If a cached entry is not found, the equivalent method in BaseClusterMap
@@ -47,23 +47,23 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    private Map<InputParams, Object> _resultFromVmList = Collections.synchronizedMap(new HashMap<InputParams, Object>());
    private Map<InputParams, Object> _resultFromClusterList = Collections.synchronizedMap(new HashMap<InputParams, Object>());
    private Map<InputParams, Object> _resultFromVmAndClusterList = Collections.synchronizedMap(new HashMap<InputParams, Object>());
-   
+
    /* Methods are cached to avoid multiple reflection lookups */
    private Map<String, Method> _methods = Collections.synchronizedMap(new HashMap<String, Method>());
-   
+
    @Override
    public Set<String> listComputeVMsForCluster(String clusterId) {
       /* The MethodAccessor is a simple trick to allow us to use class.getEnclosingMethod() to avoid hard-coding method names */
       class MethodAccessor {};
       return (Set<String>)getCachedObjectFromVmList(MethodAccessor.class, clusterId);
    }
-   
+
    @Override
    public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
       class MethodAccessor {};
       return (Set<String>)getCachedObjectFromVmList(MethodAccessor.class, clusterId, powerState);
    }
-   
+
    @Override
    public Set<String> listComputeVMsForClusterHostAndPowerState(String clusterId, String hostId, boolean powerState) {
       class MethodAccessor {};
@@ -167,7 +167,7 @@ public class CachingClusterMapImpl extends BaseClusterMap {
       });
       return result;
    }
-   
+
    @Override
    /* We override this method so that we can add the ClusterUpdateListener to each ClusterInfo */
    ClusterInfo createClusterInfo(String clusterId, SerengetiClusterConstantData constantData) {
@@ -185,7 +185,7 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    private class InputParams {
       List<Object> _params = new ArrayList<Object>();
       String _methodName;
-      
+
       InputParams(String methodName, Object... objects) {
          _params = Arrays.asList(objects);
          _methodName = methodName;
@@ -247,7 +247,7 @@ public class CachingClusterMapImpl extends BaseClusterMap {
          }
       });
    }
-   
+
    private void resetVMCache(boolean updatingCollection) {
       _log.finer("Resetting VM cache");
       _resultFromVmList.clear();
@@ -270,7 +270,8 @@ public class CachingClusterMapImpl extends BaseClusterMap {
             Method method = getSuperclassMethod(methodAccessor);
             result = method.invoke(this, args);
          } catch (Exception e) {
-            _log.log(Level.SEVERE, "Unexpected exception invoking cached method", e);
+            _log.log(Level.SEVERE, "VHM: unexpected exception invoking cached method - " + e.getMessage());
+            _log.log(Level.INFO, "Unexpected exception invoking cached method", e);
          }
          if (result != null) {
             inputMap.put(params, result);
@@ -325,7 +326,8 @@ public class CachingClusterMapImpl extends BaseClusterMap {
             result.setAccessible(true);
             _methods.put(method.toString(), result);
          } catch (Exception e) {
-            _log.log(Level.SEVERE, "Unexpected exception getting cached method", e);
+            _log.log(Level.SEVERE, "VHM: unexpected exception getting cached method - " + e.getMessage());
+            _log.log(Level.INFO, "Unexpected exception getting cached method", e);
          }
       }
       return result;

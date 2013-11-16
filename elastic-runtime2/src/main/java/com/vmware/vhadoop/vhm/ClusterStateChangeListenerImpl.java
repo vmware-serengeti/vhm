@@ -133,7 +133,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
                   processRawVCUpdates(vmDataList);
                }
             } catch (Throwable t) {
-               _log.log(Level.SEVERE, "VHM: unexpected exception in ClusterStateChangeListener", t);
+               _log.log(Level.SEVERE, "VHM: unexpected exception waiting for vCenter updates - " + t.getMessage());
+               _log.log(Level.INFO, "VHM: unexpected exception in ClusterStateChangeListener", t);
                startStopCallback.notifyFailed(ClusterStateChangeListenerImpl.this);
             }
             _log.info("ClusterStateChangeListener stopping...");
@@ -141,7 +142,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          }}, "ClusterSCL_Poll_Thread");
       _mainThread.start();
    }
-   
+
    protected void processRawVCUpdates(List<VMEventData> vmDataList) {
       if (vmDataList == null) {
          if (_started) {

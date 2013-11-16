@@ -45,7 +45,7 @@ public interface ScaleStrategy extends ClusterMapReader {
        * @return A set of all VMChoosers registered with VHM
        */
       Set<VMChooser> getVMChoosers();
-      
+
       /**
        * Return a @VMChooser that matches a specific type
        * @param vmChooser A class representing a type of VMChooser to return
@@ -59,7 +59,7 @@ public interface ScaleStrategy extends ClusterMapReader {
     * @return The key of this scale strategy
     */
    String getKey();
-   
+
    /**
     * A @VMChooserCallback is passed in during initialization
     * @param callback
@@ -99,7 +99,8 @@ public interface ScaleStrategy extends ClusterMapReader {
          try {
             result = localCall();
          } catch (Throwable t) {
-            _log.log(Level.SEVERE, "VHM: unexpected exception while scaling", t);
+            _log.log(Level.SEVERE, "VHM: unexpected exception while scaling - "+ t.getMessage());
+            _log.log(Level.INFO, "VHM: unexpected exception while scaling", t);
          }
          getThreadLocalCompoundStatus().remove();
          return result;
@@ -110,7 +111,7 @@ public interface ScaleStrategy extends ClusterMapReader {
 
    /**
     * Returns a new instance of @ClusterScaleOperation which is invoked by the @ExecutionStrategy
-    * 
+    *
     * @param clusterId The cluster id of the cluster to scale
     * @param events All the events for the cluster that have arrived since the last time the strategy was invoked
     * @param context The @ScaleStrategyContext instance for the cluster
