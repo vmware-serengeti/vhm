@@ -558,7 +558,7 @@ public class VHM implements EventConsumer {
             if (toCompare == null) {
                newestEventMap.put(event.getClass(), event);
             } else {
-               if (toCompare.getTimestamp() >= event.getTimestamp()) {
+               if (toCompare.getTimestamp() > event.getTimestamp()) {
                   toRemove.add(event);
                } else {
                   newestEventMap.put(event.getClass(), event);

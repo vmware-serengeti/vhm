@@ -286,8 +286,8 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertNotNull(tcso.getThreadLocalCompoundStatus());
    }
 
-   private void foo(String clusterId, Set<ClusterScaleCompletionEvent> previousEvents, 
-         TrivialClusterScaleOperation tcso, int assertNumEventsReturned,
+   private void testEventOrdering(String clusterId, Set<ClusterScaleCompletionEvent> previousEvents, 
+         TrivialClusterScaleOperation tcso, int assertNumEventsReturned, int assertHeadOfQueueEventIndex,
          ClusterScaleEvent event0, ClusterScaleEvent event1, ClusterScaleEvent event2) throws InterruptedException {
 
       ClusterScaleEvent[] events = new ClusterScaleEvent[]{event0, event1, event2};
@@ -297,8 +297,8 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       previousEvents.add(waitForClusterScaleCompletionEvent(clusterId, 2000, previousEvents));
       assertNotNull(tcso._events);
       assertEquals(assertNumEventsReturned, tcso._events.size());
-      assertEquals(events[0], tcso._events.iterator().next());
-
+      /* The _events set should be the LinkedHashSet created in VHM.updateOrCreateClusterScaleEventSet */
+      assertTrue(tcso._events.iterator().next() == events[assertHeadOfQueueEventIndex]);
    }
    
    @Test
@@ -308,39 +308,88 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
       
-      String clusterId = deriveClusterIdFromClusterName(_clusterNames.iterator().next());
-      /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
-      TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation();
-      /* Add the test ClusterScaleOperation to the test scale strategy */
-      _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
+      Iterator<String> i = _clusterNames.iterator();
+      String clusterId0 = deriveClusterIdFromClusterName(i.next());
+      String clusterId1 = deriveClusterIdFromClusterName(i.next());
+      String clusterId2 = deriveClusterIdFromClusterName(i.next());
       
-      /* Identical events that are not exclusive should all be consolidated and the first one returned */
-      foo(clusterId, previousEvents, tcso, 1, 
-            new TrivialClusterScaleEvent(clusterId, false), 
-            new TrivialClusterScaleEvent(clusterId, false), 
-            new TrivialClusterScaleEvent(clusterId, false));
+      /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
+      TrivialClusterScaleOperation tcso0 = _trivialScaleStrategy.new TrivialClusterScaleOperation();
+      /* Add the test ClusterScaleOperation to the test scale strategy */
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId0, tcso0);
+
+      TrivialClusterScaleOperation tcso1 = _trivialScaleStrategy.new TrivialClusterScaleOperation();
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId1, tcso1);
+      TrivialClusterScaleOperation tcso2 = _trivialScaleStrategy.new TrivialClusterScaleOperation();
+      _trivialScaleStrategy.setClusterScaleOperation(clusterId2, tcso2);
+
+      /* Identical events that are not exclusive and have different timestamps should all be consolidated
+       * The one that survives should be the first one to be added, regardless of timestamp */
+      int expectedIndex = 0;
+      testEventOrdering(clusterId0, previousEvents, tcso0, 1, expectedIndex,
+            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE-2), 
+            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE));
+      testEventOrdering(clusterId1, previousEvents, tcso1, 1, expectedIndex,
+            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE-2));
+      testEventOrdering(clusterId2, previousEvents, tcso2, 1, expectedIndex,
+            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE));
 
       /* Exclusive identical events should be consolidated in the same way as not exclusive ones */
-      foo(clusterId, previousEvents, tcso, 1,
-            new TrivialClusterScaleEvent(clusterId, true), 
-            new TrivialClusterScaleEvent(clusterId, true), 
-            new TrivialClusterScaleEvent(clusterId, true));
+      expectedIndex = 0;
+      testEventOrdering(clusterId0, previousEvents, tcso0, 1, expectedIndex,
+            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE-2), 
+            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE));
+      testEventOrdering(clusterId1, previousEvents, tcso1, 1, expectedIndex,
+            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE-2));
+      testEventOrdering(clusterId2, previousEvents, tcso2, 1, expectedIndex,
+            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE));
 
-      /* Non exclusive different events should not be consolidated */
-      foo(clusterId, previousEvents, tcso, 3,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId, "routeKey", null, false), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId, "routeKey", null, false), 
-            new TrivialClusterScaleEvent("vm3", "host3", clusterId, "routeKey", null, false));
+      /* Non exclusive different events should not be consolidated - the first one added is the first one returned */
+      expectedIndex = 0;
+      testEventOrdering(clusterId0, previousEvents, tcso0, 3, expectedIndex,
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId0, "routeKey", null, false, Long.MAX_VALUE-2), 
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId0, "routeKey", null, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm3", "host3", clusterId0, "routeKey", null, false, Long.MAX_VALUE));
+      testEventOrdering(clusterId1, previousEvents, tcso1, 3, expectedIndex,
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId1, "routeKey", null, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId1, "routeKey", null, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm3", "host3", clusterId1, "routeKey", null, false, Long.MAX_VALUE-2));
+      testEventOrdering(clusterId2, previousEvents, tcso2, 3, expectedIndex,
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId2, "routeKey", null, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId2, "routeKey", null, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm3", "host3", clusterId2, "routeKey", null, false, Long.MAX_VALUE));
       
-      /* Exclusive different events should be consolidated */
-      foo(clusterId, previousEvents, tcso, 1,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId, "routeKey", null, true), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId, "routeKey", null, true), 
-            new TrivialClusterScaleEvent("vm3", "host3", clusterId, "routeKey", null, true));
+      /* Exclusive different events should be consolidated in timestamp order - the most recent being the most recently  */
+      expectedIndex = 2;
+      testEventOrdering(clusterId0, previousEvents, tcso0, 1, expectedIndex,
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId0, "routeKey", null, true, Long.MAX_VALUE-2), 
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId0, "routeKey", null, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm3", "host3", clusterId0, "routeKey", null, true, Long.MAX_VALUE));
+      expectedIndex = 0;
+      testEventOrdering(clusterId1, previousEvents, tcso1, 1, expectedIndex,
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId1, "routeKey", null, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId1, "routeKey", null, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm3", "host3", clusterId1, "routeKey", null, true, Long.MAX_VALUE-2));
+      /* In the case of identical timestamps, the last one added is the one retained */
+      expectedIndex = 2;
+      testEventOrdering(clusterId2, previousEvents, tcso2, 1, expectedIndex,
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId2, "routeKey", null, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId2, "routeKey", null, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm3", "host3", clusterId2, "routeKey", null, true, Long.MAX_VALUE));
 
-      assertEquals(clusterId, tcso.getClusterId());
-      assertNotNull(tcso.getContext());
-      assertNotNull(tcso.getThreadLocalCompoundStatus());
+      assertEquals(clusterId0, tcso0.getClusterId());
+      assertNotNull(tcso0.getContext());
+      assertNotNull(tcso0.getThreadLocalCompoundStatus());
    }
 
    private class WaitResult {

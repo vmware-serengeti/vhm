@@ -23,6 +23,7 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
    private static int cntr = 0;
    private int _id = ++cntr;
    private boolean _isExclusive;
+   private Long _fixedTimestamp;
 
    public TrivialClusterScaleEvent(String vmId, String hostId, String clusterId, String routeKey, ChannelReporter reporter, boolean isExclusive) {
       super("trivial cluster scale event (test)");
@@ -42,6 +43,17 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
       this(null, null, clusterId, null, null, isExclusive);
    }
 
+   public TrivialClusterScaleEvent(String clusterId, boolean isExclusive, long fixTimestamp) {
+      this(null, null, clusterId, null, null, isExclusive);
+      _fixedTimestamp = fixTimestamp;
+   }
+
+   public TrivialClusterScaleEvent(String vmId, String hostId, String clusterId, String routeKey, 
+         ChannelReporter reporter, boolean isExclusive, long fixTimestamp) {
+      this(vmId, hostId, clusterId, routeKey, reporter, isExclusive);
+      _fixedTimestamp = fixTimestamp;
+   }
+   
    public void ReportBack() {
       if (_reporter != null) {
          _reporter.reportBack(_routeKey);
@@ -56,5 +68,13 @@ public class TrivialClusterScaleEvent extends AbstractClusterScaleEvent {
    @Override
    public boolean isExclusive() {
       return _isExclusive;
+   }
+   
+   @Override
+   public long getTimestamp() {
+      if (_fixedTimestamp == null) {
+         return super.getTimestamp();
+      }
+      return _fixedTimestamp;
    }
 }
