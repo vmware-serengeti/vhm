@@ -53,12 +53,11 @@ import com.vmware.vim.vmomi.client.Client;
 public class VcAdapter implements VCActions {
    private static final Logger _log = Logger.getLogger(VcAdapter.class.getName());
 
-   private static long VC_CONTROL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_CONTROL_CONNECTION_TIMEOUT_MILLIS");
-   private static long VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS");  /* WaitForUpdates will block for at most this period */
-   private static long VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS");   /* Stats collection timeout should be short */
-   private static long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = ExternalizedParameters.get().getLong("SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS");   /* If no clusters are installed, we should be pretty much dormant */
-
-   private static String ALARM_NAME = "Big Data Extensions - compute VM health";
+   private final long VC_CONTROL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_CONTROL_CONNECTION_TIMEOUT_MILLIS");
+   private final long VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_WAIT_FOR_UPDATES_CONNECTION_TIMEOUT_MILLIS");  /* WaitForUpdates will block for at most this period */
+   private final long VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS = ExternalizedParameters.get().getLong("VC_STATS_POLL_CONNECTION_TIMEOUT_MILLIS");   /* Stats collection timeout should be short */
+   private final long SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS = ExternalizedParameters.get().getLong("SLEEP_RETRY_LOOKING_FOR_VALID_CLUSTERS");   /* If no clusters are installed, we should be pretty much dormant */
+   private final String VC_ALARM_NAME_BASE = ExternalizedParameters.get().getString("VC_ALARM_NAME_BASE");
 
    private Client _controlClient; // used for VC control operations and is the parent client for the others
    private Client _waitForUpdateClient;   // used for the main waitForPropertyChange loop
@@ -153,20 +152,20 @@ public class VcAdapter implements VCActions {
          ManagedObjectReference[] existing = manager.getAlarm(root._getRef());
          for (ManagedObjectReference m : existing) {
             Alarm a = _controlClient.createStub(Alarm.class, m);
-            if (a.getInfo().getName().equals(ALARM_NAME)) {
+            if (a.getInfo().getName().startsWith(VC_ALARM_NAME_BASE)) {
                _alarm = a;
                return _alarm;
             }
          }
       } catch (InvalidProperty e) {
-         _log.info("VHM: unable to get reference to alarm "+ALARM_NAME+" on vApp folder "+_rootFolderName);
+         _log.info("VHM: unable to get reference to alarm "+VC_ALARM_NAME_BASE+" on vApp folder "+_rootFolderName);
          _log.log(Level.FINER, "VHM: exception while getting reference to top level alarm", e);
       } catch (NullPointerException e) {
          /* almost any of the values returned from vlsi client or their subsequent calls could be null but
           * will not be most of the time. It's much clearer to just have one catch here than tests on
           * ever access given we do the same thing in response.
           */
-         _log.info("VHM: unable to get reference to alarm "+ALARM_NAME+" on vApp folder "+_rootFolderName);
+         _log.info("VHM: unable to get reference to alarm "+VC_ALARM_NAME_BASE+" on vApp folder "+_rootFolderName);
          _log.log(Level.FINER, "VHM: exception while getting reference to top level alarm", e);
       }
 

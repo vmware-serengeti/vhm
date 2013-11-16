@@ -31,7 +31,8 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	protected final static boolean ON = true;
 	protected final static boolean OFF = false;
 
-	class VM
+	@SuppressWarnings("serial")
+   class VM extends HashMap<String,Object>
 	{
 		String id;
 		String cluster;
@@ -253,8 +254,21 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 
    @Override
    public Long getPowerOnTimeForVm(String vm) {
-      // TODO Auto-generated method stub
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            return (Long)target.get("POWER_ON_TIME");
+         }
+      }
+
       return null;
+   }
+
+   public void setPowerOnTimeForVm(String vm, Long time) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            target.put("POWER_ON_TIME", time);
+         }
+      }
    }
 
    @Override
@@ -293,9 +307,22 @@ public class StandaloneSimpleClusterMap implements ClusterMap
    }
 
    @Override
-   public String getDnsNameForVM(String vmId) {
-      // TODO Auto-generated method stub
+   public String getDnsNameForVM(String vm) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            return (String)target.get("DNS_NAME");
+         }
+      }
+
       return null;
+   }
+
+   public void setDnsNameForVm(String vm, String dnsName) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            target.put("DNS_NAME", dnsName);
+         }
+      }
    }
 
    @Override
@@ -304,16 +331,43 @@ public class StandaloneSimpleClusterMap implements ClusterMap
       return null;
    }
 
+   @SuppressWarnings({ "unchecked" })
    @Override
-   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
-      // TODO Auto-generated method stub
+   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vm) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            return (Map<String, Set<String>>)target.get("NIC_TO_IPADDRESSES_MAP");
+         }
+      }
+
       return null;
    }
 
+   public void setNicAndIpAddressesForVm(String vm, Map<String, Set<String>> nicToAddresses) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            target.put("NIC_TO_IPADDRESSES_MAP", nicToAddresses);
+         }
+      }
+   }
+
    @Override
-   public Long getPowerOffTimeForVm(String vmId) {
-      // TODO Auto-generated method stub
+   public Long getPowerOffTimeForVm(String vm) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            return (Long)target.get("POWER_OFF_TIME");
+         }
+      }
+
       return null;
+   }
+
+   public void setPowerOffTimeForVm(String vm, Long time) {
+      for (VM target : vms) {
+         if (target.id.equals(vm)) {
+            target.put("POWER_OFF_TIME", time);
+         }
+      }
    }
 
    @Override
