@@ -304,4 +304,10 @@ public class ModelClusterMap implements ClusterMap
       // TODO Auto-generated method stub
       return null;
    }
+
+   @Override
+   public String getMasterVmIdForCluster(String clusterId) {
+      // TODO Auto-generated method stub
+      return null;
+   }
 }

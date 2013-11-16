@@ -233,7 +233,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
    }
 
    ClusterInfo getCluster(String clusterId) {
-      if (clusterInfoMapHasData()) {
+      if ((clusterId != null) && clusterInfoMapHasData()) {
          return getClusterInfoMap().get(clusterId);
       }
       return null;

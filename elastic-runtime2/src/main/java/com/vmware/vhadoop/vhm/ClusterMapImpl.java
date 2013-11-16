@@ -96,4 +96,9 @@ public class ClusterMapImpl extends BaseClusterMap {
       return getHadoopInfoForClusterBase(clusterId);
    }
 
+   @Override
+   public String getMasterVmIdForCluster(String clusterId) {
+      return getMasterVmIdForClusterBase(clusterId);
+   }
+
 }

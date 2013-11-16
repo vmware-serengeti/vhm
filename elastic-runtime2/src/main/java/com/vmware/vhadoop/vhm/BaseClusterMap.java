@@ -236,4 +236,14 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
       }
       return null;
    }
+   
+   String getMasterVmIdForClusterBase(String clusterId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
+      ClusterInfo ci = getCluster(clusterId);
+      if (ci != null) {
+         return ci.getMasterMoRef();
+      }
+      return null;
+   }
+
 }

@@ -94,7 +94,9 @@ public interface ClusterMap {
    Long getPowerOffTimeForVm(String vmId);
 
    String getExtraInfo(String clusterId, String key);
-   
+
+   String getMasterVmIdForCluster(String clusterId);
+
    /* Returns NIC name as key and IpAddresses for NIC as value */
    Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId);
    

@@ -135,12 +135,19 @@ public class ClusterMapTest extends AbstractJUnitTest {
    public void getAllKnownClusterIds() {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
-      String[] toTest = _clusterMap.getAllKnownClusterIds();
-      assertEquals(numClusterIds, toTest.length);
-      List<String> testNames = Arrays.asList(toTest);
+      String[] knownClusterIds = _clusterMap.getAllKnownClusterIds();
+      assertEquals(numClusterIds, knownClusterIds.length);
+      List<String> testIds = Arrays.asList(knownClusterIds);
+      
       for (String masterVmName : _masterVmNames) {
-         assertTrue(testNames.contains(getClusterIdForMasterVmName(masterVmName)));
+         String clusterId = getClusterIdForMasterVmName(masterVmName);
+         assertTrue(testIds.contains(clusterId));
+         String masterVmId = _clusterMap.getMasterVmIdForCluster(clusterId);
+         assertEquals(getVmIdFromVmName(masterVmName), masterVmId);
       }
+
+      assertNull(_clusterMap.getMasterVmIdForCluster("bogus"));
+      assertNull(_clusterMap.getMasterVmIdForCluster(null));
    }
 
    @Test
@@ -174,7 +181,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
          String vmId = getVmIdFromVmName(vmName);
          assertEquals(deriveClusterIdFromVmName(vmName), _clusterMap.getClusterIdForVm(vmId));
       }
-
+      
       /* Negative tests */
       assertNull(_clusterMap.getClusterIdForVm("bogus"));
       assertNull(_clusterMap.getClusterIdForVm(null));
@@ -613,5 +620,6 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getExtraInfo("foo", "bar"));
       assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey("foo"));
       assertNull(_clusterMap.validateClusterCompleteness("foo", 0));
+      assertNull(_clusterMap.getMasterVmIdForCluster("foo"));
    }
 }

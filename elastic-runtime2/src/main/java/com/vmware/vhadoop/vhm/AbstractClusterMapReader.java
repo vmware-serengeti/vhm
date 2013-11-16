@@ -132,4 +132,14 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
       }
       getCompoundStatus().addStatus(status);
    }
+   
+   public String getMasterVmIdForCluster(String clusterId) {
+      ClusterMap clusterMap = null;
+      try {
+         clusterMap = getAndReadLockClusterMap();
+         return clusterMap.getMasterVmIdForCluster(clusterId);
+      } finally {
+         unlockClusterMap(clusterMap);
+      }
+   }
 }

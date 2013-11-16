@@ -147,6 +147,12 @@ public class CachingClusterMapImpl extends BaseClusterMap {
       class MethodAccessor {};
       return (HadoopClusterInfo)getCachedObjectFromVmAndClusterList(MethodAccessor.class, clusterId);
    }
+   
+   @Override
+   public String getMasterVmIdForCluster(String clusterId) {
+      class MethodAccessor {};
+      return (String)getCachedObjectFromClusterList(MethodAccessor.class, clusterId);
+   }
 
    @Override
    /* We override this method so that we can add the VMUpdateListener to each VMInfo */
