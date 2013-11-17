@@ -82,7 +82,7 @@ public class ClusterMapImpl extends BaseClusterMap {
    }
 
    @Override
-   public String[] getAllClusterIdsForScaleStrategyKey(String key) {
+   public Set<String> getAllClusterIdsForScaleStrategyKey(String key) {
       return getAllClusterIdsForScaleStrategyKeyBase(key);
    }
 
@@ -99,6 +99,11 @@ public class ClusterMapImpl extends BaseClusterMap {
    @Override
    public String getMasterVmIdForCluster(String clusterId) {
       return getMasterVmIdForClusterBase(clusterId);
+   }
+
+   @Override
+   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
+      return getNicAndIpAddressesForVmBase(vmId);
    }
 
 }

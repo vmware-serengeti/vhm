@@ -48,7 +48,7 @@ public class TestBalancedVMChooser extends AbstractJUnitTest {
 
    @Test
    public void testDisableAll() {
-      String clusters[] = _map.getAllKnownClusterIds();
+      Set<String> clusters = _map.getAllKnownClusterIds();
 
       if (clusters != null) {
          for (String clusterId : clusters) {
@@ -61,7 +61,7 @@ public class TestBalancedVMChooser extends AbstractJUnitTest {
 
    @Test
    public void testEnableAll() {
-      String clusters[] = _map.getAllKnownClusterIds();
+      Set<String> clusters = _map.getAllKnownClusterIds();
 
       if (clusters != null) {
          for (String clusterId : clusters) {

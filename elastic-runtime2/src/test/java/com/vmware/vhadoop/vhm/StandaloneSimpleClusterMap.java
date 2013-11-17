@@ -203,13 +203,13 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	}
 
 	@Override
-	public String[] getAllKnownClusterIds() {
+	public Set<String> getAllKnownClusterIds() {
 		Set<String> ids = new HashSet<String>();
 		for (VM vm : vms) {
 			ids.add(vm.cluster);
 		}
 
-		return ids.toArray(new String[] {});
+		return ids;
 	}
 
 	@Override
@@ -284,7 +284,7 @@ public class StandaloneSimpleClusterMap implements ClusterMap
    }
 
    @Override
-   public String[] getAllClusterIdsForScaleStrategyKey(String key) {
+   public Set<String> getAllClusterIdsForScaleStrategyKey(String key) {
       // TODO Auto-generated method stub
       return null;
    }

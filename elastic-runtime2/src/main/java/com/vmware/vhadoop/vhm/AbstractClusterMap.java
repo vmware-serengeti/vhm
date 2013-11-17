@@ -531,13 +531,6 @@ public abstract class AbstractClusterMap implements ClusterMap {
                _log.finest("Testing "+vminfo.getMyName()+" h="+hostTest+", c="+clusterTest+", p="+powerStateTest);
                if ((vminfo.getVmType().equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
                   result.add(vminfo.getMoRef());
-                  _log.finest("VMInfo values for matching vm (name: "+vminfo.getMyName()+
-                        ", uuid: "+vminfo.getMyUUID()+
-                        ", vmType: "+vminfo.getVmType()+
-                        ", host: "+vminfo.getHostMoRef()+
-                        ". powerState: "+vminfo.getPowerState()+
-                        ", cluster: <%C"+vminfo.getClusterId()+
-                     "%C>, moRef: "+vminfo.getMoRef()+")");
                }
             } catch (NullPointerException e) {
                /* vmInfo._constantData should never be null or have null values.
@@ -552,14 +545,12 @@ public abstract class AbstractClusterMap implements ClusterMap {
                                                           "%C>, moRef: "+vminfo.getMoRef()+")");
             }
          }
-
          if (result.size() > 0) {
-            _log.finest("generateComputeVMList returning set with hashCode: "+result.hashCode()+", and identity hascode: "+System.identityHashCode(result));
+            _log.finest("generateComputeVMList returning set with hashCode: "+result.hashCode()+", and identity hashcode: "+System.identityHashCode(result));
          } else if (result.size() == 0) {
             _log.finest("generateComputeVMList returning null");
          }
-
-         return (result.size() == 0) ? null : result;
+         return (result.size() == 0) ? null : Collections.unmodifiableSet(result);            /* Immutable wrapper */
       }
       return null;
    }
@@ -647,7 +638,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vmInfoMapHasData()) {
          VMInfo vmInfo = getVMInfoMap().get(vmId);
          if (vmInfo != null) {
-            return vmInfo.getHostMoRef();
+            return vmInfo.getHostMoRef();       /* Immutable result */
          }
       }
       return null;
@@ -659,7 +650,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vmInfoMapHasData()) {
          VMInfo vmInfo = getVMInfoMap().get(vmId);
          if (vmInfo != null) {
-            return vmInfo.getClusterId();
+            return vmInfo.getClusterId();       /* Immutable result */
          }
       }
       return null;
@@ -670,16 +661,19 @@ public abstract class AbstractClusterMap implements ClusterMap {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       ClusterInfo ci = getCluster(clusterId);
       if (ci != null) {
-         return ci.getMostRecentCompletionEvent();
+         ClusterScaleCompletionEvent event = ci.getMostRecentCompletionEvent();
+         if (event != null) {
+            return event.immutableCopy();       /* Make immutable copy */
+         }
       }
       return null;
    }
 
    @Override
-   public String[] getAllKnownClusterIds() {
+   public Set<String> getAllKnownClusterIds() {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (clusterInfoMapHasData()) {
-         return getClusterInfoMap().keySet().toArray(new String[0]);
+         return Collections.unmodifiableSet(getClusterInfoMap().keySet());       /* Immutable wrapper */
       }
       return null;
    }
@@ -690,7 +684,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vmInfoMapHasData()) {
          VMInfo vm = getVMInfoMap().get(vmId);
          if (vm != null) {
-            return vm.getvCPUs();
+            return vm.getvCPUs();            /* Immutable result */
          }
       }
       return null;
@@ -702,7 +696,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vmInfoMapHasData()) {
          VMInfo vm = getVMInfoMap().get(vmId);
          if (vm != null) {
-            return vm.getPowerOnTime();
+            return vm.getPowerOnTime();      /* Immutable result */
          }
       }
       return null;
@@ -714,7 +708,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       if (vmInfoMapHasData()) {
          VMInfo vm = getVMInfoMap().get(vmId);
          if (vm != null) {
-            return vm.getPowerOffTime();
+            return vm.getPowerOffTime();     /* Immutable result */
          }
       }
       return null;
@@ -725,20 +719,9 @@ public abstract class AbstractClusterMap implements ClusterMap {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       ClusterInfo ci = getCluster(clusterId);
       if (ci != null) {
-         return ci.getExtraInfoValue(key);
+         return ci.getExtraInfoValue(key);   /* Immutable result */
       }
       return null;
    }
 
-   @Override
-   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
-      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
-      if (vmInfoMapHasData()) {
-         VMInfo vm = getVMInfoMap().get(vmId);
-         if (vm != null) {
-            return vm.getNicAndIpAddressMap();
-         }
-      }
-      return null;
-   }
 }

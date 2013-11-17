@@ -16,6 +16,7 @@
 package com.vmware.vhadoop.vhm.events;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,9 +27,9 @@ import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
 
 public class ClusterScaleDecision extends AbstractNotificationEvent implements ClusterScaleCompletionEvent {
-   private final String _clusterId;
-   private final Map<String, Decision> _decisions;
-   private List<NotificationEvent> _eventsToRequeue;
+   final String _clusterId;
+   Map<String, Decision> _decisions;
+   List<NotificationEvent> _eventsToRequeue;
    
    public ClusterScaleDecision(String clusterId) {
       super(false, true);
@@ -83,5 +84,55 @@ public class ClusterScaleDecision extends AbstractNotificationEvent implements C
    
    public List<NotificationEvent> getEventsToRequeue() {
       return _eventsToRequeue;
+   }
+
+   @Override
+   public ClusterScaleCompletionEvent immutableCopy() {
+      ClusterScaleDecision copy = new ClusterScaleDecision(_clusterId);
+      copy._decisions = (_decisions == null) ? null : Collections.unmodifiableMap(_decisions);
+      copy._eventsToRequeue = (_eventsToRequeue == null) ? null : Collections.unmodifiableList(_eventsToRequeue);
+      return copy;
+   }
+   
+   @Override
+   public String toString() {
+      return "ClusterScaleDecision{clusterId=<%C"+_clusterId+"%C>, decisions="+_decisions+", eventsToRequeue="+_eventsToRequeue+"}";
+   }
+
+   @Override
+   public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((_clusterId == null) ? 0 : _clusterId.hashCode());
+      result = prime * result + ((_decisions == null) ? 0 : _decisions.hashCode());
+      result = prime * result + ((_eventsToRequeue == null) ? 0 : _eventsToRequeue.hashCode());
+      return result;
+   }
+
+   @Override
+   public boolean equals(Object obj) {
+      if (this == obj)
+         return true;
+      if (obj == null)
+         return false;
+      if (getClass() != obj.getClass())
+         return false;
+      ClusterScaleDecision other = (ClusterScaleDecision) obj;
+      if (_clusterId == null) {
+         if (other._clusterId != null)
+            return false;
+      } else if (!_clusterId.equals(other._clusterId))
+         return false;
+      if (_decisions == null) {
+         if (other._decisions != null)
+            return false;
+      } else if (!_decisions.equals(other._decisions))
+         return false;
+      if (_eventsToRequeue == null) {
+         if (other._eventsToRequeue != null)
+            return false;
+      } else if (!_eventsToRequeue.equals(other._eventsToRequeue))
+         return false;
+      return true;
    }
 }

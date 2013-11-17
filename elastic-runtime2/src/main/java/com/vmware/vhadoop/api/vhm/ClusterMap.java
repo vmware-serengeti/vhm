@@ -30,8 +30,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
 
 /* Represents read-only and idempotent methods for ClusterMap
- * Everything returned by this interface should be a deep copy of the ClusterMap data
- * TODO: Check that this is correct */
+ * Everything returned by this interface should be a deep and immutable copy of the ClusterMap data */
 public interface ClusterMap {
 
    public interface ExtraInfoToClusterMapper {
@@ -67,9 +66,9 @@ public interface ClusterMap {
    
    Boolean checkPowerStateOfVm(String vmId, boolean expectedPowerState);
 
-   String[] getAllKnownClusterIds();
+   Set<String> getAllKnownClusterIds();
 
-   String[] getAllClusterIdsForScaleStrategyKey(String key);
+   Set<String> getAllClusterIdsForScaleStrategyKey(String key);
 
    HadoopClusterInfo getHadoopInfoForCluster(String clusterId);
 

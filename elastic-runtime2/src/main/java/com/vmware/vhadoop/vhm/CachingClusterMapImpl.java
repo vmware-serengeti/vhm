@@ -20,6 +20,7 @@ import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VMVariableData;
 /* This is a version of ClusterMap that caches results from public methods
  *
  * Not every ClusterMap method is implemented in this class as some are trivial and not worth caching
+ * Note also that this caching makes the immutability of the objects returned by ClusterMap absolutely critical
  *
  * The caching works as follows:
  *   AbstractClusterMap has two maps: One with information about clusters (ClusterInfo map) and one with information about vms (VMInfo map)
@@ -61,14 +62,7 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    @Override
    public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
       class MethodAccessor {};
-      Set<String> result = (Set<String>)getCachedObjectFromVmList(MethodAccessor.class, clusterId, powerState);
-      if (result != null) {
-         _log.finest("generateComputeVMList returning set with hashCode: "+result.hashCode()+", and identity hascode: "+System.identityHashCode(result));
-      } else {
-         _log.finest("generateComputeVMList returning null");
-      }
-
-      return result;
+      return (Set<String>)getCachedObjectFromVmList(MethodAccessor.class, clusterId, powerState);
    }
 
    @Override
@@ -138,9 +132,9 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    }
 
    @Override
-   public String[] getAllClusterIdsForScaleStrategyKey(String key) {
+   public Set<String> getAllClusterIdsForScaleStrategyKey(String key) {
       class MethodAccessor {};
-      return (String[])getCachedObjectFromVmAndClusterList(MethodAccessor.class, key);
+      return (Set<String>)getCachedObjectFromVmAndClusterList(MethodAccessor.class, key);
    }
 
    @Override
@@ -159,6 +153,12 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    public String getMasterVmIdForCluster(String clusterId) {
       class MethodAccessor {};
       return (String)getCachedObjectFromClusterList(MethodAccessor.class, clusterId);
+   }
+
+   @Override
+   public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
+      class MethodAccessor {};
+      return (Map<String, Set<String>>)getCachedObjectFromVmList(MethodAccessor.class, vmId);
    }
 
    @Override

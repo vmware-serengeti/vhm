@@ -163,11 +163,11 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    
    /* After updating VHM via the CSCL, wait for the updates to appear in ClusterMap */
    private boolean waitForTargetClusterCount(int clusterCount, long timeoutMillis) {
-      String[] clusterIds = null;
+      Set<String> clusterIds = null;
       long pollTimeMillis = 10;
       long maxIterations = timeoutMillis / pollTimeMillis;
       /* VHM may still be in the process of dealing with the events coming from the CSCL, so need to wait for the expected value */
-      while ((clusterIds == null) || (clusterIds.length != clusterCount)) {
+      while ((clusterIds == null) || (clusterIds.size() != clusterCount)) {
          ClusterMap clusterMap = null;
          try {
             clusterMap = getAndReadLockClusterMap();
@@ -254,11 +254,11 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       try {
          clusterMap = getAndReadLockClusterMap();
          assertNotNull(clusterMap);
-         String[] clusterIds = clusterMap.getAllKnownClusterIds();
+         Set<String> clusterIds = clusterMap.getAllKnownClusterIds();
          
          /* Verify that the number of clusters seen by vcActions is reflected in the ClusterMap */
          assertNotNull(clusterIds);
-         assertEquals(numClusters, clusterIds.length);
+         assertEquals(numClusters, clusterIds.size());
       } finally {
          unlockClusterMap(clusterMap);
       }

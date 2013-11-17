@@ -22,7 +22,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -130,18 +129,16 @@ public class ClusterMapTest extends AbstractJUnitTest {
       });
    }
 
-
    @Test
    public void getAllKnownClusterIds() {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
-      String[] knownClusterIds = _clusterMap.getAllKnownClusterIds();
-      assertEquals(numClusterIds, knownClusterIds.length);
-      List<String> testIds = Arrays.asList(knownClusterIds);
+      Set<String> knownClusterIds = _clusterMap.getAllKnownClusterIds();
+      assertEquals(numClusterIds, knownClusterIds.size());
       
       for (String masterVmName : _masterVmNames) {
          String clusterId = getClusterIdForMasterVmName(masterVmName);
-         assertTrue(testIds.contains(clusterId));
+         assertTrue(knownClusterIds.contains(clusterId));
          String masterVmId = _clusterMap.getMasterVmIdForCluster(clusterId);
          assertEquals(getVmIdFromVmName(masterVmName), masterVmId);
       }
@@ -452,8 +449,8 @@ public class ClusterMapTest extends AbstractJUnitTest {
       assertNull(_clusterMap.getExtraInfo(null, "bogus"));
       assertNull(_clusterMap.getExtraInfo("bogus", "bogus"));
 
-      assertEquals(1, _clusterMap.getAllClusterIdsForScaleStrategyKey(OTHER_SCALE_STRATEGY_KEY).length);
-      assertEquals(2, _clusterMap.getAllClusterIdsForScaleStrategyKey(DEFAULT_SCALE_STRATEGY_KEY).length);
+      assertEquals(1, _clusterMap.getAllClusterIdsForScaleStrategyKey(OTHER_SCALE_STRATEGY_KEY).size());
+      assertEquals(2, _clusterMap.getAllClusterIdsForScaleStrategyKey(DEFAULT_SCALE_STRATEGY_KEY).size());
       assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey(null));
       assertNull(_clusterMap.getAllClusterIdsForScaleStrategyKey("bogus"));
    }

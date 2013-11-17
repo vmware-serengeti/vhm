@@ -1,9 +1,11 @@
 package com.vmware.vhadoop.vhm;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import com.vmware.vhadoop.api.vhm.HadoopActions.HadoopClusterInfo;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent.VmType;
@@ -28,7 +30,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       ClusterInfo ci = getCluster(clusterId);
       if ((ci != null) && isClusterViable(clusterId)) {
-         return ci.getScaleStrategyKey();
+         return ci.getScaleStrategyKey();       /* Immutable result */
       }
       return null;
    }
@@ -36,19 +38,19 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
    Set<String> listComputeVMsForClusterAndPowerStateBase(String clusterId, boolean powerState) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if (clusterId != null) {
-         return generateComputeVMList(clusterId, null, powerState);
+         return generateComputeVMList(clusterId, null, powerState);     /* Returns immutable wrapper */
       }
       return null;
    }
 
    Set<String> listComputeVMsForPowerStateBase(boolean powerState) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
-      return generateComputeVMList(null, null, powerState);
+      return generateComputeVMList(null, null, powerState);             /* Returns immutable wrapper */
    }
 
    Set<String> listComputeVMsForClusterBase(String clusterId) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
-      return generateComputeVMList(clusterId, null, null);
+      return generateComputeVMList(clusterId, null, null);              /* Returns immutable wrapper */
    }
 
    Set<String> listHostsWithComputeVMsForClusterBase(String clusterId) {
@@ -63,7 +65,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
                }
             }
          }
-         return (result.size() == 0) ? null : result;
+         return (result.size() == 0) ? null : Collections.unmodifiableSet(result);   /* Immutable wrapper */
       }
       return null;
    }
@@ -71,7 +73,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
    Set<String> listComputeVMsForClusterHostAndPowerStateBase(String clusterId, String hostId, boolean powerState) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if ((clusterId != null) && (hostId != null)) {
-         return generateComputeVMList(clusterId, hostId, powerState);
+         return generateComputeVMList(clusterId, hostId, powerState);     /* Returns immutable wrapper */
       }
       return null;
    }
@@ -84,7 +86,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             String discoveredFolder = ci.getDiscoveredFolderName();            /* Discovered from SerengetiLimitInstruction */
             if (((constantFolder != null) && (constantFolder.equals(clusterFolderName))) ||
                   ((discoveredFolder != null) && (discoveredFolder.equals(clusterFolderName)))) {
-               return ci.getClusterId();
+               return ci.getClusterId();           /* Immutable result */
             }
          }
       }
@@ -97,7 +99,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
          for (String vmId : vmIds) {
             Boolean result = checkPowerStateOfVmBase(vmId, expectedPowerState);
             if ((result == null) || (result == false)) {
-               return result;
+               return result;           /* Immutable result */
             }
          }
          return true;
@@ -113,7 +115,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             if (vm.getPowerState() == null) {
                return null;
             }
-            return vm.getPowerState() == expectedPowerState;
+            return vm.getPowerState() == expectedPowerState;           /* Immutable result */
          } else {
             return null;
          }
@@ -133,7 +135,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             }
          }
          if (results.size() > 0) {
-            return results;
+            return Collections.unmodifiableMap(results);              /* Immutable wrapper */
          }
       }
       return null;
@@ -146,7 +148,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
          if (vminfo != null) {
             String dnsName = vminfo.getDnsName();
             if (assertHasData(dnsName)) {
-               return dnsName;
+               return dnsName;           /* Immutable result */
             }
          }
       }
@@ -165,7 +167,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             Boolean powerState = checkPowerStateOfVm(vi.getMoRef(), true);
             if ((vi != null) && (powerState != null) && powerState) {
                /* Constant and Variable data references are guaranteed to be non-null. iPAddress or dnsName may be null */
-               result = new HadoopClusterInfo(ci.getClusterId(), vi.getDnsName(), ci.getJobTrackerPort());
+               result = new HadoopClusterInfo(ci.getClusterId(), vi.getDnsName(), ci.getJobTrackerPort());    /* Immutable object */
             }
          }
       }
@@ -184,7 +186,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             }
          }
          if (results.size() > 0) {
-            return results;
+            return Collections.unmodifiableMap(results);           /* Immutable wrapper */
          }
       }
       return null;
@@ -201,7 +203,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             }
          }
          if (results.size() > 0) {
-            return results;
+            return Collections.unmodifiableMap(results);           /* Immutable wrapper */
          }
       }
       return null;
@@ -213,14 +215,14 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
          for (VMInfo vminfo : getVMInfoMap().values()) {
             String dnsNameToTest = vminfo.getDnsName();
             if (assertHasData(dnsNameToTest) && (dnsName != null) && dnsNameToTest.equals(dnsName)) {
-               return vminfo.getMoRef();
+               return vminfo.getMoRef();           /* Immutable result */
             }
          }
       }
       return null;
    }
 
-   String[] getAllClusterIdsForScaleStrategyKeyBase(String key) {
+   Set<String> getAllClusterIdsForScaleStrategyKeyBase(String key) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       if ((key != null) && clusterInfoMapHasData())  {
          Set<String> result = new HashSet<String>();
@@ -231,7 +233,7 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
             }
          }
          if (result.size() > 0) {
-            return result.toArray(new String[]{});
+            return Collections.unmodifiableSet(result);           /* Immutable wrapper */
          }
       }
       return null;
@@ -241,7 +243,25 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
       ClusterInfo ci = getCluster(clusterId);
       if (ci != null) {
-         return ci.getMasterMoRef();
+         return ci.getMasterMoRef();           /* Immutable result */
+      }
+      return null;
+   }
+
+   Map<String, Set<String>> getNicAndIpAddressesForVmBase(String vmId) {
+      //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
+      if (vmInfoMapHasData()) {
+         VMInfo vm = getVMInfoMap().get(vmId);
+         if (vm != null) {
+            Map<String, Set<String>> mutable = vm.getNicAndIpAddressMap();
+            if (mutable != null) {
+               Map<String, Set<String>> immutable = new HashMap<String, Set<String>>();
+               for (Entry<String, Set<String>> entry : mutable.entrySet()) {
+                  immutable.put(entry.getKey(), Collections.unmodifiableSet(entry.getValue()));
+               }
+               return Collections.unmodifiableMap(immutable);           /* Immutable wrapper */
+            }
+         }
       }
       return null;
    }

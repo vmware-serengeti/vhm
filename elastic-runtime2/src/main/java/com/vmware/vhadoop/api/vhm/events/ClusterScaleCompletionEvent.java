@@ -58,4 +58,6 @@ public interface ClusterScaleCompletionEvent extends NotificationEvent {
    Set<String> getVMsForDecision(Decision decision);
    
    void requeueEventForCluster(NotificationEvent event);
+
+   ClusterScaleCompletionEvent immutableCopy();
 }
