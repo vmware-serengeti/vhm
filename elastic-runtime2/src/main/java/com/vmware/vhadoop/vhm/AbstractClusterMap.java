@@ -47,10 +47,10 @@ import com.vmware.vhadoop.vhm.events.VmUpdateEvent;
  * The writer of ClusterMap will block until the readers have finished reading and will block new readers until it has finished updating
  * VHM controls the multi-threaded access to ClusterMap through ClusterMapAccess.
  * There should be no need for synchronization in this class provided this model is adhered to
- * 
+ *
  * Due to the introduction of CachingClusterMapImpl, there are some simple rules that must be adhered to in ClusterMap code
  * 1) _vms and _clusters should never be accessed directly. Only through the get/update methods
- * 2) Any call to getClusterInfoMap or getVMInfoMap must be preceded somewhere in the call stack 
+ * 2) Any call to getClusterInfoMap or getVMInfoMap must be preceded somewhere in the call stack
  *      by a call to clusterInfoMapHasData or vmInfoMapHasData which should gate access to the get methods. This is checked.
  * 3) _vms and _clusters have been sub-classed to intercept access to methods which mutate the maps - if removeAll, putAll or other
  *      methods need to be used in future, ensure that these are also intercepted
@@ -63,24 +63,24 @@ public abstract class AbstractClusterMap implements ClusterMap {
 
    private final Map<String, ClusterInfo> _clusters;
    private final Map<String, VMInfo> _vms;
-   
+
    private VMCollectionUpdateListener _vmCollectionUpdateListener;
    private ClusterCollectionUpdateListener _clusterCollectionUpdateListener;
    private final Map<String, ScaleStrategy> _scaleStrategies = new HashMap<String, ScaleStrategy>();
-   
+
    private final ExtraInfoToClusterMapper _extraInfoMapper;
 //   private final Random _random = new Random();     /* Uncomment to do random failure testing */
 //   private final int FAILURE_FACTOR = 20;
 
    final Map<String, DataCheck> _dataCheckMap = Collections.synchronizedMap(new HashMap<String, DataCheck>());
-   
+
    class DataCheck {
       boolean _vmInfoMapChecked;
       int _vmInfoMapAccessCount;
       boolean _clusterInfoMapChecked;
       int _clusterInfoMapAccessCount;
    }
-   
+
    Map<String, ClusterInfo> getClusterInfoMap() {
       DataCheck dataCheck = _dataCheckMap.get(Thread.currentThread().getName());
       if ((dataCheck == null) || !dataCheck._clusterInfoMapChecked) {
@@ -92,7 +92,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
       return _clusters;
    }
-   
+
    Map<String, VMInfo> getVMInfoMap() {
       DataCheck dataCheck = _dataCheckMap.get(Thread.currentThread().getName());
       if ((dataCheck == null) || !dataCheck._vmInfoMapChecked) {
@@ -104,7 +104,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
       return _vms;
    }
-   
+
    private DataCheck getDataCheck(String threadName) {
       DataCheck dataCheck = _dataCheckMap.get(threadName);
       if (dataCheck == null) {
@@ -113,7 +113,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
       return dataCheck;
    }
-   
+
    boolean clusterInfoMapHasData() {
       boolean result = assertHasData(_clusters);
       if (result) {
@@ -126,7 +126,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
       return result;
    }
-   
+
    boolean vmInfoMapHasData() {
       boolean result = assertHasData(_vms);
       if (result) {
@@ -139,19 +139,19 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
       return result;
    }
-   
+
    private void updateClusterInfoMap(String clusterId, ClusterInfo clusterInfo) {
       if (_clusters != null) {
          _clusters.put(clusterId, clusterInfo);
       }
    }
-   
+
    private void updateVMInfoMap(String vmId, VMInfo vmInfo) {
       if (_vms != null) {
          _vms.put(vmId, vmInfo);
       }
    }
-   
+
    @SuppressWarnings("serial")
    AbstractClusterMap(ExtraInfoToClusterMapper mapper) {
       _extraInfoMapper = mapper;
@@ -184,7 +184,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
          }
       };
    }
-   
+
    VMInfo createVMInfo(String moRef, VMConstantData constantData,
          VMVariableData variableData, String clusterId) {
       VMInfo vmInfo = new VMInfo(moRef, constantData, variableData, clusterId);
@@ -192,14 +192,14 @@ public abstract class AbstractClusterMap implements ClusterMap {
             new String[]{moRef, moRef, clusterId, constantData.toString(), variableData.toString()});
       return vmInfo;
    }
-   
+
    ClusterInfo createClusterInfo(String clusterId, SerengetiClusterConstantData constantData) {
       ClusterInfo clusterInfo = new ClusterInfo(clusterId, constantData);
       _log.log(Level.FINE, "Creating new ClusterInfo <%%C%s%%C>(%s). %s",
             new String[]{clusterId, clusterId, constantData.toString()});
       return clusterInfo;
    }
-   
+
    void setVMCollectionUpdateListener(VMCollectionUpdateListener listener) {
       _vmCollectionUpdateListener = listener;
    }
@@ -322,7 +322,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: adding record for VM <%V"+vmId+"%V>");
       return clusterId;
    }
-   
+
    private VMInfo createNewVM(String vmId, VMConstantData constantData, VMVariableData variableData, String clusterId) {
       if (vmInfoMapHasData() && (getVMInfoMap().get(vmId) != null)) {
          return null;
@@ -371,7 +371,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
          String myName = variableData._myName;
          Boolean powerState = variableData._powerState;
          Integer vCPUs = variableData._vCPUs;
-         
+
          clusterId = vi.getClusterId();
          if (testForVMUpdate(vi.getHostMoRef(), hostMoRef, vmId, "hostMoRef")) {
             vi.setHostMoRef(hostMoRef);
@@ -526,10 +526,18 @@ public abstract class AbstractClusterMap implements ClusterMap {
             try {
                boolean hostTest = (hostId == null) ? true : (hostId.equals(vminfo.getHostMoRef()));
                boolean clusterTest = (clusterId == null) ? true : (vminfo.getClusterId().equals(clusterId));
-               boolean powerStateTest = (powerState == null) ? true : (vminfo.getPowerState() == powerState);
+               boolean powerStateTest = (powerState == null) ? true : (vminfo.getPowerState().equals(powerState));
+               _log.finest("Inputs: clusterId: "+clusterId+", hostId: "+hostId+", powerState: "+powerState);
                _log.finest("Testing "+vminfo.getMyName()+" h="+hostTest+", c="+clusterTest+", p="+powerStateTest);
                if ((vminfo.getVmType().equals(VmType.COMPUTE)) && hostTest && clusterTest && powerStateTest) {
                   result.add(vminfo.getMoRef());
+                  _log.finest("VMInfo values for matching vm (name: "+vminfo.getMyName()+
+                        ", uuid: "+vminfo.getMyUUID()+
+                        ", vmType: "+vminfo.getVmType()+
+                        ", host: "+vminfo.getHostMoRef()+
+                        ". powerState: "+vminfo.getPowerState()+
+                        ", cluster: <%C"+vminfo.getClusterId()+
+                     "%C>, moRef: "+vminfo.getMoRef()+")");
                }
             } catch (NullPointerException e) {
                /* vmInfo._constantData should never be null or have null values.
@@ -544,6 +552,13 @@ public abstract class AbstractClusterMap implements ClusterMap {
                                                           "%C>, moRef: "+vminfo.getMoRef()+")");
             }
          }
+
+         if (result.size() > 0) {
+            _log.finest("generateComputeVMList returning set with hashCode: "+result.hashCode()+", and identity hascode: "+System.identityHashCode(result));
+         } else if (result.size() == 0) {
+            _log.finest("generateComputeVMList returning null");
+         }
+
          return (result.size() == 0) ? null : result;
       }
       return null;
@@ -714,7 +729,7 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
       return null;
    }
-   
+
    @Override
    public Map<String, Set<String>> getNicAndIpAddressesForVm(String vmId) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}

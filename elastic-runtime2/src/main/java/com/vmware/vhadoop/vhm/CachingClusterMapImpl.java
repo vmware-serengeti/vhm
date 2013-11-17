@@ -61,7 +61,14 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    @Override
    public Set<String> listComputeVMsForClusterAndPowerState(String clusterId, boolean powerState) {
       class MethodAccessor {};
-      return (Set<String>)getCachedObjectFromVmList(MethodAccessor.class, clusterId, powerState);
+      Set<String> result = (Set<String>)getCachedObjectFromVmList(MethodAccessor.class, clusterId, powerState);
+      if (result != null) {
+         _log.finest("generateComputeVMList returning set with hashCode: "+result.hashCode()+", and identity hascode: "+System.identityHashCode(result));
+      } else {
+         _log.finest("generateComputeVMList returning null");
+      }
+
+      return result;
    }
 
    @Override
@@ -147,7 +154,7 @@ public class CachingClusterMapImpl extends BaseClusterMap {
       class MethodAccessor {};
       return (HadoopClusterInfo)getCachedObjectFromVmAndClusterList(MethodAccessor.class, clusterId);
    }
-   
+
    @Override
    public String getMasterVmIdForCluster(String clusterId) {
       class MethodAccessor {};
@@ -274,11 +281,13 @@ public class CachingClusterMapImpl extends BaseClusterMap {
             _log.log(Level.INFO, "Unexpected exception invoking cached method", e);
          }
          if (result != null) {
+            _log.finer("Caching new result from "+methodName+"; hashcode="+result.hashCode()+", identity hashcode="+System.identityHashCode(result));
             inputMap.put(params, result);
          }
       } else {
-         _log.finer("Returning cached result from "+methodName);
+         _log.finer("Returning cached result from "+methodName+"; hashcode="+result.hashCode()+", identity hashcode="+System.identityHashCode(result));
       }
+
       return result;
    }
 

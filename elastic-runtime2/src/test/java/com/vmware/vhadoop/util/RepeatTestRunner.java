@@ -70,10 +70,10 @@ public class RepeatTestRunner extends BlockJUnit4ClassRunner
             statement.evaluate();
          } catch (AssumptionViolatedException e) {
             eachNotifier.addFailedAssumption(e);
-            return;
+//            return;
          } catch (Throwable e) {
             eachNotifier.addFailure(e);
-            return;
+//            return;
          } finally {
             eachNotifier.fireTestFinished();
          }
