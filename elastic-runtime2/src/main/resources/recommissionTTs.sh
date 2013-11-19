@@ -53,12 +53,15 @@ isActive()
 {
     ttList=("${!1}")
     tt=tracker_"$2"
-    
-    for ttData in ${ttList[@]}; do	
-	activeTT=`echo $ttData | cut -d: -f1`	
-	if [ "$activeTT" = "$tt" ]; then
-		return 1
-	fi
+
+    for ttData in ${ttList[@]}; do
+        activeTT=`echo $ttData | cut -d: -f1`
+# Depending on network configuration, we may get a trailing period for TT dnsname
+# Currently checking in active TT list both with and without trailing period
+# TODO: remove trailing period check once hadoop versions (e.g., Intel/GPHD)/Serengeti fix this
+        if [[ "$activeTT" = "$tt" || "$activeTT" = "$tt." ]]; then
+                return 1
+        fi
     done
 
     return 0

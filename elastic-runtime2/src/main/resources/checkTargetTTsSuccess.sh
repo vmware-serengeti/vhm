@@ -172,7 +172,10 @@ printActiveTTs()
     ttList=("${!1}")
 
     for tt in ${ttList[@]}; do
-	ttName=`echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement`
+# Depending on network configuration, we may get a trailing period for TT dnsname
+# Currently removing the trailing period, if present (using sed)
+# TODO: remove this change once hadoop versions (e.g., Intel/GPHD)/Serengeti fix this
+	ttName=`echo "$tt" | cut -d: -f1 | cut -d_ -f1 --complement | sed s/[.]$//`
 	echo "TT: $ttName" >&6
     done
 }
