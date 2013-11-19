@@ -83,6 +83,12 @@ public class LogFormatter extends Formatter {
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy MMM dd HH:mm:ss.SSS");
       result.append(sdf.format(new Date()));
 
+      if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+         result.append(" **");
+      } else {
+         result.append("   ");
+      }
+
       if (decorated) {
          result.append(" [").append(Thread.currentThread().getName()).append("-").append(name);
          /* Fine logging is for method entry/exit so we add the method name */
@@ -92,9 +98,9 @@ public class LogFormatter extends Formatter {
          }
          result.append("] ");
       } else {
-         result.append("   ");
+         result.append(" ");
       }
-      
+
       Object[] params = record.getParameters();
       String rawMessage = null;
       if ((params != null) && (params.length > 0)) {
