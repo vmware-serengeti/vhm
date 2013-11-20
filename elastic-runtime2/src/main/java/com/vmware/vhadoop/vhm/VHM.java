@@ -99,11 +99,11 @@ public class VHM implements EventConsumer {
       _vmChoosers = new HashSet<VMChooser>();
       _eventInjectors = new HashSet<EventInjector>();
    }
-   
+
    public void registerHealthMonitor(HealthMonitor healthMonitor) {
       _healthMonitor = healthMonitor;
    }
-   
+
    public void registerCollaborator(VHMCollaborator collaborator) {
       if (collaborator instanceof VMChooser) {
          _vmChoosers.add((VMChooser)collaborator);
@@ -636,7 +636,7 @@ public class VHM implements EventConsumer {
             }
          });
       }
-      
+
       /* Event injection happens immediately after ClusterMap has been updated and allows collaborators to inject derived events to be processed */
       Set<NotificationEvent> allInjectedEvents = new LinkedHashSet<NotificationEvent>();
       for (NotificationEvent event : newRequeuedAndInjectedEvents) {
@@ -653,7 +653,7 @@ public class VHM implements EventConsumer {
       newRequeuedAndInjectedEvents.addAll(allInjectedEvents);
 
       /* events that indicate a change in health status for a cluster */
-      Set<ClusterHealthEvent> healthEvents = getClusterHealthEvents(events);
+      Set<ClusterHealthEvent> healthEvents = getClusterHealthEvents(newRequeuedAndInjectedEvents);
       if ((_healthMonitor != null) && (healthEvents != null)) {
          _healthMonitor.handleHealthEvents(_vcActions, healthEvents);
       }
