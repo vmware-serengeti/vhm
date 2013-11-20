@@ -20,7 +20,7 @@ package com.vmware.vhadoop.api.vhm;
  * ClusterMapReader provides a simple multiple-reader single-writer locking mechanism via the ClusterMapAccess interface
  * A ClusterMapReader can only be initialized with a reference to another ClusterMapReader - in this way, one reader can hand access to others
  */
-public interface ClusterMapReader {
+public interface ClusterMapReader extends VHMCollaborator {
    
    public static final String POWER_STATE_CHANGE_STATUS_KEY = "blockOnPowerStateChange";
 

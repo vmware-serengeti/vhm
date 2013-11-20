@@ -347,7 +347,7 @@ public class BootstrapMain
          return null;
       }
       for (VMChooser vmChooser : getVMChoosersToRegister()) {
-         vhm.registerVMChooser(vmChooser);
+         vhm.registerCollaborator(vmChooser);
       }
 
       return vhm;

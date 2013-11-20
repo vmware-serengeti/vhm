@@ -20,6 +20,8 @@ import java.util.LinkedHashSet;
 import java.util.PriorityQueue;
 import java.util.Set;
 
+import com.vmware.vhadoop.api.vhm.VHMCollaborator;
+
 /**
  * VMChooser represents an abstraction for choosing VMs from a cluster to be enabled or disabled
  * A VMChooser must implement either a choosing strategy, a ranking strategy or both.
@@ -27,7 +29,7 @@ import java.util.Set;
  * A VMChooser is able to choose VMs based on its own particular private knowledge and this may be combined
  *   with the input from other VMChoosers
  */
-public interface VMChooser {
+public interface VMChooser extends VHMCollaborator {
 
    /**
     * A tuple that associates a rank with a VM id and contains useful utility methods

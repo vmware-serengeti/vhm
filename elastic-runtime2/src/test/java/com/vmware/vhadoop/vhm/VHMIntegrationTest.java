@@ -145,7 +145,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
             _strategyMapper, new ThreadLocalCompoundStatus());
       assertTrue(_vhm.registerEventProducer(_clusterStateChangeListener));
       assertTrue(_vhm.registerEventProducer(this));
-      _vhm.registerVMChooser(new DumbVMChooser());
+      _vhm.registerCollaborator(new DumbVMChooser());
       _vhm.start();
    }
 

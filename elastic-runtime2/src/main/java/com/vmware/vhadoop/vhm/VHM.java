@@ -33,17 +33,17 @@ import java.util.logging.Logger;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
-import com.vmware.vhadoop.api.vhm.HealthManager;
-import com.vmware.vhadoop.api.vhm.PolicyMonitor;
+import com.vmware.vhadoop.api.vhm.HealthMonitor;
 import com.vmware.vhadoop.api.vhm.VCActions;
+import com.vmware.vhadoop.api.vhm.VHMCollaborator;
 import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterStateChangeEvent;
 import com.vmware.vhadoop.api.vhm.events.EventConsumer;
+import com.vmware.vhadoop.api.vhm.events.EventInjector;
 import com.vmware.vhadoop.api.vhm.events.EventProducer;
 import com.vmware.vhadoop.api.vhm.events.NotificationEvent;
-import com.vmware.vhadoop.api.vhm.events.PolicyViolationEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy.VMChooserCallback;
 import com.vmware.vhadoop.api.vhm.strategy.VMChooser;
@@ -70,9 +70,9 @@ public class VHM implements EventConsumer {
    private final VCActions _vcActions;
    private final MultipleReaderSingleWriterClusterMapAccess _clusterMapAccess;
    private final ClusterMapReader _parentClusterMapReader;
-   private HealthManager _healthManager;
-   private PolicyMonitor _policyMonitor;
    private final Set<VMChooser> _vmChoosers;
+   private final Set<EventInjector> _eventInjectors;
+   private HealthMonitor _healthMonitor;
    private volatile boolean _running = false;
    private volatile boolean _stopped = true;
 
@@ -97,32 +97,23 @@ public class VHM implements EventConsumer {
          throw new RuntimeException("Fatal error registering ThreadPoolExecutionStrategy as an event producer");
       }
       _vmChoosers = new HashSet<VMChooser>();
+      _eventInjectors = new HashSet<EventInjector>();
    }
-
-   /* It is anticipated that this will only be called during initialization */
-   public void registerHealthManager(HealthManager healthManager) {
-   	if (_healthManager == null) {
-         _healthManager = healthManager;
-         registerVMChooser(_healthManager);
-      }
+   
+   public void registerHealthMonitor(HealthMonitor healthMonitor) {
+      _healthMonitor = healthMonitor;
    }
-
-   /* It is anticipated that this will only be called during initialization */
-   public void registerPolicyMonitor(PolicyMonitor policyMonitor) {
-      if (_policyMonitor == null) {
-         _policyMonitor = policyMonitor;
-         if (_policyMonitor instanceof ClusterMapReader) {
-            ((ClusterMapReader)_policyMonitor).initialize(_parentClusterMapReader);
-         }
+   
+   public void registerCollaborator(VHMCollaborator collaborator) {
+      if (collaborator instanceof VMChooser) {
+         _vmChoosers.add((VMChooser)collaborator);
       }
-   }
-
-   /* It is anticipated that this will only be called during initialization */
-   public void registerVMChooser(VMChooser vmChooser) {
-      if (vmChooser instanceof ClusterMapReader) {
-         ((ClusterMapReader)vmChooser).initialize(_parentClusterMapReader);
+      if (collaborator instanceof EventInjector) {
+         _eventInjectors.add((EventInjector)collaborator);
       }
-      _vmChoosers.add(vmChooser);
+      if (collaborator instanceof ClusterMapReader) {
+         ((ClusterMapReader)collaborator).initialize(_parentClusterMapReader);
+      }
    }
 
    private void initScaleStrategies(ScaleStrategy[] scaleStrategies) {
@@ -307,23 +298,6 @@ public class VHM implements EventConsumer {
       }
    }
 
-   private void injectDerivedEvents(NotificationEvent event) {
-      if (_healthManager != null) {
-         Set<ClusterHealthEvent> healthEvents = _healthManager.checkHealth(event);
-         if (healthEvents != null) {
-            _log.info("HealthManager adding health events to queue: "+healthEvents);
-            _eventQueue.addAll(healthEvents);
-         }
-      }
-      if (_policyMonitor != null) {
-         Set<PolicyViolationEvent> policyViolations = _policyMonitor.enforcePolicy(event);
-         if (policyViolations != null) {
-            _log.info("PolicyMonitor adding policy violations to queue: "+policyViolations);
-            _eventQueue.addAll(policyViolations);
-         }
-      }
-   }
-
    /* This can be called by multiple threads */
    @Override
    public void placeEventOnQueue(NotificationEvent event) {
@@ -333,7 +307,6 @@ public class VHM implements EventConsumer {
       if (event != null) {
          synchronized(_eventQueue) {
             addEventToQueue(event);
-            injectDerivedEvents(event);
             _eventQueue.notify();
          }
       }
@@ -360,7 +333,6 @@ public class VHM implements EventConsumer {
       synchronized(_eventQueue) {
          for (NotificationEvent event : events) {
             addEventToQueue(event);
-            injectDerivedEvents(event);
          }
          _eventQueue.notify();
       }
@@ -620,7 +592,7 @@ public class VHM implements EventConsumer {
 
    /* When events are polled, this is the first method that gets the opportunity to triage them */
    private void handleEvents(Set<NotificationEvent> events) {
-      final Set<NotificationEvent> newAndRequeuedEvents = new LinkedHashSet<NotificationEvent>(events);
+      final Set<NotificationEvent> newRequeuedAndInjectedEvents = new LinkedHashSet<NotificationEvent>(events);
 
       /* addRemoveEvents are events that affect the shape of a cluster */
       final Set<ClusterStateChangeEvent> addRemoveEvents = getClusterAddRemoveEvents(events);
@@ -634,9 +606,6 @@ public class VHM implements EventConsumer {
       /* clusterScaleEvents are events suggesting the scaling up or down of a cluster */
       /* (we really want to ensure that no null clusterIds get added to clusterScaleEvents in the event of an error) */
       final Map<String, Set<ClusterScaleEvent>> clusterScaleEvents = new HashMap<String, Set<ClusterScaleEvent>>();
-
-      /* events that indicate a change in health status for a cluster */
-      final Set<ClusterHealthEvent> healthEvents = getClusterHealthEvents(events);
 
       /* ClusterMap is updated by VHM based on events that come in from the ClusterStateChangeListener
        * The first thing we do here is update ClusterMap to ensure that the latest state is reflected ASAP
@@ -658,7 +627,7 @@ public class VHM implements EventConsumer {
                      List<NotificationEvent> eventsToRequeue = ((ClusterScaleDecision)event).getEventsToRequeue();
                      if (eventsToRequeue != null) {
                         _log.info("Requeuing event(s) from ClusterScaleCompletionEvent: "+eventsToRequeue);
-                        newAndRequeuedEvents.addAll(eventsToRequeue);
+                        newRequeuedAndInjectedEvents.addAll(eventsToRequeue);
                      }
                   }
                   _clusterMap.handleCompletionEvent(event);
@@ -667,12 +636,29 @@ public class VHM implements EventConsumer {
             }
          });
       }
+      
+      /* Event injection happens immediately after ClusterMap has been updated and allows collaborators to inject derived events to be processed */
+      Set<NotificationEvent> allInjectedEvents = new LinkedHashSet<NotificationEvent>();
+      for (NotificationEvent event : newRequeuedAndInjectedEvents) {
+         for (EventInjector eventInjector : _eventInjectors) {
+            Set<? extends NotificationEvent> newEvents = eventInjector.processEvent(event);
+            if (newEvents != null) {
+               for (NotificationEvent injectedEvent : newEvents) {
+                  _log.info(eventInjector.getName()+" injecting new event "+injectedEvent+" in response to event "+event);
+               }
+               allInjectedEvents.addAll(newEvents);
+            }
+         }
+      }
+      newRequeuedAndInjectedEvents.addAll(allInjectedEvents);
 
-      if ((_healthManager != null) && (healthEvents != null)) {
-         _healthManager.getHealthMonitor().handleHealthEvents(_vcActions, healthEvents);
+      /* events that indicate a change in health status for a cluster */
+      Set<ClusterHealthEvent> healthEvents = getClusterHealthEvents(events);
+      if ((_healthMonitor != null) && (healthEvents != null)) {
+         _healthMonitor.handleHealthEvents(_vcActions, healthEvents);
       }
 
-      getQueuedScaleEventsForCluster(newAndRequeuedEvents, clusterScaleEvents);
+      getQueuedScaleEventsForCluster(newRequeuedAndInjectedEvents, clusterScaleEvents);
       /* If there are scale events to handle, we need to invoke the scale strategies for each cluster
        * The ordering in which we process the clusters doesn't matter as they will be done concurrently */
       if (clusterScaleEvents.size() > 0) {

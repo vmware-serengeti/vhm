@@ -79,7 +79,7 @@ public class PopulateClusterMap {
 
       _vhm.registerEventProducer(_cscl);
       _vhm.registerEventProducer(_mqClient);
-      _vhm.registerVMChooser(new DumbVMChooser());
+      _vhm.registerCollaborator(new DumbVMChooser());
 
       _vhm.start();
 
