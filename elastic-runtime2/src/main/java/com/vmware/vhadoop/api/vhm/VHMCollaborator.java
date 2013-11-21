@@ -14,6 +14,14 @@
 ***************************************************************************/
 package com.vmware.vhadoop.api.vhm;
 
+/**
+ * Marker interface for any component that's a general purpose VHMCollaborator
+ * There are some components that implement many different interfaces which need to be registered with VHM
+ *   Example interfaces are ClusterMapReader, VMChooser, EventInjector etc.
+ * Rather than have multiple register calls for all the different types, there is a single call VHM.registerCollaborator()
+ *   which will ensure that the component is appropriately hooked in to at all the right points
+ * This interface should only ever be extended by other interfaces, not implemented directly by classes
+ */
 public interface VHMCollaborator {
 
 }

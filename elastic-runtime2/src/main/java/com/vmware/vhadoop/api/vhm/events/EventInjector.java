@@ -18,8 +18,25 @@ import java.util.Set;
 
 import com.vmware.vhadoop.api.vhm.VHMCollaborator;
 
+/**
+ * An EventInjector is a VHM collaborator that gets to peek at new events and inject further new events in response
+ * 
+ * VHM can have any number of event injectors registered and the ordering in which they are registered is irrelevant
+ *   since they do not get to see each others injected events
+ * Events are passed to the EventInjectors after ClusterStateChangeEvents have been processed in ClusterMap but before
+ *   any other events have been processed. Any EventInjectors that are also ClusterMapReaders therefore get to see the
+ *   net effect the event(s) have had on ClusterMap by the time they are being processed.
+ * 
+ * @author bcorrie
+ *
+ */
 public interface EventInjector extends VHMCollaborator {
 
+   /**
+    * Opportunity to peek at a new Event being processed by ClusterMap
+    * Method should return a set of new events or null
+    * New events returned do not initially go onto the VHM event queue but may end up being re-queued if they cannot be processed
+    */
    public Set<? extends NotificationEvent> processEvent(NotificationEvent event);
 
    public String getName();
