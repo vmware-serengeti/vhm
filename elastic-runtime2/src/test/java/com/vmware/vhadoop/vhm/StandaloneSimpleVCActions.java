@@ -23,11 +23,8 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import com.vmware.vhadoop.api.vhm.VCActions;
-import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
-import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.Event.EventSeverity;
-import com.vmware.vim.binding.vim.event.EventManager;
 
 public class StandaloneSimpleVCActions implements VCActions {
    Map<String, Object[]> _latestArgs = new HashMap<String, Object[]>();
@@ -113,36 +110,18 @@ public class StandaloneSimpleVCActions implements VCActions {
    }
 
    @Override
-   public EventManager getEventManager() {
-      _latestArgs.put("getEventManager", new Object[]{});
-      return null;
-   }
-
-   @Override
-   public AlarmManager getAlarmManager() {
-      _latestArgs.put("getAlarmManager", new Object[]{});
-      return null;
-   }
-
-   @Override
-   public ExtensionManager getExtensionManager() {
-      _latestArgs.put("getExtensionManager", new Object[]{});
-      return null;
-   }
-
-   @Override
-   public void log(EventSeverity level, String vmMoRef, String message) {
+   public boolean logEventForVM(EventSeverity level, String vmMoRef, String message) {
       _latestArgs.put("log", new Object[]{});
-      return;
+      return true;
    }
 
    @Override
    public void raiseAlarm(String vmMoRef, String detail) {
-      log(EventSeverity.warning, vmMoRef, detail);
+      logEventForVM(EventSeverity.warning, vmMoRef, detail);
    }
 
    @Override
    public void clearAlarm(String vmMoRef) {
-      log(EventSeverity.info, vmMoRef, "all clear");
+      logEventForVM(EventSeverity.info, vmMoRef, "all clear");
    }
 }

@@ -45,6 +45,8 @@ import com.vmware.vhadoop.util.CompoundStatus;
 import com.vmware.vhadoop.util.ExternalizedParameters;
 import com.vmware.vhadoop.util.LogFormatter;
 import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
+import com.vmware.vhadoop.util.VhmLevel;
+import com.vmware.vim.binding.impl.vim.event.EventExImpl;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
 import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.Folder;
@@ -56,9 +58,13 @@ import com.vmware.vim.binding.vim.Task;
 import com.vmware.vim.binding.vim.TaskInfo;
 import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
+import com.vmware.vim.binding.vim.alarm.Alarm;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
+import com.vmware.vim.binding.vim.event.EventEx;
 import com.vmware.vim.binding.vim.event.EventManager;
+import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.fault.HostConnectFault;
+import com.vmware.vim.binding.vim.fault.InvalidEvent;
 import com.vmware.vim.binding.vim.fault.VimFault;
 import com.vmware.vim.binding.vim.net.IpConfigInfo;
 import com.vmware.vim.binding.vim.net.IpConfigInfo.IpAddress;
@@ -140,8 +146,13 @@ public class VcVlsi {
    static final String WAIT_FOR_UPDATES_INVALID_PROPERTY_STATUS = "VC_WAIT_FOR_UPDATES_INVALID_PROPERTY";
    static final String WAIT_FOR_UPDATES_NO_CLUSTERS = "VC_WAIT_FOR_UPDATES_NO_CLUSTERS";
 
+   private final String VC_ALARM_NAME_BASE = ExternalizedParameters.get().getString("VC_ALARM_NAME_BASE");
+
    private ThreadLocalCompoundStatus _threadLocalStatus;
-   private PropertyCollector _waitingOnPc;
+   private PropertyCollector _blockedPropertyCollectorSingleton;     /* Only one thread will ever be blocked on the PropertyCollector */
+   private Object _propertyCollectorLock = new Object();
+   private Alarm _alarmSingleton;
+   private Object _alarmLock = new Object();
 
    static {
       VmodlContext.initContext(new String[] { "com.vmware.vim.binding.vim" });
@@ -280,10 +291,6 @@ public class VcVlsi {
       }
 
       return newClient;
-   }
-
-   public void resetConnection() {
-      _waitingOnPc = null;
    }
 
    public boolean testConnection(Client vcClient) {
@@ -499,10 +506,15 @@ public class VcVlsi {
       WaitOptions waitOptions = new WaitOptions();
       waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
 
-      _waitingOnPc = propCollector;
-      updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
       synchronized(propCollector) {
-         _waitingOnPc = null;
+         _blockedPropertyCollectorSingleton = propCollector;
+      }
+      try {
+         updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
+      } finally {
+         synchronized(propCollector) {
+            _blockedPropertyCollectorSingleton = null;
+         }
       }
       return updateSet;
    }
@@ -833,9 +845,9 @@ public class VcVlsi {
    }
 
    public void cancelWaitForUpdates() {
-      if (_waitingOnPc != null) {
-         synchronized(_waitingOnPc) {
-            _waitingOnPc.cancelWaitForUpdates();
+      synchronized(_propertyCollectorLock) {
+         if (_blockedPropertyCollectorSingleton != null) {
+            _blockedPropertyCollectorSingleton.cancelWaitForUpdates();
          }
       }
    }
@@ -850,7 +862,7 @@ public class VcVlsi {
       }
    }
 
-   public EventManager getEventManager(Client client) {
+   private EventManager getEventManager(Client client) {
       try {
          ServiceInstanceContent sic = getServiceInstanceContent(client);
          return client.createStub(EventManager.class, sic.getEventManager());
@@ -860,7 +872,7 @@ public class VcVlsi {
       }
    }
 
-   public AlarmManager getAlarmManager(Client client) {
+   private AlarmManager getAlarmManager(Client client) {
       try {
          ServiceInstanceContent sic = getServiceInstanceContent(client);
          return client.createStub(AlarmManager.class, sic.getAlarmManager());
@@ -870,16 +882,92 @@ public class VcVlsi {
       }
    }
 
-   public ExtensionManager getExtensionManager(Client client) {
-      try {
-         ServiceInstanceContent sic = getServiceInstanceContent(client);
-         return client.createStub(ExtensionManager.class, sic.getExtensionManager());
-      } catch (Exception e) {
-         _log.info("Cannot connect to VC extension manager");
-         return null;
+   public boolean postEventForVM(Client client, String vmMoRef, EventSeverity level, String message) {
+      EventManager eventManager = getEventManager(client);
+      if (eventManager == null) {
+         return false;
       }
+
+      ManagedObjectReference ref = new ManagedObjectReference();
+      ref.setValue(vmMoRef);
+      ref.setType("VirtualMachine");
+
+      EventEx event = new EventExImpl();
+      event.setCreatedTime(Calendar.getInstance());
+      event.setUserName("Big Data Extensions");
+      event.setEventTypeId("com.vmware.vhadoop.vhm.vc.events."+level.name());
+      event.setSeverity(level.name());
+      event.setMessage(message);
+      event.setObjectId(ref.getValue());
+      event.setObjectType(new TypeNameImpl("VirtualMachine"));
+
+      try {
+         _log.log(VhmLevel.USER, "VHM: <%V"+vmMoRef+"%V> - "+message);
+         eventManager.postEvent(event, null);
+         return true;
+      } catch (InvalidEvent e) {
+         _log.log(Level.INFO, "VHM: <%V"+vmMoRef+"%V> - failed to log "+level.name()+" event with vCenter", e);
+      }
+      return false;
+   }
+   
+
+   private Alarm getAlarm(Client client, String rootFolderName) {
+      synchronized(_alarmLock) {
+         if (_alarmSingleton != null) {
+            return _alarmSingleton;
+         }
+         AlarmManager manager = getAlarmManager(client);
+         if (manager == null) {
+            return null;
+         }
+   
+         Folder root;
+         try {
+            root = getFolderForName(client, null, rootFolderName);
+   
+            ManagedObjectReference[] existing = manager.getAlarm(root._getRef());
+            for (ManagedObjectReference m : existing) {
+               Alarm a = client.createStub(Alarm.class, m);
+               if (a.getInfo().getName().startsWith(VC_ALARM_NAME_BASE)) {
+                  _alarmSingleton = a;
+                  return _alarmSingleton;
+               }
+            }
+         } catch (InvalidProperty e) {
+            _log.info("VHM: unable to get reference to alarm "+VC_ALARM_NAME_BASE+" on vApp folder "+rootFolderName);
+            _log.log(Level.FINER, "VHM: exception while getting reference to top level alarm", e);
+         } catch (NullPointerException e) {
+            /* almost any of the values returned from vlsi client or their subsequent calls could be null but
+             * will not be most of the time. It's much clearer to just have one catch here than tests on
+             * ever access given we do the same thing in response.
+             */
+            _log.info("VHM: unable to get reference to alarm "+VC_ALARM_NAME_BASE+" on vApp folder "+rootFolderName);
+            _log.log(Level.FINER, "VHM: exception while getting reference to top level alarm", e);
+         }
+      }
+
+      return null;
    }
 
+   void acknowledgeAlarm(Client client, String rootFolderName, String vmMoRef) {
+      AlarmManager alarmMgr = getAlarmManager(client);
+      if (alarmMgr == null) {
+         return;
+      }
+
+      /* acknowledge the alarm */
+      Alarm alarm = getAlarm(client, rootFolderName);
+      if (alarm != null) {
+         ManagedObjectReference moRef = new ManagedObjectReference();
+         moRef.setValue(vmMoRef);
+         moRef.setType("VirtualMachine");
+
+         alarmMgr.acknowledgeAlarm(alarm._getRef(), moRef);
+      }
+   }
+   
+}
    /*
 
    VirtualMachine vm = getVMForName(f, "xxxxx");
@@ -901,4 +989,3 @@ public class VcVlsi {
    _log.log(Level.INFO, "TPC vm new ps = " + ps);
 */
 
-}
