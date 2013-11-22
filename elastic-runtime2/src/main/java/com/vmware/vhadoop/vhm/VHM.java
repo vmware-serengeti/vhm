@@ -710,6 +710,7 @@ public class VHM implements EventConsumer {
                      switchToManualEvent.reportCompletion();
                   } else {
                      /* Continue to block Serengeti CLI by putting the event back on the queue */
+                     switchToManualEvent.reportProgress(0, "waiting for current scaling operation to complete");
                      requeueExistingEvents(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
                   }
                /* Call out to the execution strategy to handle the scale events for the cluster - non blocking */
