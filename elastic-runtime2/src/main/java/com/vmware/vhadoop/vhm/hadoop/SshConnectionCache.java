@@ -216,21 +216,21 @@ public class SshConnectionCache implements SshUtilities
 
 
    protected void clearCache() {
-         synchronized (cache) {
-            synchronized (channelMap) {
-               for(Set<Channel> channelSet : channelMap.values()) {
-                  /*TODO: need to disconnect channels if they are still connected?*/
-                  channelSet.clear();
-               }
-               channelMap.clear();
+      synchronized (cache) {
+         synchronized (channelMap) {
+            for (Set<Channel> channelSet : channelMap.values()) {
+               /* TODO: need to disconnect channels if they are still connected? */
+               channelSet.clear();
             }
+            channelMap.clear();
 
-            for(Session session : cache.values()) {
-               if(session.isConnected())
+            for (Session session : cache.values()) {
+               if (session.isConnected())
                   session.disconnect();
             }
             cache.clear();
          }
+      }
    }
 
    public SshConnectionCache(int capacity) {
@@ -247,12 +247,14 @@ public class SshConnectionCache implements SshUtilities
             if (remove) {
                Session session = eldest.getValue();
 
-               synchronized (channelMap) {
-                  _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
-                  Set<Channel> channels = channelMap.get(session);
-                  /* if there are no incomplete channels associated with this session then evict it */
-                  if (channels != null && channels.isEmpty()) {
-                     session.disconnect();
+               if (session != null) {
+                  synchronized (channelMap) {
+                     _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
+                     Set<Channel> channels = channelMap.get(session);
+                     /* if there are no incomplete channels associated with this session then evict it */
+                     if (channels == null || channels.isEmpty()) {
+                        session.disconnect();
+                     }
                   }
                }
             }
