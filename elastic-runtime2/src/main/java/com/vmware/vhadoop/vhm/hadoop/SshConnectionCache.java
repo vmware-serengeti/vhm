@@ -29,10 +29,10 @@ public class SshConnectionCache implements SshUtilities
 
    private static final String SCP_COMMAND = "scp  -t  ";
 
-   class Connection {
-      String hostname;
-      int port;
-      Credentials credentials;
+   static class Connection {
+      final String hostname;
+      final int port;
+      final Credentials credentials;
 
       Connection(String hostname, int port, Credentials credentials) {
          this.hostname = hostname;
@@ -105,7 +105,7 @@ public class SshConnectionCache implements SshUtilities
       public InputStream getInputStream() {
          return stdout;
       }
-
+      
       @Override
       public InputStream getErrorStream() {
          return stderr;
@@ -211,6 +211,28 @@ public class SshConnectionCache implements SshUtilities
    private final JSch _jsch = new JSch();
    private int capacity;
    private float loadFactor = 0.75f;
+   
+   protected Map<Connection,Session> getCache() {
+      return Collections.unmodifiableMap(cache);
+   }
+   
+   protected void clearCache() {
+         synchronized (cache) {
+            synchronized (channelMap) {
+               for(Set<Channel> channelSet : channelMap.values()) {
+                  /*TODO: need to disconnect channels if they are still connected?*/
+                  channelSet.clear();
+               }
+               channelMap.clear();                  
+            }
+            
+            for(Session session : cache.values()) {
+               if(session.isConnected())
+                  session.disconnect();
+            }
+            cache.clear();
+         }
+   }
 
    public SshConnectionCache(int capacity) {
       this.capacity = capacity;
@@ -220,10 +242,12 @@ public class SshConnectionCache implements SshUtilities
 
          @Override
          protected boolean removeEldestEntry (Map.Entry<Connection,Session> eldest) {
+    
             boolean remove = size() > SshConnectionCache.this.capacity;
             /* if we're removing this session it has to be disconnected to avoid leaking sockets */
             if (remove) {
                Session session = eldest.getValue();
+              
                synchronized (channelMap) {
                   _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
                   if (!channelMap.containsKey(session)) {
