@@ -62,6 +62,7 @@ public class HadoopAdaptor implements HadoopActions {
    private final HadoopConnectionProperties _connectionProperties;        /* TODO: Provide setter? If not, make local */
    private final Map<String, Map<ParamTypes, String>> _errorParamValues;  /* TODO: Will need one per connection/cluster */
    private final ThreadLocalCompoundStatus _threadLocalStatus;
+   private final SshUtilities _sshUtils;
 
    private final int JOB_TRACKER_DEFAULT_SSH_PORT = ExternalizedParameters.get().getInt("JOB_TRACKER_DEFAULT_SSH_PORT");
    private final String JOB_TRACKER_SCP_READ_PERMS = ExternalizedParameters.get().getString("JOB_TRACKER_SCP_READ_PERMS");
@@ -90,6 +91,7 @@ public class HadoopAdaptor implements HadoopActions {
       _errorParamValues = new HashMap<String, Map<ParamTypes, String>>();
       _connections = new HashMap<String, HadoopConnection>();
       _threadLocalStatus = tlcs;
+      _sshUtils = new SshConnectionCache(JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE);
    }
 
    private CompoundStatus getCompoundStatus() {
@@ -423,7 +425,7 @@ public class HadoopAdaptor implements HadoopActions {
     * @return
     */
    protected HadoopConnection getHadoopConnection(HadoopClusterInfo cluster, HadoopConnectionProperties properties) {
-      return new HadoopConnection(cluster, properties, new SshConnectionCache(JOB_TRACKER_SSH_CONNECTION_CACHE_SIZE));
+      return new HadoopConnection(cluster, properties, _sshUtils);
    }
 
    @Override
