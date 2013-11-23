@@ -1,5 +1,6 @@
 package com.vmware.vhadoop.vhm.hadoop;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -9,17 +10,20 @@ import static org.junit.Assert.fail;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-<<<<<<< HEAD
-=======
+import org.junit.AfterClass;
 import org.junit.Assume;
->>>>>>> 1125424: makes some changes to the connection cache to disconnect evicted sessions that aren't in use. Changes where the cache is used so it spans multiple target hosts. Updates test to try to set up environment rather than require existing setup on test machine
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -31,14 +35,6 @@ import com.vmware.vhadoop.vhm.hadoop.SshUtilities.Credentials;
 
 public class SshConnectionCacheTest
 {
-<<<<<<< HEAD
-   private static final String aliases[] = new String[] {"sshtest1", "sshtest2", "sshtest3", "sshtest4"};
-   private static final String username = "ess";
-   private static final String password = "ca$hc0w";
-   private static final String privateKeyFile = "/home/ess/.ssh/id_rsa";
-
-   private static final String userHomePath = "/home/"+username;
-=======
    private static int MINIMUM_REQUIRED_HOST_ALIASES = 3;
 
    private static String aliases[];
@@ -48,13 +44,20 @@ public class SshConnectionCacheTest
    private static String privateKeyFile;
 
    private static String userHomePath;
->>>>>>> 1125424: makes some changes to the connection cache to disconnect evicted sessions that aren't in use. Changes where the cache is used so it spans multiple target hosts. Updates test to try to set up environment rather than require existing setup on test machine
+
+   static File authorizedKeysBackup = null;
+   static File authorizedKeysName = null;
+   static File sshDir = null;
 
    TestSshConnectionCache cache;
    Credentials credentials;
 
-<<<<<<< HEAD
-=======
+   @AfterClass
+   public static void cleanup() throws IOException {
+      /* make sure that backup exists */
+      Files.move(authorizedKeysBackup.toPath(), authorizedKeysName.toPath(), REPLACE_EXISTING);
+   }
+
    @BeforeClass
    public static void setup() throws IOException, InterruptedException {
       /* we've got assumptions that we're on a unix distro, but go with linux */
@@ -66,14 +69,16 @@ public class SshConnectionCacheTest
       userHomePath = System.getProperty("user.home");
       assertNotNull("system property user.home", userHomePath);
 
-      File keyBase = File.createTempFile("sshtest", "", new File(userHomePath+"/.ssh"));
+      sshDir = new File(userHomePath+"/.ssh");
+      File keyBase = File.createTempFile("sshtest", "", sshDir);
       keyBase.deleteOnExit();
 
-      Process keygen = Runtime.getRuntime().exec("ssh-keygen -q -b 2048 -t rsa -N '' -C 'ssh test key' -f "+keyBase.getAbsolutePath());
+//      Process keygen = Runtime.getRuntime().exec("ssh-keygen -b 2048 -t rsa -N '' -C 'ssh test key' -f "+keyBase.getAbsolutePath());
+      Process keygen = Runtime.getRuntime().exec(new String[] {"ssh-keygen", "-q", "-b", "2048", "-t", "rsa", "-N", "", "-C", "ssh test key", "-f", keyBase.getAbsolutePath()});
       /* shouldn't hurt to provide input for the overwrite prompt to overwrite the empty tempFile, -o not supported on some distros */
       keygen.getOutputStream().write('y');
       keygen.getOutputStream().write('\n');
-      keygen.getOutputStream().close();
+      keygen.getOutputStream().flush();
 
       long deadline = System.currentTimeMillis() + 10000;
       int ret = -1;
@@ -82,18 +87,41 @@ public class SshConnectionCacheTest
             /* don't want to hang if this command doesn't return */
             ret = keygen.exitValue();
          } catch (IllegalThreadStateException e) { /* not finished yet */ }
-      } while (System.currentTimeMillis() < deadline);
+      } while (ret != 0 && System.currentTimeMillis() < deadline);
 
       /* tidy up if it hung */
       if (ret == -1) {
          keygen.destroy();
       }
 
+      BufferedReader stdout = new BufferedReader(new InputStreamReader(keygen.getInputStream()));
+      BufferedReader stderr = new BufferedReader(new InputStreamReader(keygen.getErrorStream()));
+
+      /* dump output for debugging */
+      for (String line = stdout.readLine(); line != null; line = stdout.readLine()) {
+         System.err.println(line);
+      }
+      for (String line = stderr.readLine(); line != null; line = stderr.readLine()) {
+         System.err.println(line);
+      }
+
       assertEquals("keygen process didn't complete successfully", 0, ret);
 
+      /* add key to authorized hosts */
+      authorizedKeysName = new File(sshDir.getAbsolutePath()+"/authorized_keys");
+      authorizedKeysBackup = File.createTempFile("authorized_keys", "ssh_test_backup", sshDir);
+      Files.copy(authorizedKeysName.toPath(), authorizedKeysBackup.toPath(), REPLACE_EXISTING);
+      File pub = new File(keyBase.getAbsoluteFile()+".pub");
+      String signature = Files.readAllLines(pub.toPath(), Charset.defaultCharset()).get(0);
+
+      OutputStreamWriter out = new FileWriter(authorizedKeysName, true);
+      out.write(signature);
+      out.flush();
+      out.close();
+
       /* get the host aliases we have available */
-      BufferedReader hosts = new BufferedReader(new InputStreamReader(System.in));
-      for (String entry = hosts.readLine(); hosts != null; entry = hosts.readLine()) {
+      List<String> hosts = Files.readAllLines(Paths.get("/etc/hosts"), Charset.defaultCharset());
+      for (String entry : hosts) {
          /* expect ip name alias1 alias2 alias3 ... */
          if (entry.charAt(0) == '#') {
             continue;
@@ -114,10 +142,10 @@ public class SshConnectionCacheTest
          assertTrue("expected at least "+MINIMUM_REQUIRED_HOST_ALIASES+" aliases in hosts entry", details.length > MINIMUM_REQUIRED_HOST_ALIASES);
 
          aliases = Arrays.copyOfRange(details, 1, details.length);
+         break;
       }
    }
 
->>>>>>> 1125424: makes some changes to the connection cache to disconnect evicted sessions that aren't in use. Changes where the cache is used so it spans multiple target hosts. Updates test to try to set up environment rather than require existing setup on test machine
    class TestSshConnectionCache extends SshConnectionCache {
 
       public TestSshConnectionCache(int capacity) {
@@ -188,11 +216,7 @@ public class SshConnectionCacheTest
       credentials = new Credentials(username, password, privateKeyFile);
    }
 
-<<<<<<< HEAD
    @Ignore // issues being addressed in sshcache branch
-=======
-
->>>>>>> 1125424: makes some changes to the connection cache to disconnect evicted sessions that aren't in use. Changes where the cache is used so it spans multiple target hosts. Updates test to try to set up environment rather than require existing setup on test machine
    @Test
    /*basic sanity check, no cache operation*/
    public void connectionSanityCheck() throws IOException {
@@ -236,10 +260,6 @@ public class SshConnectionCacheTest
          assertTrue(out.toString().equals(dataWritten));
       }
    }
-<<<<<<< HEAD
-=======
-
->>>>>>> 1125424: makes some changes to the connection cache to disconnect evicted sessions that aren't in use. Changes where the cache is used so it spans multiple target hosts. Updates test to try to set up environment rather than require existing setup on test machine
 
    @Ignore // issues being addressed in sshcache branch
    @Test
@@ -286,10 +306,6 @@ public class SshConnectionCacheTest
          assertEquals(aliases.length, cache.getCacheSize());
       }
    }
-<<<<<<< HEAD
-=======
-
->>>>>>> 1125424: makes some changes to the connection cache to disconnect evicted sessions that aren't in use. Changes where the cache is used so it spans multiple target hosts. Updates test to try to set up environment rather than require existing setup on test machine
 
    @Ignore // issues being addressed in sshcache branch
    @Test
