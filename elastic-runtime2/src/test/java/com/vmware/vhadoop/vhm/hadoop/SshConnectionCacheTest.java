@@ -55,7 +55,9 @@ public class SshConnectionCacheTest
    @AfterClass
    public static void cleanup() throws IOException {
       /* make sure that backup exists */
-      Files.move(authorizedKeysBackup.toPath(), authorizedKeysName.toPath(), REPLACE_EXISTING);
+      if (authorizedKeysBackup != null) {
+         Files.move(authorizedKeysBackup.toPath(), authorizedKeysName.toPath(), REPLACE_EXISTING);
+      }
    }
 
    @BeforeClass
@@ -110,7 +112,13 @@ public class SshConnectionCacheTest
       /* add key to authorized hosts */
       authorizedKeysName = new File(sshDir.getAbsolutePath()+"/authorized_keys");
       authorizedKeysBackup = File.createTempFile("authorized_keys", "ssh_test_backup", sshDir);
-      Files.copy(authorizedKeysName.toPath(), authorizedKeysBackup.toPath(), REPLACE_EXISTING);
+      try {
+         Files.copy(authorizedKeysName.toPath(), authorizedKeysBackup.toPath(), REPLACE_EXISTING);
+      } catch (java.nio.file.NoSuchFileException e) {
+         authorizedKeysBackup.delete();
+         authorizedKeysBackup = null;
+      }
+
       File pub = new File(keyBase.getAbsoluteFile()+".pub");
       String signature = Files.readAllLines(pub.toPath(), Charset.defaultCharset()).get(0);
 
