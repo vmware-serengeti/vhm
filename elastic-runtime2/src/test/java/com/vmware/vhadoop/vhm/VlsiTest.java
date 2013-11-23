@@ -32,7 +32,6 @@ public class VlsiTest {
       BootstrapMain mc = new BootstrapMain();
       VCActions vcActions = mc.getVCInterface(null);
       Properties properties = mc.getProperties();
-      String version = "";
       while (true) {
          List<VMEventData> vmDataList = null;
          try {

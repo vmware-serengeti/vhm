@@ -364,28 +364,15 @@ public class VHM implements EventConsumer {
       }
    }
 
-   private String getClusterIdForVCFolder(String folderName) {
-      String clusterId = null;
-      List<String> vms = _vcActions.listVMsInFolder(folderName);
-      /* Returning null may indicate a VC connection failure */
-      if (vms != null) {
-         clusterId = _clusterMap.getClusterIdFromVMs(vms);
-         if (clusterId != null) {
-            _clusterMap.associateFolderWithCluster(clusterId, folderName);
-         }
-      }
-      return clusterId;
-   }
-
    /* TODO: Note that currently, this method cannot deal with a clusterScaleEvent with just a hostId
     * We should be able to deal with this at some point - ie: general host contention impacts multiple clusters */
    private String completeClusterScaleEventDetails(AbstractClusterScaleEvent event) {
       String clusterId = event.getClusterId();
 
       if ((clusterId == null) && (event instanceof SerengetiLimitInstruction)) {
-         String clusterFolderName = ((SerengetiLimitInstruction)event).getClusterFolderName();
-         if (clusterFolderName != null) {
-            clusterId = getClusterIdForVCFolder(clusterFolderName);
+         String clusterName = ((SerengetiLimitInstruction)event).getClusterName();
+         if (clusterName != null) {
+            clusterId = _clusterMap.getClusterIdForName(clusterName);
          }
       }
 
@@ -407,7 +394,7 @@ public class VHM implements EventConsumer {
                   event.getVmId() + "," + event.getHostId() + "," + event.getClusterId() + ")");
             if (event instanceof SerengetiLimitInstruction) {
                SerengetiLimitInstruction sEvent = (SerengetiLimitInstruction)event;
-               _log.warning("<%C"+sEvent.getClusterFolderName()+"%C>: unusable scale event is a serengeti limit instruction");
+               _log.warning(sEvent.getClusterName()+": unusable scale event is a serengeti limit instruction");
             }
             _clusterMap.dumpState(Level.WARNING);
          }
@@ -710,6 +697,7 @@ public class VHM implements EventConsumer {
                      switchToManualEvent.reportCompletion();
                   } else {
                      /* Continue to block Serengeti CLI by putting the event back on the queue */
+                     switchToManualEvent.reportProgress(0, "waiting for current scaling operation to complete");
                      requeueExistingEvents(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
                   }
                /* Call out to the execution strategy to handle the scale events for the cluster - non blocking */

@@ -26,6 +26,7 @@ import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.api.vhm.VCActions.MasterVmEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
 import com.vmware.vhadoop.api.vhm.strategy.ScaleStrategy;
+import com.vmware.vhadoop.vhm.vc.VcVlsi;
 
 public abstract class AbstractJUnitTest {
    
@@ -96,12 +97,14 @@ public abstract class AbstractJUnitTest {
          boolean autoCluster, Integer minInstances, Set<ClusterScaleEvent> impliedScaleEvents) {
       String masterVmName = null;
       for (int i=0; i<numVms; i++) {
-         String vmName = clusterName+"_"+VM_NAME_PREFIX+i;
-         _vmNames.add(vmName);
+         String vmName;
          if (i==0) {
-            masterVmName = vmName;
+            vmName = masterVmName = clusterName+VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX+"_"+VM_NAME_PREFIX+i;
             _masterVmNames.add(masterVmName);
+         } else {
+            vmName = clusterName+"_"+VM_NAME_PREFIX+i;
          }
+         _vmNames.add(vmName);
          VMEventData eventData = createEventData(clusterName, vmName, i==0, (i==0 || defaultPowerState), hostName, masterVmName, autoCluster, minInstances, -1, true);
          processNewEventData(eventData, deriveClusterIdFromClusterName(clusterName), impliedScaleEvents);
       }
@@ -160,11 +163,16 @@ public abstract class AbstractJUnitTest {
    }
 
    String getMasterVmNameForCluster(String clusterName) {
-      return clusterName+"_"+VM_NAME_PREFIX+0;
+      return clusterName+VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX+"_"+VM_NAME_PREFIX+0;
    }
 
    String deriveClusterIdFromClusterName(String clusterName) {
-      return getClusterIdForMasterVmName(clusterName+"_"+VM_NAME_PREFIX+0);
+      return getClusterIdForMasterVmName(getMasterVmNameForCluster(clusterName));
+   }
+   
+   String deriveClusterIdForComputeVmName(String vmName) {
+      String clusterName = vmName.substring(0, vmName.indexOf('_', vmName.indexOf('_')+1));
+      return deriveClusterIdFromClusterName(clusterName);
    }
    
    Object deriveMasterDnsNameFromClusterId(String clusterId) {
@@ -185,14 +193,24 @@ public abstract class AbstractJUnitTest {
    }
 
    String deriveClusterIdFromVmName(String vmName) {
-      String temp = getClusterIdForMasterVmName(vmName);
+      String temp;
+      if (vmName.contains(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX)) {
+         temp = getClusterIdForMasterVmName(vmName);
+      } else {
+         temp = deriveClusterIdForComputeVmName(vmName);
+      }
       String stripTrailingNumber = temp.substring(0, temp.lastIndexOf('_')+1);
       return stripTrailingNumber+"0";
    }
    
    String deriveHostIdFromVmName(String vmName) {
       int firstUnderscore = vmName.indexOf('_');
-      String clusterNumber = vmName.substring(firstUnderscore+1, vmName.indexOf('_', firstUnderscore+1));
+      String clusterNumber;
+      if (vmName.contains(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX)) {
+         clusterNumber = vmName.substring(firstUnderscore+1, vmName.lastIndexOf(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX));
+      } else {
+         clusterNumber = vmName.substring(firstUnderscore+1, vmName.indexOf('_', firstUnderscore+1));
+      }
       return MOREF_PREFIX+HOST_PREFIX+clusterNumber;
    }
 

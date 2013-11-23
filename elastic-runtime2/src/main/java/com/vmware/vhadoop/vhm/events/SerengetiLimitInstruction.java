@@ -41,16 +41,16 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
    private static final String reason = "serengeti limit instruction";
 
    private final SerengetiLimitAction _action;
-   private final String _clusterFolderName;
+   private final String _clusterName;
    private final int _toSize;
    private final QueueClient _messageCallback;
 
    private static final Logger _log = Logger.getLogger(SerengetiLimitInstruction.class.getName());
 
-   public SerengetiLimitInstruction(String clusterFolderName, SerengetiLimitAction action, int toSize, QueueClient messageCallback) {
+   public SerengetiLimitInstruction(String clusterName, SerengetiLimitAction action, int toSize, QueueClient messageCallback) {
       super(reason);
       _action = action;
-      _clusterFolderName = clusterFolderName;
+      _clusterName = clusterName;
       _toSize = toSize;
       _messageCallback = messageCallback;
    }
@@ -59,8 +59,9 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       return _action;
    }
 
-   public String getClusterFolderName() {
-      return _clusterFolderName;
+   /* This is the cluster name, not the cluster ID */
+   public String getClusterName() {
+      return _clusterName;
    }
 
    public int getToSize() {
@@ -87,7 +88,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportError(String message) {
       if (_messageCallback != null) {
-         _log.warning("<%C"+_clusterFolderName+"%C> - error while attempting to "+toString()+" - "+message+";");
+         _log.warning(_clusterName+" - error while attempting to "+toString()+" - "+message+";");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
@@ -96,7 +97,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportCompletion() {
       if (_messageCallback != null) {
-         _log.log(VhmLevel.USER, "VHM: <%C"+_clusterFolderName+"%C> - completed instruction to "+toString());
+         _log.log(VhmLevel.USER, "VHM: "+_clusterName+" - completed instruction to "+toString());
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());

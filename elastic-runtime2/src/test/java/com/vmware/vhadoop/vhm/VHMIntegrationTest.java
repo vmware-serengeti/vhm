@@ -15,16 +15,30 @@
 
 package com.vmware.vhadoop.vhm;
 
-import java.util.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
+import com.google.gson.Gson;
 import com.vmware.vhadoop.api.vhm.ClusterMap;
-import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
+import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.VCActions.VMEventData;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleCompletionEvent;
 import com.vmware.vhadoop.api.vhm.events.ClusterScaleEvent;
@@ -38,6 +52,7 @@ import com.vmware.vhadoop.vhm.TrivialScaleStrategy.TrivialClusterScaleOperation;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction;
 import com.vmware.vhadoop.vhm.events.SerengetiLimitInstruction.SerengetiLimitAction;
 import com.vmware.vhadoop.vhm.rabbit.RabbitAdaptor.RabbitConnectionCallback;
+import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 import com.vmware.vhadoop.vhm.strategy.DumbEDPolicy;
 import com.vmware.vhadoop.vhm.strategy.DumbVMChooser;
 import com.vmware.vhadoop.vhm.strategy.ManualScaleStrategy;
@@ -51,10 +66,10 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    List<Boolean> _isNewClusterResult;
 
    public static final String STRATEGY_KEY = "StrategyKey";
-   
+
    /* EventProducer fields */
    EventConsumer _eventConsumer;
-   
+
    /* ClusterMapReader fields */
    ClusterMapAccess _clusterMapAccess;
 
@@ -71,12 +86,12 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
    void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
       processNewEventData(eventData);
    }
-   
+
    void processNewEventData(VMEventData eventData) {
       _vcActions.fakeWaitForUpdatesData(eventData);
       _vcActions.addVMToFolder(eventData._serengetiFolder, eventData._vmMoRef);
    }
-   
+
    /* Generated whenever particular data in a particular cluster changes */
    private class ClusterDataChangedEvent extends TrivialClusterScaleEvent {
       int _newData;
@@ -94,7 +109,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
          _isNewCluster = isNewCluster;
       }
    }
-   
+
    @Before
    public void initialize() {
       _vcActions = new StandaloneSimpleVCActions();
@@ -137,11 +152,11 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
             return newEvents;
          }
       };
-      
+
       /* TrivialScaleStrategy is the default used as is picked if vmd._masterVmData._enableAutomation is true (see above) */
       _trivialScaleStrategy = new TrivialScaleStrategy(STRATEGY_KEY);
       ManualScaleStrategy manualScaleStrategy = new ManualScaleStrategy(new DumbEDPolicy(_vcActions));
-      _vhm = new VHM(_vcActions, new ScaleStrategy[]{_trivialScaleStrategy, manualScaleStrategy}, 
+      _vhm = new VHM(_vcActions, new ScaleStrategy[]{_trivialScaleStrategy, manualScaleStrategy},
             _strategyMapper, new ThreadLocalCompoundStatus());
       assertTrue(_vhm.registerEventProducer(_clusterStateChangeListener));
       assertTrue(_vhm.registerEventProducer(this));
@@ -160,7 +175,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _vhm.stop(true);
       MultipleReaderSingleWriterClusterMapAccess.destroy();
    }
-   
+
    /* After updating VHM via the CSCL, wait for the updates to appear in ClusterMap */
    private boolean waitForTargetClusterCount(int clusterCount, long timeoutMillis) {
       Set<String> clusterIds = null;
@@ -186,7 +201,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       return true;
     }
 
-   private Set<ClusterScaleCompletionEvent> waitForClusterScaleCompletionEvents(String clusterId, int numExpected, int timeoutMillis, 
+   private Set<ClusterScaleCompletionEvent> waitForClusterScaleCompletionEvents(String clusterId, int numExpected, int timeoutMillis,
          Set<ClusterScaleCompletionEvent> thatsNotInSet) {
       Set<ClusterScaleCompletionEvent> result = new HashSet<ClusterScaleCompletionEvent>();
       int totalExpected = numExpected;
@@ -208,7 +223,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       }
       return result;
    }
-   
+
    private Set<ClusterScaleCompletionEvent> waitForClusterScaleCompletionEvents(String clusterId, int numExpected, int timeoutMillis) {
       return waitForClusterScaleCompletionEvents(clusterId, numExpected, timeoutMillis, null);
    }
@@ -217,7 +232,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       return waitForClusterScaleCompletionEvent(clusterId, timeoutMillis, null);
    }
 
-   private ClusterScaleCompletionEvent waitForClusterScaleCompletionEvent(String clusterId, int timeoutMillis, 
+   private ClusterScaleCompletionEvent waitForClusterScaleCompletionEvent(String clusterId, int timeoutMillis,
          Set<ClusterScaleCompletionEvent> thatsNotInSet) {
       ClusterScaleCompletionEvent toWaitFor = null;
       long pollTimeMillis = 10;
@@ -255,7 +270,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
          clusterMap = getAndReadLockClusterMap();
          assertNotNull(clusterMap);
          Set<String> clusterIds = clusterMap.getAllKnownClusterIds();
-         
+
          /* Verify that the number of clusters seen by vcActions is reflected in the ClusterMap */
          assertNotNull(clusterIds);
          assertEquals(numClusters, clusterIds.size());
@@ -269,7 +284,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
-      
+
       String clusterId = deriveClusterIdFromClusterName(_clusterNames.iterator().next());
       /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
       TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation();
@@ -280,18 +295,18 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId, false));
       /* Wait for VHM to respond, having invoked the ScaleStrategy */
       assertNotNull(waitForClusterScaleCompletionEvent(clusterId, 2000));
-      
+
       assertEquals(clusterId, tcso.getClusterId());
       assertNotNull(tcso.getContext());
       assertNotNull(tcso.getThreadLocalCompoundStatus());
    }
 
-   private void testEventOrdering(String clusterId, Set<ClusterScaleCompletionEvent> previousEvents, 
+   private void testEventOrdering(String clusterId, Set<ClusterScaleCompletionEvent> previousEvents,
          TrivialClusterScaleOperation tcso, int assertNumEventsReturned, int assertHeadOfQueueEventIndex,
          ClusterScaleEvent event0, ClusterScaleEvent event1, ClusterScaleEvent event2) throws InterruptedException {
 
       ClusterScaleEvent[] events = new ClusterScaleEvent[]{event0, event1, event2};
-      
+
       _eventConsumer.placeEventCollectionOnQueue(Arrays.asList(events));
       /* Wait for VHM to respond, having invoked the ScaleStrategy */
       previousEvents.add(waitForClusterScaleCompletionEvent(clusterId, 2000, previousEvents));
@@ -300,19 +315,19 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* The _events set should be the LinkedHashSet created in VHM.updateOrCreateClusterScaleEventSet */
       assertTrue(tcso._events.iterator().next() == events[assertHeadOfQueueEventIndex]);
    }
-   
+
    @Test
    public void testExclusiveEventBehavior() throws InterruptedException {
       Set<ClusterScaleCompletionEvent> previousEvents = new HashSet<ClusterScaleCompletionEvent>();
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
-      
+
       Iterator<String> i = _clusterNames.iterator();
       String clusterId0 = deriveClusterIdFromClusterName(i.next());
       String clusterId1 = deriveClusterIdFromClusterName(i.next());
       String clusterId2 = deriveClusterIdFromClusterName(i.next());
-      
+
       /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
       TrivialClusterScaleOperation tcso0 = _trivialScaleStrategy.new TrivialClusterScaleOperation();
       /* Add the test ClusterScaleOperation to the test scale strategy */
@@ -327,64 +342,64 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
        * The one that survives should be the first one to be added, regardless of timestamp */
       int expectedIndex = 0;
       testEventOrdering(clusterId0, previousEvents, tcso0, 1, expectedIndex,
-            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE-2), 
-            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE-2),
+            new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent(clusterId0, false, Long.MAX_VALUE));
       testEventOrdering(clusterId1, previousEvents, tcso1, 1, expectedIndex,
-            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent(clusterId1, false, Long.MAX_VALUE-2));
       testEventOrdering(clusterId2, previousEvents, tcso2, 1, expectedIndex,
-            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE),
             new TrivialClusterScaleEvent(clusterId2, false, Long.MAX_VALUE));
 
       /* Exclusive identical events should be consolidated in the same way as not exclusive ones */
       expectedIndex = 0;
       testEventOrdering(clusterId0, previousEvents, tcso0, 1, expectedIndex,
-            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE-2), 
-            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE-2),
+            new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent(clusterId0, true, Long.MAX_VALUE));
       testEventOrdering(clusterId1, previousEvents, tcso1, 1, expectedIndex,
-            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent(clusterId1, true, Long.MAX_VALUE-2));
       testEventOrdering(clusterId2, previousEvents, tcso2, 1, expectedIndex,
-            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE),
             new TrivialClusterScaleEvent(clusterId2, true, Long.MAX_VALUE));
 
       /* Non exclusive different events should not be consolidated - the first one added is the first one returned */
       expectedIndex = 0;
       testEventOrdering(clusterId0, previousEvents, tcso0, 3, expectedIndex,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId0, "routeKey", null, false, Long.MAX_VALUE-2), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId0, "routeKey", null, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId0, "routeKey", null, false, Long.MAX_VALUE-2),
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId0, "routeKey", null, false, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent("vm3", "host3", clusterId0, "routeKey", null, false, Long.MAX_VALUE));
       testEventOrdering(clusterId1, previousEvents, tcso1, 3, expectedIndex,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId1, "routeKey", null, false, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId1, "routeKey", null, false, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId1, "routeKey", null, false, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId1, "routeKey", null, false, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent("vm3", "host3", clusterId1, "routeKey", null, false, Long.MAX_VALUE-2));
       testEventOrdering(clusterId2, previousEvents, tcso2, 3, expectedIndex,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId2, "routeKey", null, false, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId2, "routeKey", null, false, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId2, "routeKey", null, false, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId2, "routeKey", null, false, Long.MAX_VALUE),
             new TrivialClusterScaleEvent("vm3", "host3", clusterId2, "routeKey", null, false, Long.MAX_VALUE));
-      
+
       /* Exclusive different events should be consolidated in timestamp order - the most recent being the most recently  */
       expectedIndex = 2;
       testEventOrdering(clusterId0, previousEvents, tcso0, 1, expectedIndex,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId0, "routeKey", null, true, Long.MAX_VALUE-2), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId0, "routeKey", null, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId0, "routeKey", null, true, Long.MAX_VALUE-2),
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId0, "routeKey", null, true, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent("vm3", "host3", clusterId0, "routeKey", null, true, Long.MAX_VALUE));
       expectedIndex = 0;
       testEventOrdering(clusterId1, previousEvents, tcso1, 1, expectedIndex,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId1, "routeKey", null, true, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId1, "routeKey", null, true, Long.MAX_VALUE-1), 
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId1, "routeKey", null, true, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId1, "routeKey", null, true, Long.MAX_VALUE-1),
             new TrivialClusterScaleEvent("vm3", "host3", clusterId1, "routeKey", null, true, Long.MAX_VALUE-2));
       /* In the case of identical timestamps, the last one added is the one retained */
       expectedIndex = 2;
       testEventOrdering(clusterId2, previousEvents, tcso2, 1, expectedIndex,
-            new TrivialClusterScaleEvent("vm1", "host1", clusterId2, "routeKey", null, true, Long.MAX_VALUE), 
-            new TrivialClusterScaleEvent("vm2", "host2", clusterId2, "routeKey", null, true, Long.MAX_VALUE), 
+            new TrivialClusterScaleEvent("vm1", "host1", clusterId2, "routeKey", null, true, Long.MAX_VALUE),
+            new TrivialClusterScaleEvent("vm2", "host2", clusterId2, "routeKey", null, true, Long.MAX_VALUE),
             new TrivialClusterScaleEvent("vm3", "host3", clusterId2, "routeKey", null, true, Long.MAX_VALUE));
 
       assertEquals(clusterId0, tcso0.getClusterId());
@@ -397,14 +412,14 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       ClusterScaleCompletionEvent _testFinished;
       String _routeKeyReported;
    }
-   
+
    @Test
    /* Two different clusters are scaled concurrently */
    public void testInvokeConcurrentScaleStrategy() throws InterruptedException {
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
-      
+
       Iterator<String> i = _clusterNames.iterator();
       final String clusterId1 = deriveClusterIdFromClusterName(i.next());
       final String clusterId2 = deriveClusterIdFromClusterName(i.next());
@@ -421,11 +436,11 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       final int cluster1delay = 3000;
       final int cluster2delay = 2000;
       final int cluster3delay = 1000;
-      
+
       final String routeKey1 = "route1";
       final String routeKey2 = "route2";
       final String routeKey3 = "route3";
-      
+
       /* Create ClusterScaleOperations, which control how a cluster is scaled - each operation gets a different delay to its "scaling" */
       TrivialClusterScaleOperation tcso1 = _trivialScaleStrategy.new TrivialClusterScaleOperation(cluster1delay);
       TrivialClusterScaleOperation tcso2 = _trivialScaleStrategy.new TrivialClusterScaleOperation(cluster2delay);
@@ -492,7 +507,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
             waitResult3._testNotFinished = waitForClusterScaleCompletionEvent(clusterId3, delayTillCluster3finished-500, completionEventsFromInit3);
             waitResult3._testFinished = waitForClusterScaleCompletionEvent(clusterId3, 1500, completionEventsFromInit3);
       }}).start();
-      
+
       /* Wait for the above threads to return the results */
       Thread.sleep(cluster1delay + 2000);
 
@@ -500,7 +515,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertNull(waitResult1._testNotFinished);
       assertNotNull(waitResult1._testFinished);
       assertEquals(routeKey1, waitResult1._routeKeyReported);
-      
+
       assertNull(waitResult2._testNotFinished);
       assertNotNull(waitResult2._testFinished);
       assertEquals(routeKey2, waitResult2._routeKeyReported);
@@ -533,7 +548,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Expectation here is that 1st event will trigger a scale. The second one arrives and third one arrives and are both queued back up */
       /* Then, the second and third ones are processed together in a single invocation */
-      
+
       /* This call should time out - there should only be one that's been processed so far... */
       Set<ClusterScaleCompletionEvent> results1 = waitForClusterScaleCompletionEvents(clusterId, 2, 4000, completionEventsFromInit);
       assertEquals(1, results1.size());
@@ -542,26 +557,31 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       Set<ClusterScaleCompletionEvent> results2 = waitForClusterScaleCompletionEvents(clusterId, 2, 4000, completionEventsFromInit);
       assertEquals(2, results2.size());
    }
-   
+
    private class ReportResult {
       String _routeKey;
       byte[] _data;
+
+      VHMJsonReturnMessage getMessage() {
+         Gson gson = new Gson();
+         return gson.fromJson(new String(_data), VHMJsonReturnMessage.class);
+      }
    }
-   
+
    private void simulateVcExtraInfoChange(String clusterName, Boolean isAuto, Integer minInstances) {
       String masterVmName1 = getMasterVmNameForCluster(clusterName);
-      VMEventData switchEvent = createEventData(clusterName, 
+      VMEventData switchEvent = createEventData(clusterName,
             masterVmName1, true, null, null, masterVmName1, isAuto, minInstances, -1, false);
       processNewEventData(switchEvent);
    }
-   
+
    /* Checks what happens if Serengeti sends a blocking call to put a cluster into manual mode, when the cluster is not currently scaling */
    @Test
    public void testSwitchToManualFromOtherNotScaling() throws InterruptedException {
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
-      
+
       Iterator<String> i = _clusterNames.iterator();
       String clusterName1 = i.next();
       final ReportResult serengetiQueueResult = new ReportResult();
@@ -582,24 +602,26 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
       SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
-            getFolderNameForClusterName(clusterName1), 
-            SerengetiLimitAction.actionWaitForManual, 0, 
+            clusterName1,
+            SerengetiLimitAction.actionWaitForManual, 0,
             new RabbitConnectionCallback(routeKey1, testConnection));
 
       /* Send the manual event on the message queue */
       _eventConsumer.placeEventOnQueue(limitEvent1);
-      
+
       /* Wait for a period to allow the Serengeti event to be picked up */
       Thread.sleep(2000);
 
-      /* The scale strategy switch should not be processed until CSCL has picked up the extraInfo change
-       * At this point, we haven't yet put this CSCL change through... */
-      assertNull(serengetiQueueResult._data);
+      /* The scale strategy switch should not be processed until CSCL has picked up the extraInfo change however VHM responds immediately
+       * with a progress message so that Serengeti knows the message has been received. At this point, we haven't yet put this CSCL change through... */
+      assertNotNull(serengetiQueueResult._data);
+      assertEquals(0, serengetiQueueResult.getMessage().progress);
+      assertFalse(serengetiQueueResult.getMessage().finished);
 
       /* Even though CSCL hasn't yet changed state, the cluster should not respond to scale events - expect time-out */
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId1, routeKey1, null, false));
       assertNull(waitForClusterScaleCompletionEvent(clusterId1, 2000, completionEventsFromInit1));
-      
+
       /* Create a simulated VC event, changing extraInfo to the manual strategy for cluster1 */
       simulateVcExtraInfoChange(clusterName1, false, null);
       /* Give it some time to be processed and then check it reported back */
@@ -607,27 +629,27 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       assertNotNull(serengetiQueueResult._data);
       assertEquals(serengetiQueueResult._routeKey, routeKey1);
-      
+
       /* Do a second test where the CSCL update occurs before the manual limit event arrives */
       serengetiQueueResult._data = null;
-      
+
       /* Create a simulated VC event, changing extraInfo to the manual strategy for cluster2 */
       simulateVcExtraInfoChange(clusterName2, false, null);
-      
+
       /* Give it some time to be processed */
       Thread.sleep(2000);
-      
-      /* Verify this scale event should be ignored, since the manual scale strategy 
+
+      /* Verify this scale event should be ignored, since the manual scale strategy
          should not respond to these events - wait should time out */
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(null, null, clusterId2, routeKey2, null, false));
       assertNull(waitForClusterScaleCompletionEvent(clusterId2, 2000, completionEventsFromInit2));
 
       /* Verify nothing yet reported on the Serengeti queue - blocking behavior */
       assertNull(serengetiQueueResult._data);
-     
+
       SerengetiLimitInstruction limitEvent2 = new SerengetiLimitInstruction(
-            getFolderNameForClusterName(clusterName2), 
-            SerengetiLimitAction.actionWaitForManual, 0, 
+            getFolderNameForClusterName(clusterName2),
+            SerengetiLimitAction.actionWaitForManual, 0,
             new RabbitConnectionCallback(routeKey2, testConnection));
 
       /* Verify that the scale strategy is now manual */
@@ -638,7 +660,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       } finally {
          unlockClusterMap(clusterMap);
       }
-      
+
       /* Serengeti limit event arrives */
       _eventConsumer.placeEventOnQueue(limitEvent2);
 
@@ -647,13 +669,13 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertNotNull(serengetiQueueResult._data);
       assertEquals(serengetiQueueResult._routeKey, routeKey2);
    }
-   
+
    private TestRabbitConnection setUpClusterForSwitchTest(String clusterName, int scaleDelayMillis, final ReportResult result) {
       String clusterId = deriveClusterIdFromClusterName(clusterName);
-      
+
       /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
       TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation(scaleDelayMillis);
-      
+
       /* Add the test ClusterScaleOperation to the test scale strategy */
       _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
 
@@ -674,16 +696,16 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       } finally {
          unlockClusterMap(clusterMap);
       }
-      
+
       return testConnection;
    }
-   
+
    @Test
    public void testSwitchToManualFromOtherScaling() throws InterruptedException {
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
-      
+
       Iterator<String> i = _clusterNames.iterator();
       String clusterName1 = i.next();
       final ReportResult serengetiQueueResult = new ReportResult();
@@ -699,21 +721,21 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
       SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
-            getFolderNameForClusterName(clusterName1), 
-            SerengetiLimitAction.actionWaitForManual, 0, 
+            getFolderNameForClusterName(clusterName1),
+            SerengetiLimitAction.actionWaitForManual, 0,
             new RabbitConnectionCallback(routeKey1, testConnection));
 
-      /* Simulate a cluster scale event being triggered from an EventProducer. 
+      /* Simulate a cluster scale event being triggered from an EventProducer.
        * The delayMillis will ensure that it takes a while to complete the scale */
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId1, false));
-      
+
       /* Wait long enough for the scale event to start, but not to have completed */
       int waitForStartMillis = 2000;
       Thread.sleep(waitForStartMillis);
-      
+
       /* Send the manual switch event on the message queue */
       _eventConsumer.placeEventOnQueue(limitEvent1);
-      
+
       /* This should time out, showing that the manual switch is correctly being blocked */
       int waitForLimitInstructionMillis = 2000;
       assertNull(waitForClusterScaleCompletionEvent(clusterId1, waitForLimitInstructionMillis, completionEventsFromInit1));
@@ -726,13 +748,13 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       ClusterScaleCompletionEvent latestEvent = waitForClusterScaleCompletionEvent(clusterId1, waitForManualSwitch, completionEventsFromInit1);
       assertNotNull(latestEvent);
       completionEventsFromInit1.add(latestEvent);        /* Ignore this event in the next wait */
-      
+
       /* Ensure thread has had enough time to report back on Serengeti queue */
       Thread.sleep(2000);
 
       assertNotNull(serengetiQueueResult._data);
       assertEquals(serengetiQueueResult._routeKey, routeKey1);
-      
+
       /* Verify that the scale strategy is now manual */
       ClusterMap clusterMap = null;
       try {
@@ -744,15 +766,15 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Now switch to automatic and assert that this invokes the scale strategy */
       simulateVcExtraInfoChange(clusterName1, true, 2);
-      
+
       /* Verify that the scale operation blocks as expected */
       assertNull(waitForClusterScaleCompletionEvent(clusterId1, 2000, completionEventsFromInit1));
-      
+
       /* Verify that it completes successfully */
       latestEvent = waitForClusterScaleCompletionEvent(clusterId1, scaleDelayMillis, completionEventsFromInit1);
       assertNotNull(latestEvent);
    }
-   
+
    private Set<ClusterScaleCompletionEvent> getCompletionEventsFromInit() {
       Set<ClusterScaleCompletionEvent> result = new HashSet<ClusterScaleCompletionEvent>();
       for (String clusterName : _clusterNames) {
@@ -767,14 +789,14 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
       Set<ClusterScaleCompletionEvent> completionEventsFromInit = getCompletionEventsFromInit();
-      
+
       /* Check that getImpliedScaleEventsForUpdate has been invoked for the cluster creation */
       assertEquals(3, _isNewClusterResult.size());
       for (int i=0; i<numClusters; i++) {
          assertEquals(true, _isNewClusterResult.get(i));
       }
       _isNewClusterResult.clear();
-      
+
       String clusterName = _clusterNames.iterator().next();
       String clusterId = deriveClusterIdFromClusterName(clusterName);
       /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
@@ -792,26 +814,26 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       assertEquals(1, _isNewClusterResult.size());
       assertEquals(false, _isNewClusterResult.get(0));
    }
-   
+
    @Test
    public void testRequeueEvents() {
       int numClusters = 3;
       populateSimpleClusterMap(numClusters, 4, false);    /* Blocks until CSCL has generated all events */
       assertTrue(waitForTargetClusterCount(3, 1000));
-      
+
       String clusterId = deriveClusterIdFromClusterName(_clusterNames.iterator().next());
       /* Create a ClusterScaleOperation, which controls how a cluster is scaled */
       TrivialClusterScaleOperation tcso = _trivialScaleStrategy.new TrivialClusterScaleOperation();
       /* Add the test ClusterScaleOperation to the test scale strategy */
       _trivialScaleStrategy.setClusterScaleOperation(clusterId, tcso);
-      
+
       /* Setup the scaleStrategy so that it re-queues the TrivialClusterScaleEvent a certain number of times */
       int timesToRequeue = 4;
       tcso.setRequeueEventTimes(timesToRequeue);
 
       /* Simulate a cluster scale event being triggered from an EventProducer */
       _eventConsumer.placeEventOnQueue(new TrivialClusterScaleEvent(clusterId, false));
-      
+
       /* VHM should invoke the scale strategy as many times as the event is queued */
       Set<ClusterScaleCompletionEvent> foundEvents = new HashSet<ClusterScaleCompletionEvent>();
       for (int i=0; i<(timesToRequeue+1); i++) {
@@ -822,7 +844,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       /* Check that it is not queued for more times than requested */
       assertNull(waitForClusterScaleCompletionEvent(clusterId, 2000, foundEvents));
    }
-   
+
    @Override
    public void registerEventConsumer(EventConsumer eventConsumer) {
       _eventConsumer = eventConsumer;

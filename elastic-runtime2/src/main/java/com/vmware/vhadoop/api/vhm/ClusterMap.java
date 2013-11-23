@@ -56,7 +56,7 @@ public interface ClusterMap {
 
    Set<String> listHostsWithComputeVMsForCluster(String clusterId);
 
-   String getClusterIdForFolder(String clusterFolderName);
+   String getClusterIdForName(String clusterFolderName);
 
    Map<String, String> getHostIdsForVMs(Set<String> vmsToED);
 
@@ -242,7 +242,6 @@ public interface ClusterMap {
       private final SerengetiClusterConstantData _constantData;
       
       private Integer _jobTrackerPort;
-      private String _discoveredFolderName;        /* Note this field is only set by SerengetiLimitEvents */
       private String _scaleStrategyKey;
       private Map<String, String> _extraInfo;
 
@@ -301,8 +300,8 @@ public interface ClusterMap {
          return _constantData._serengetiFolder;
       }
 
-      public String getDiscoveredFolderName() {
-         return _discoveredFolderName;
+      public String getClusterName() {
+         return _constantData._clusterName;
       }
 
       public ClusterScaleCompletionEvent getMostRecentCompletionEvent() {
@@ -343,11 +342,6 @@ public interface ClusterMap {
             notifyUpdate();
          }
          return variableDataChanged;
-      }
-
-      public void setDiscoveredFolderName(String folderName) {
-         notifyUpdate();
-         _discoveredFolderName = folderName;
       }
 
       public void addCompletionEvent(ClusterScaleCompletionEvent event) {

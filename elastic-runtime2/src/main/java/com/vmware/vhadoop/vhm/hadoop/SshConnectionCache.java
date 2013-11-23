@@ -30,6 +30,7 @@ public class SshConnectionCache implements SshUtilities
    private static final String SCP_COMMAND = "scp  -t  ";
 
    static class Connection {
+
       final String hostname;
       final int port;
       final Credentials credentials;
@@ -208,14 +209,12 @@ public class SshConnectionCache implements SshUtilities
 
    private Map<Connection,Session> cache;
    private Map<Session,Set<Channel>> channelMap = new HashMap<Session,Set<Channel>>();
+
    private final JSch _jsch = new JSch();
-   private int capacity;
+   protected final int capacity;
    private float loadFactor = 0.75f;
    
-   protected Map<Connection,Session> getCache() {
-      return Collections.unmodifiableMap(cache);
-   }
-   
+ 
    protected void clearCache() {
          synchronized (cache) {
             synchronized (channelMap) {
@@ -259,6 +258,15 @@ public class SshConnectionCache implements SshUtilities
             return remove;
          }
       });
+   }
+
+   /**
+    * Extension point method for child classes. The cache is unmodifiable but the elements in it are not.
+    * Care should be taken when changing state of the contained objects.
+    * @return an unmodifiable view of the cache
+    */
+   protected Map<Connection,Session> getCache() {
+      return Collections.unmodifiableMap(cache);
    }
 
    /**

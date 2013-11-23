@@ -20,11 +20,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 
-import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.PerformanceManager;
-import com.vmware.vim.binding.vim.alarm.AlarmManager;
 import com.vmware.vim.binding.vim.event.Event.EventSeverity;
-import com.vmware.vim.binding.vim.event.EventManager;
 
 /* Represents actions which can be invoked on the VC subsystem */
 public interface VCActions {
@@ -76,21 +73,16 @@ public interface VCActions {
 
    public Map<String, Future<Boolean>> changeVMPowerState(Set<String> vmMoRefs, boolean b);
 
-   public List<VMEventData> waitForPropertyChange(String folderName) throws InterruptedException;
-
    public void interruptWait();
 
    public PerformanceManager getPerformanceManager();
-
-   public EventManager getEventManager();
-
-   public AlarmManager getAlarmManager();
-
-   public ExtensionManager getExtensionManager();
+   
+   /* Should only ever be called by the ClusterStateChangeListener Thread */
+   public List<VMEventData> waitForPropertyChange(String folderName) throws InterruptedException;
 
    public List<String> listVMsInFolder(String folderName);
 
-   public void log(EventSeverity level, String vmMoRef, String message);
+   public boolean logEventForVM(EventSeverity level, String vmMoRef, String message);
 
    public void raiseAlarm(String vmMoRef, String detail);
 

@@ -166,15 +166,16 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    }
 
    /* Map this as early as possible to help our log messages */
-   private String mapClusterIdToClusterName(VMConstantData constantData, VMVariableData variableData) {
-      if ((constantData != null) && (constantData.isComplete())) {
-         if (constantData._vmType.equals(VmType.MASTER)) {
+   private String mapClusterIdToClusterName(VMConstantData vmConstantData, VMVariableData variableData, SerengetiClusterConstantData clusterConstantData) {
+      if ((vmConstantData != null) && (clusterConstantData != null) && (vmConstantData.isComplete())) {
+         if (vmConstantData._vmType.equals(VmType.MASTER)) {
             String masterVmName = null;
             if ((variableData != null) && (variableData._myName != null)) {
                masterVmName = variableData._myName;
                int masterIndex = masterVmName.indexOf(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX);
                String clusterName = (masterIndex >= 0) ? masterVmName.substring(0, masterIndex) : masterVmName;
-               String clusterId = constantData._myUUID;
+               String clusterId = vmConstantData._myUUID;
+               clusterConstantData._clusterName = clusterName;
                LogFormatter._clusterIdToNameMapper.put(clusterId, clusterName);
                _log.log(VhmLevel.USER, "VHM: mapping cluster id "+clusterId+" to cluster name "+clusterName);
                return clusterId;
@@ -295,7 +296,7 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          interimVmData._vmVariableData = getVmVariableData(rawData, interimVmData._vmVariableData);
          interimVmData._clusterConstantData = getClusterConstantData(rawData, interimVmData._clusterConstantData);
          interimVmData._clusterVariableData = getClusterVariableData(rawData, interimVmData._clusterVariableData);
-         String derivedClusterId = mapClusterIdToClusterName(interimVmData._vmConstantData, interimVmData._vmVariableData);
+         String derivedClusterId = mapClusterIdToClusterName(interimVmData._vmConstantData, interimVmData._vmVariableData, interimVmData._clusterConstantData);
          if (interimVmData._clusterId == null) {
             if (derivedClusterId != null) {
                interimVmData._clusterId = derivedClusterId;
