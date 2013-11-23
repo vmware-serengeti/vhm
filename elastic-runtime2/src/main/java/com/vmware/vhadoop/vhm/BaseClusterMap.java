@@ -78,14 +78,12 @@ public abstract class BaseClusterMap extends AbstractClusterMap {
       return null;
    }
 
-   String getClusterIdForFolderBase(String clusterFolderName) {
+   String getClusterIdForNameBase(String clusterName) {
       //if ((_random != null) && ((_random.nextInt() % FAILURE_FACTOR) == 0)) {return null;}
-      if (clusterInfoMapHasData()) {
+      if ((clusterName != null) && clusterInfoMapHasData()) {
          for (ClusterInfo ci : getClusterInfoMap().values()) {
-            String constantFolder = ci.getSerengetiFolder();     /* Set when cluster is created by Serengeti */
-            String discoveredFolder = ci.getDiscoveredFolderName();            /* Discovered from SerengetiLimitInstruction */
-            if (((constantFolder != null) && (constantFolder.equals(clusterFolderName))) ||
-                  ((discoveredFolder != null) && (discoveredFolder.equals(clusterFolderName)))) {
+            String nameTest = ci.getClusterName();
+            if ((nameTest != null) && (nameTest.equals(clusterName))) {
                return ci.getClusterId();           /* Immutable result */
             }
          }

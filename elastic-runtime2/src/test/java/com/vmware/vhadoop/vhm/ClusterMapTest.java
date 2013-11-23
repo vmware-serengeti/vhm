@@ -54,9 +54,9 @@ public class ClusterMapTest extends AbstractJUnitTest {
    ClusterStateChangeListenerImpl cscl = new ClusterStateChangeListenerImpl(new StandaloneSimpleVCActions(), null);
 
    @Override
-   void processNewEventData(VMEventData eventData, String expectedClusterName, Set<ClusterScaleEvent> impliedScaleEvents) {
-      String clusterName = _clusterMap.handleClusterEvent(cscl.translateVMEventData(eventData), impliedScaleEvents);
-      assertEquals(expectedClusterName, clusterName);
+   void processNewEventData(VMEventData eventData, String expectedClusterId, Set<ClusterScaleEvent> impliedScaleEvents) {
+      String clusterId = _clusterMap.handleClusterEvent(cscl.translateVMEventData(eventData), impliedScaleEvents);
+      assertEquals(expectedClusterId, clusterId);
    }
 
    private void changeMasterVmPowerStateForClusterName(String clusterName, boolean powerState) {
@@ -148,24 +148,18 @@ public class ClusterMapTest extends AbstractJUnitTest {
    }
 
    @Test
-   public void getClusterIdForFolder() {
+   public void getClusterIdForName() {
       int numClusterIds = 3;
       populateSimpleClusterMap(numClusterIds, 4, false);
       assertEquals(numClusterIds, _clusterNames.size());
-      int cntr = 0;
       for (String clusterName : _clusterNames) {
-         String folderName = getFolderNameForClusterName(clusterName);
-         String clusterId = _clusterMap.getClusterIdForFolder(folderName);
+         String clusterId = _clusterMap.getClusterIdForName(clusterName);
          assertEquals(deriveClusterIdFromClusterName(clusterName), clusterId);
-
-         String newFolderName = "NEW_FOLDER"+cntr++;
-         _clusterMap.associateFolderWithCluster(clusterId, newFolderName);
-         assertEquals(clusterId, _clusterMap.getClusterIdForFolder(newFolderName));
       }
 
       /* Negative tests */
-      assertNull(_clusterMap.getClusterIdForFolder("bogus"));
-      assertNull(_clusterMap.getClusterIdForFolder(null));
+      assertNull(_clusterMap.getClusterIdForName("bogus"));
+      assertNull(_clusterMap.getClusterIdForName(null));
    }
 
    @Test
@@ -595,7 +589,7 @@ public class ClusterMapTest extends AbstractJUnitTest {
       Set<String> emptySet = new HashSet<String>();
       emptySet.add("foo");
       assertNull(_clusterMap.getAllKnownClusterIds());
-      assertNull(_clusterMap.getClusterIdForFolder("foo"));
+      assertNull(_clusterMap.getClusterIdForName("foo"));
       assertNull(_clusterMap.getClusterIdForVm("foo"));
       assertNull(_clusterMap.getDnsNamesForVMs(emptySet));
       assertNull(_clusterMap.getDnsNameForVM("foo"));

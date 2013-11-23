@@ -108,8 +108,8 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
             int numPoweredOn = 0;
             try {
                clusterMap = getAndReadLockClusterMap();
-               String clusterFolder = limitEvent.getClusterFolderName();
-               clusterId = clusterMap.getClusterIdForFolder(clusterFolder);
+               String clusterName = limitEvent.getClusterName();
+               clusterId = clusterMap.getClusterIdForName(clusterName);
                if (clusterId != null) {
                   poweredOffVmIds = clusterMap.listComputeVMsForClusterAndPowerState(clusterId, false);
                   numPoweredOff = (poweredOffVmIds == null) ? 0 : poweredOffVmIds.size();
@@ -125,7 +125,7 @@ public class ManualScaleStrategy extends AbstractClusterMapReader implements Sca
                   _log.log(VhmLevel.USER, "<%C"+clusterId+"%C>: handling manual elasticity command from Serengeti to set number of enabled compute nodes to " + targetSize);
                   returnEvent = new ClusterScaleDecision(clusterId);
                } else {
-                  tlStatus.registerTaskFailed(false, "Unknown clusterId for Cluster Folder "+clusterFolder);
+                  tlStatus.registerTaskFailed(false, "Unknown clusterId for Cluster "+clusterName);
                   /* delta == 0, so don't do anything */
                }
             } finally {

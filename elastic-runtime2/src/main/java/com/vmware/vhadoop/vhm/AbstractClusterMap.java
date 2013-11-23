@@ -579,13 +579,6 @@ public abstract class AbstractClusterMap implements ClusterMap {
       }
    }
 
-   void associateFolderWithCluster(String clusterId, String folderName) {
-      ClusterInfo ci = getCluster(clusterId);
-      if (ci != null) {
-         ci.setDiscoveredFolderName(folderName);
-      }
-   }
-
    String getClusterIdFromVMs(List<String> vms) {
       String clusterId = null;
       if (vmInfoMapHasData()) {

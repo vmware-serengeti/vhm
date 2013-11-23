@@ -113,12 +113,16 @@ public class VcClientFactory {
       }
       if (!success) {
          /* Only one thread should win this race. That thread will initiate the connection and others will not be blocked waiting */
-         if (_initiatingConnectionThread.compareAndSet(null, Thread.currentThread())) {
-            if (_initialized) {
-               _log.warning("VHM: connection to vCenter dropped, attempting reconnection");
+         Thread currentThread = Thread.currentThread();
+         if (_initiatingConnectionThread.compareAndSet(null, currentThread)) {
+            try {
+               if (_initialized) {
+                  _log.warning("VHM: connection to vCenter dropped, attempting reconnection");
+               }
+               success = connect(customTimeout);
+            } finally {
+               _initiatingConnectionThread.compareAndSet(currentThread, null);
             }
-            success = connect(customTimeout);
-            _initiatingConnectionThread.compareAndSet(Thread.currentThread(), null);
          } else {
             _log.info("VHM: VC undergoing initialization by other thread, so returning false");
             return false;
@@ -139,6 +143,7 @@ public class VcClientFactory {
    /**
     * Returns a client for a particular task after validating that the connection is good
     * If the connection is not good, an attempt will be made to re-connect with VC
+    * If another thread is already in the process of reconnecting, this method will not block and will return null
     * 
     * @param clientKey The VC Client
     * @return A valid client or null if a valid connection is not possible
@@ -150,6 +155,7 @@ public class VcClientFactory {
    /**
     * Same as getAndValidateClient except that it has the side effect of resetting waitForUpdates state
     *   and can take a custom timeout to wait less time for the retry
+    * If another thread is already in the process of reconnecting, this method will not block and will return null
     * 
     * @param clientKey The VC Client
     * @param customTimeout If not null, the custom timeout will be applied to the connection

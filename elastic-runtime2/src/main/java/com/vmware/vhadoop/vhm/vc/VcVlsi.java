@@ -48,7 +48,6 @@ import com.vmware.vhadoop.util.ThreadLocalCompoundStatus;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vim.binding.impl.vim.event.EventExImpl;
 import com.vmware.vim.binding.impl.vmodl.TypeNameImpl;
-import com.vmware.vim.binding.vim.ExtensionManager;
 import com.vmware.vim.binding.vim.Folder;
 import com.vmware.vim.binding.vim.PerformanceManager;
 import com.vmware.vim.binding.vim.ServiceInstance;
@@ -506,13 +505,13 @@ public class VcVlsi {
       WaitOptions waitOptions = new WaitOptions();
       waitOptions.setMaxWaitSeconds(propertyCollectorTimeout);
 
-      synchronized(propCollector) {
+      synchronized(_propertyCollectorLock) {
          _blockedPropertyCollectorSingleton = propCollector;
       }
       try {
          updateSet = propCollector.waitForUpdatesEx(version, waitOptions);
       } finally {
-         synchronized(propCollector) {
+         synchronized(_propertyCollectorLock) {
             _blockedPropertyCollectorSingleton = null;
          }
       }

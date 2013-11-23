@@ -77,8 +77,8 @@ public class ClusterMapImpl extends BaseClusterMap {
    }
 
    @Override
-   public String getClusterIdForFolder(String clusterFolderName) {
-      return getClusterIdForFolderBase(clusterFolderName);
+   public String getClusterIdForName(String clusterFolderName) {
+      return getClusterIdForNameBase(clusterFolderName);
    }
 
    @Override

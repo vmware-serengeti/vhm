@@ -158,7 +158,7 @@ public class StandaloneSimpleClusterMap implements ClusterMap
 	}
 
 	@Override
-	public String getClusterIdForFolder(final String clusterFolderName) {
+	public String getClusterIdForName(final String clusterFolderName) {
 		return null;
 	}
 

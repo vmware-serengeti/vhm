@@ -64,6 +64,7 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
    }
 
    public class SerengetiClusterConstantData {
+      public String _clusterName;
       public String _masterMoRef;
       public String _serengetiFolder;
 
@@ -73,7 +74,7 @@ public interface ClusterStateChangeEvent extends NotificationEvent {
 
       @Override
       public String toString() {
-         return "SerengetiClusterConstantData{masterMoRef="+_masterMoRef+", folder="+_serengetiFolder+"}";
+         return "SerengetiClusterConstantData{clusterName="+_clusterName+", masterMoRef="+_masterMoRef+", folder="+_serengetiFolder+"}";
       }
    }
 

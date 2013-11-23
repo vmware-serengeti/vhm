@@ -602,7 +602,7 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
 
       /* Serengeti limit event is a blocking instruction to switch to Manual Scale Strategy */
       SerengetiLimitInstruction limitEvent1 = new SerengetiLimitInstruction(
-            getFolderNameForClusterName(clusterName1),
+            clusterName1,
             SerengetiLimitAction.actionWaitForManual, 0,
             new RabbitConnectionCallback(routeKey1, testConnection));
 

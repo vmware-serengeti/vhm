@@ -126,7 +126,7 @@ public class CachingClusterMapImpl extends BaseClusterMap {
    }
 
    @Override
-   public String getClusterIdForFolder(String clusterFolderName) {
+   public String getClusterIdForName(String clusterFolderName) {
       class MethodAccessor {};
       return (String)getCachedObjectFromClusterList(MethodAccessor.class, clusterFolderName);
    }
