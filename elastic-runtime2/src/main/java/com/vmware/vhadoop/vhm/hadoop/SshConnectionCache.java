@@ -29,6 +29,13 @@ public class SshConnectionCache implements SshUtilities
 
    private static final String SCP_COMMAND = "scp  -t  ";
 
+   private Map<Connection,Session> cache;
+   private Map<Session,Set<Channel>> channelMap = new HashMap<Session,Set<Channel>>();
+
+   private final JSch _jsch = new JSch();
+   protected final int capacity;
+   private float loadFactor = 0.75f;
+
    static class Connection {
 
       final String hostname;
@@ -207,26 +214,19 @@ public class SshConnectionCache implements SshUtilities
       }
    }
 
-   private Map<Connection,Session> cache;
-   private Map<Session,Set<Channel>> channelMap = new HashMap<Session,Set<Channel>>();
-
-   private final JSch _jsch = new JSch();
-   protected final int capacity;
-   private float loadFactor = 0.75f;
-
-
    protected void clearCache() {
       synchronized (cache) {
          synchronized (channelMap) {
             for (Set<Channel> channelSet : channelMap.values()) {
-               /* TODO: need to disconnect channels if they are still connected? */
+               /* no need to disconnect channels as they are tied to the underlying session */
                channelSet.clear();
             }
             channelMap.clear();
 
             for (Session session : cache.values()) {
-               if (session.isConnected())
+               if (session.isConnected()) {
                   session.disconnect();
+               }
             }
             cache.clear();
          }
