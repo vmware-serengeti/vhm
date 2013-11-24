@@ -78,7 +78,7 @@ public class RabbitAdaptor implements MQClient {
       }
 
       @Override
-      public void sendMessage(byte[] data) {
+      public void sendMessage(byte[] data) throws CannotConnectException {
          if (_routeKey == null) {
             _innerConnection.sendMessage(data);
          } else {
@@ -92,7 +92,7 @@ public class RabbitAdaptor implements MQClient {
    }
 
    @Override
-   public void sendMessage(byte[] data) {
+   public void sendMessage(byte[] data) throws CannotConnectException {
       _connection.sendMessage(data);
    }
 

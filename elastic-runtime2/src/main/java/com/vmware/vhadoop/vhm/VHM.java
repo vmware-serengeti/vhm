@@ -34,6 +34,7 @@ import com.vmware.vhadoop.api.vhm.ClusterMap.ExtraInfoToClusterMapper;
 import com.vmware.vhadoop.api.vhm.ClusterMapReader;
 import com.vmware.vhadoop.api.vhm.ExecutionStrategy;
 import com.vmware.vhadoop.api.vhm.HealthMonitor;
+import com.vmware.vhadoop.api.vhm.QueueClient.CannotConnectException;
 import com.vmware.vhadoop.api.vhm.VCActions;
 import com.vmware.vhadoop.api.vhm.VHMCollaborator;
 import com.vmware.vhadoop.api.vhm.events.ClusterHealthEvent;
@@ -424,7 +425,11 @@ public class VHM implements EventConsumer {
                if (clusterId != null) {
                   updateOrCreateClusterScaleEventSet(clusterId, (ClusterScaleEvent)event, clusterScaleEventMap);
                } else if (event instanceof SerengetiLimitInstruction) {
-                  ((SerengetiLimitInstruction) event).reportError("Unable to resolve cluster ID from vCenter");
+                  try {
+                     ((SerengetiLimitInstruction) event).reportError("Unable to resolve cluster ID from vCenter");
+                  } catch (CannotConnectException e) {
+                     _log.warning("Failed to report error back on rabbit queue: "+e.getCause().getMessage());
+                  }
                }
             }
          }
@@ -598,30 +603,34 @@ public class VHM implements EventConsumer {
        * The first thing we do here is update ClusterMap to ensure that the latest state is reflected ASAP
        * Note that clusterScaleEvents can be implied by cluster state changes, so new clusterScaleEvents can be added here */
       if ((addRemoveEvents.size() + updateEvents.size() + completionEvents.size()) > 0) {
-         _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-
-               /* Add/remove events are handled first as these will have the most significant impact */
-               handleClusterStateChangeEvents(addRemoveEvents, clusterScaleEvents);
-
-               /* Note that the scale strategy key may be updated here so any subsequent call to getScaleStrategyForCluster will reflect the change */
-               handleClusterStateChangeEvents(updateEvents, clusterScaleEvents);
-               for (ClusterScaleCompletionEvent event : completionEvents) {
-                  _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
-                  if (event instanceof ClusterScaleDecision) {
-                     /* The option exists for a scaleStrategy to ask for an event to be re-queued, causing it to be re-invoked */
-                     List<NotificationEvent> eventsToRequeue = ((ClusterScaleDecision)event).getEventsToRequeue();
-                     if (eventsToRequeue != null) {
-                        _log.info("Requeuing event(s) from ClusterScaleCompletionEvent: "+eventsToRequeue);
-                        newRequeuedAndInjectedEvents.addAll(eventsToRequeue);
+         try {
+            _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
+               @Override
+               public Object call() throws Exception {
+   
+                  /* Add/remove events are handled first as these will have the most significant impact */
+                  handleClusterStateChangeEvents(addRemoveEvents, clusterScaleEvents);
+   
+                  /* Note that the scale strategy key may be updated here so any subsequent call to getScaleStrategyForCluster will reflect the change */
+                  handleClusterStateChangeEvents(updateEvents, clusterScaleEvents);
+                  for (ClusterScaleCompletionEvent event : completionEvents) {
+                     _log.info("ClusterScaleCompletionEvent received: "+event.getClass().getName());
+                     if (event instanceof ClusterScaleDecision) {
+                        /* The option exists for a scaleStrategy to ask for an event to be re-queued, causing it to be re-invoked */
+                        List<NotificationEvent> eventsToRequeue = ((ClusterScaleDecision)event).getEventsToRequeue();
+                        if (eventsToRequeue != null) {
+                           _log.info("Requeuing event(s) from ClusterScaleCompletionEvent: "+eventsToRequeue);
+                           newRequeuedAndInjectedEvents.addAll(eventsToRequeue);
+                        }
                      }
+                     _clusterMap.handleCompletionEvent(event);
                   }
-                  _clusterMap.handleCompletionEvent(event);
+                  return null;
                }
-               return null;
-            }
-         });
+            });
+         } catch (Exception e) {
+            _log.severe("Exception updating ClusterMap: "+e);
+         }
       }
 
       /* Event injection happens immediately after ClusterMap has been updated and allows collaborators to inject derived events to be processed */
@@ -692,13 +701,17 @@ public class VHM implements EventConsumer {
                   /* If Serengeti has made the necessary change to extraInfo AND any other scaling has completed, inform completion */
                   boolean extraInfoChanged = _clusterMap.getScaleStrategyKey(clusterId).equals(ManualScaleStrategy.MANUAL_SCALE_STRATEGY_KEY);
                   boolean scalingCompleted = !_executionStrategy.isClusterScaleInProgress(clusterId);
-                  if (extraInfoChanged && scalingCompleted) {
-                     _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"%C> is now complete. Reporting back to Serengeti");
-                     switchToManualEvent.reportCompletion();
-                  } else {
-                     /* Continue to block Serengeti CLI by putting the event back on the queue */
-                     switchToManualEvent.reportProgress(0, "waiting for current scaling operation to complete");
-                     requeueExistingEvents(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
+                  try {
+                     if (extraInfoChanged && scalingCompleted) {
+                        _log.info("Switch to manual scale strategy for cluster <%C"+clusterId+"%C> is now complete. Reporting back to Serengeti");
+                        switchToManualEvent.reportCompletion();
+                     } else {
+                        /* Continue to block Serengeti CLI by putting the event back on the queue */
+                        switchToManualEvent.reportProgress(0, "waiting for current scaling operation to complete");
+                        requeueExistingEvents(Arrays.asList(new ClusterScaleEvent[]{switchToManualEvent}));
+                     }
+                  } catch (CannotConnectException e) {
+                     _log.warning("Failed to report progress back on rabbit queue: "+e.getCause().getMessage());
                   }
                /* Call out to the execution strategy to handle the scale events for the cluster - non blocking */
                } else if (!_executionStrategy.handleClusterScaleEvents(clusterId, scaleStrategy, consolidatedEvents)) {

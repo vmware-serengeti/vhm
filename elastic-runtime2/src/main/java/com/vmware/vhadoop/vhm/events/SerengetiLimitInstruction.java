@@ -18,6 +18,7 @@ package com.vmware.vhadoop.vhm.events;
 import java.util.logging.Logger;
 
 import com.vmware.vhadoop.api.vhm.QueueClient;
+import com.vmware.vhadoop.api.vhm.QueueClient.CannotConnectException;
 import com.vmware.vhadoop.util.VhmLevel;
 import com.vmware.vhadoop.vhm.rabbit.VHMJsonReturnMessage;
 
@@ -68,7 +69,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       return _toSize;
    }
 
-   public void acknowledgeReceipt() {
+   public void acknowledgeReceipt() throws CannotConnectException {
       if (_messageCallback != null) {
          _log.info("Acknowledging receipt of instruction");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(false, false, 0, 0, null, "limit instruction received by VHM");
@@ -77,7 +78,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       }
    }
 
-   public void reportProgress(int percentage, String message) {
+   public void reportProgress(int percentage, String message) throws CannotConnectException  {
       if (_messageCallback != null) {
          _log.info("Reporting progress "+percentage+"%");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(false, false, percentage, 0, null, message);
@@ -86,7 +87,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       }
    }
 
-   public void reportError(String message) {
+   public void reportError(String message) throws CannotConnectException {
       if (_messageCallback != null) {
          _log.warning(_clusterName+" - error while attempting to "+toString()+" - "+message+";");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
@@ -95,7 +96,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       }
    }
 
-   public void reportCompletion() {
+   public void reportCompletion() throws CannotConnectException {
       if (_messageCallback != null) {
          _log.log(VhmLevel.USER, "VHM: "+_clusterName+" - completed instruction to "+toString());
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);

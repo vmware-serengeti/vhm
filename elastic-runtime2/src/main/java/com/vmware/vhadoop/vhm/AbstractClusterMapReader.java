@@ -61,31 +61,36 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
          _threadLocalStatus = ((AbstractClusterMapReader)parent)._threadLocalStatus;
          _initialized = true;
       } else {
-         throw new RuntimeException("Unrecognized ClusterMapReader implementation");
+         _log.severe("Unrecognized ClusterMapReader implementation");
       }
    }
 
-   private void checkInitialized() {
+   private boolean checkInitialized() {
       if (!_initialized) {
-         throw new RuntimeException("ClusterMapReader not initialized!");
+         _log.severe("Method invocation failed due to uninitialized ClusterMapReader");
       }
+      return _initialized;
    }
 
    @Override
    /* Gets a read lock on ClusterMap - call unlock when done */
    public ClusterMap getAndReadLockClusterMap() {
-      checkInitialized();
-      return _clusterMapAccess.lockClusterMap();
+      ClusterMap result = null;
+      if (checkInitialized()) {
+         result = _clusterMapAccess.lockClusterMap();
+      }
+      return (result != null) ? result : new NullClusterMap();
    }
 
    @Override
    public void unlockClusterMap(final ClusterMap clusterMap) {
-      checkInitialized();
+      if (clusterMap instanceof NullClusterMap) {
+         return;
+      }
       _clusterMapAccess.unlockClusterMap(clusterMap);
    }
 
    public void blockOnPowerStateChange(final Set<String> vmIds, final boolean expectedPowerState, final long timeout) {
-      checkInitialized();
       CompoundStatus status = new CompoundStatus(POWER_STATE_CHANGE_STATUS_KEY);
       long timeoutTime = System.currentTimeMillis() + timeout;
       long pollSleepTime = 500;
@@ -100,7 +105,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
          boolean completed = true;
          
          try {
-            clusterMap = _clusterMapAccess.lockClusterMap();
+            clusterMap = getAndReadLockClusterMap();     /* Initialization check here */
             
             for (String vmId : vmIds) {
                Boolean result = clusterMap.checkPowerStateOfVm(vmId, expectedPowerState);
@@ -112,7 +117,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
                }
             }
          } finally {
-            _clusterMapAccess.unlockClusterMap(clusterMap);
+            unlockClusterMap(clusterMap);
          }
 
          if (completed) {
@@ -136,7 +141,7 @@ public abstract class AbstractClusterMapReader implements ClusterMapReader {
    public String getMasterVmIdForCluster(String clusterId) {
       ClusterMap clusterMap = null;
       try {
-         clusterMap = getAndReadLockClusterMap();
+         clusterMap = getAndReadLockClusterMap();     /* Initialization check here */
          return clusterMap.getMasterVmIdForCluster(clusterId);
       } finally {
          unlockClusterMap(clusterMap);

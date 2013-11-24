@@ -40,6 +40,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
+import com.vmware.vhadoop.api.vhm.QueueClient.CannotConnectException;
 
 /**
  * Encapsulates the details of connecting to a RabbitMQ queue
@@ -142,7 +143,7 @@ public class RabbitConnection {
    }
 
    /* TODO: Can we cache the consumer object? */
-   QueueingConsumer getConsumer() {
+   QueueingConsumer getConsumer() throws CannotConnectException {
       synchronized(_consumerLock) {
          if (_consumer == null) {
             _log.fine("Creating new consumer");
@@ -162,7 +163,7 @@ public class RabbitConnection {
                };
                channel.basicConsume(getQueueName(), true, _consumer);
             } catch (Exception e) {
-               throw new RuntimeException("Unable to get message consumer", e);
+               throw new CannotConnectException("Unable to get message consumer", e);
             }
          }
 
@@ -181,18 +182,27 @@ public class RabbitConnection {
       return connection != null;
    }
 
-   protected void sendMessage(String routeKey, byte[] data) {
-      try {
-         Channel channel = getChannel();
-         if (channel != null) {
-            channel.basicPublish(_credentials.getExchangeName(), routeKey, null, data);
+   protected void sendMessage(String routeKey, byte[] data) throws CannotConnectException {
+      boolean retry = false;
+      do {
+         try {
+            Channel channel = getChannel();
+            if (channel != null) {
+               channel.basicPublish(_credentials.getExchangeName(), routeKey, null, data);
+            }
+            retry = false;
+         } catch (Exception e) {
+            if (!retry) {
+               connect();
+               retry = true;
+            } else { 
+               throw new CannotConnectException("Unable to send message", e);
+            }
          }
-      } catch (IOException e) {
-         throw new RuntimeException("Unable to send message", e);
-      }
+      } while (retry);
    }
 
-   protected void sendMessage(byte[] data) {
+   protected void sendMessage(byte[] data) throws CannotConnectException {
       sendMessage(_credentials.getRouteKeyStatus(), data);
    }
 

@@ -80,29 +80,25 @@ public class MultipleReaderSingleWriterClusterMapAccess implements ClusterMapAcc
       }
    }
 
-   Object runCodeInWriteLock(Callable<Object> callable) {
+   Object runCodeInWriteLock(Callable<Object> callable) throws Exception {
       synchronized(_clusterMapWriteLock) {
-         try {
-            /* Wait for the readers to stop reading. New readers will block on the write lock */
-            long readerTimeout = 1000;
-            long pollSleep = 10;
-            long killCntr = readerTimeout / pollSleep;
-            while (_readerThreads.size() > 0) {
-               try {
-                  Thread.sleep(pollSleep);
-                  if (--killCntr < 0) {
-                     _log.severe("VHM: reader lock left open, whacking to 0");
-                     _readerThreads.clear();
-                     break;
-                  }
-               } catch (InterruptedException e) {
-                  _log.warning("VHM: unexpected interruption to sleep in writeLock");
+         /* Wait for the readers to stop reading. New readers will block on the write lock */
+         long readerTimeout = 1000;
+         long pollSleep = 10;
+         long killCntr = readerTimeout / pollSleep;
+         while (_readerThreads.size() > 0) {
+            try {
+               Thread.sleep(pollSleep);
+               if (--killCntr < 0) {
+                  _log.severe("VHM: reader lock left open, whacking to 0");
+                  _readerThreads.clear();
+                  break;
                }
+            } catch (InterruptedException e) {
+               _log.warning("VHM: unexpected interruption to sleep in writeLock");
             }
-            return callable.call();
-         } catch (Exception e) {
-            throw new RuntimeException(e);
          }
+         return callable.call();
       }
    }
 }

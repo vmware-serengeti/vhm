@@ -16,7 +16,15 @@
 package com.vmware.vhadoop.api.vhm;
 
 /* Represents actions which can be invoked on the Rabbit MQ subsystem */
-public interface QueueClient
+public interface QueueClient 
 {
-   void sendMessage(byte[] data);
+   public class CannotConnectException extends Exception {
+      private static final long serialVersionUID = -5779586054546770967L;
+
+      public CannotConnectException(String msg, Throwable t) {
+         super(msg, t);
+      }
+   }
+   
+   void sendMessage(byte[] data) throws CannotConnectException;
 }

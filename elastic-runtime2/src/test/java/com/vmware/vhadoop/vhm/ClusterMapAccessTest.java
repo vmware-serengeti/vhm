@@ -21,6 +21,8 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import junit.framework.AssertionFailedError;
+
 import static org.junit.Assert.*;
 
 import org.junit.After;
@@ -106,16 +108,20 @@ public class ClusterMapAccessTest {
       Thread t = new Thread(new Runnable() {
          @Override
          public void run() {
-            _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
-               @Override
-               public Object call() throws Exception {
-                  writing.incrementAndGet();
-                  System.out.println(System.currentTimeMillis()+": Writer started writing. New Readers should be blocked for "+writeDelayMillis+"ms");
-                  Thread.sleep(writeDelayMillis);
-                  _clusterMap.addVMToMap("myVm3", "myCluster", "myHost", false);
-                  return false;
-               }
-            });
+            try {
+               _clusterMapAccess.runCodeInWriteLock(new Callable<Object>() {
+                  @Override
+                  public Object call() throws Exception {
+                     writing.incrementAndGet();
+                     System.out.println(System.currentTimeMillis()+": Writer started writing. New Readers should be blocked for "+writeDelayMillis+"ms");
+                     Thread.sleep(writeDelayMillis);
+                     _clusterMap.addVMToMap("myVm3", "myCluster", "myHost", false);
+                     return false;
+                  }
+               });
+            } catch (Exception e) {
+               throw new AssertionFailedError("Error updating ClusterMap");
+            }
          }});
       _liveThreads.add(t);
       t.start();
