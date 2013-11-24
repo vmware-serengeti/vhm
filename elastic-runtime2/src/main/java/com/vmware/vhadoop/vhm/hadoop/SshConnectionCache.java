@@ -106,7 +106,7 @@ public class SshConnectionCache implements SshUtilities
       public InputStream getInputStream() {
          return stdout;
       }
-      
+
       @Override
       public InputStream getErrorStream() {
          return stderr;
@@ -213,8 +213,8 @@ public class SshConnectionCache implements SshUtilities
    private final JSch _jsch = new JSch();
    protected final int capacity;
    private float loadFactor = 0.75f;
-   
- 
+
+
    protected void clearCache() {
          synchronized (cache) {
             synchronized (channelMap) {
@@ -222,9 +222,9 @@ public class SshConnectionCache implements SshUtilities
                   /*TODO: need to disconnect channels if they are still connected?*/
                   channelSet.clear();
                }
-               channelMap.clear();                  
+               channelMap.clear();
             }
-            
+
             for(Session session : cache.values()) {
                if(session.isConnected())
                   session.disconnect();
@@ -241,12 +241,12 @@ public class SshConnectionCache implements SshUtilities
 
          @Override
          protected boolean removeEldestEntry (Map.Entry<Connection,Session> eldest) {
-    
+
             boolean remove = size() > SshConnectionCache.this.capacity;
             /* if we're removing this session it has to be disconnected to avoid leaking sockets */
             if (remove) {
                Session session = eldest.getValue();
-              
+
                synchronized (channelMap) {
                   _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
                   if (!channelMap.containsKey(session)) {
@@ -357,8 +357,8 @@ public class SshConnectionCache implements SshUtilities
       }
 
       if (!connectSession(session, connection.credentials)) {
-         cache.remove(connection);
          channelMap.remove(connection);
+         cache.remove(session);
          if (session != null) {
             /* ensure that even if it's something odd causing connectSession to fail we clean up */
             session.disconnect();
