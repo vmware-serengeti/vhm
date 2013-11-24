@@ -90,7 +90,7 @@ public class PowerTimeVMChooser extends AbstractClusterMapReader implements VMCh
             }
             /* Choose VMs that have not recently been powered off */
             long elapsedMillis = currentTimeMillis - powerOffTime;
-            _log.fine("Choosing VM <%V"+vmId+"%V> with elapsedMillis="+elapsedMillis);
+            _log.fine("Evaluating VM <%V"+vmId+"%V> with elapsedMillis="+elapsedMillis);
             return (elapsedMillis > _powerOffTimeThresholdMillis) ? vmId : null;
          }
       };
@@ -112,7 +112,7 @@ public class PowerTimeVMChooser extends AbstractClusterMapReader implements VMCh
             }
             /* Choose VMs that have been recently powered on */
             long elapsedMillis = currentTimeMillis - powerOnTime;
-            _log.fine("Choosing VM <%V"+vmId+"%V> with elapsedMillis="+elapsedMillis);
+            _log.fine("Evaluating VM <%V"+vmId+"%V> with elapsedMillis="+elapsedMillis);
             return (elapsedMillis <= _powerOnTimeThresholdMillis) ? vmId : null;
          }
       };
