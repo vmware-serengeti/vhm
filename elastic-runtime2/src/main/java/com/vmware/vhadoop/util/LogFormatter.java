@@ -225,19 +225,27 @@ public class LogFormatter extends Formatter {
       return result;
    }
 
-   public static String constructListOfLoggableVms(Set<String> vmIds) {
-      if (vmIds == null) {
+   private static String constructListOfLoggableEntities(Set<String> ids, String prefix, String postfix) {
+      if (ids == null) {
          return "null";
       }
-      if (vmIds.isEmpty()) {
+      if (ids.isEmpty()) {
          return "[]";
       }
-      StringBuffer sb = new StringBuffer();
-      for (String activeVmId : vmIds) {
-         sb.append("<%V").append(activeVmId).append("%V>, ");
+      StringBuilder sb = new StringBuilder();
+      for (String id : ids) {
+         sb.append(prefix).append(id).append(postfix).append(", ");
       }
       sb.delete(sb.length()-2, sb.length());
       return sb.toString();
+   }
+
+   public static String constructListOfLoggableVms(Set<String> vmIds) {
+      return constructListOfLoggableEntities(vmIds, "<%V", "%V>");
+   }
+
+   public static String constructListOfLoggableClusters(Set<String> clusterIds) {
+      return constructListOfLoggableEntities(clusterIds, "<%C", "%C>");
    }
 
    public static boolean isDetailLogging(Logger logger) {

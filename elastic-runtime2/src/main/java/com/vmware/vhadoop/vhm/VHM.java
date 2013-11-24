@@ -681,7 +681,7 @@ public class VHM implements EventConsumer {
                continue;
             }
 
-            _log.finer("Using "+scaleStrategy.getKey()+" scale strategy to filter events for cluster "+clusterId);
+            _log.finer("Using "+scaleStrategy.getKey()+" scale strategy to filter events for cluster <%C"+clusterId);
 
             /* UnconsolidatedEvents guaranteed to be non-null and consolidatedEvents should be a trimmed down version of the same collection */
             Set<ClusterScaleEvent> consolidatedEvents = consolidateClusterEvents(scaleStrategy, unconsolidatedEvents);
