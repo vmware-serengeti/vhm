@@ -15,8 +15,11 @@
 
 package com.vmware.vhadoop.util;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -149,12 +152,31 @@ public class LogFormatterTest {
    }
    
    @Test
-   public void runTests() {
+   public void substitutionTests() {
       for (String key : testData.keySet()) {
          String value = testData.get(key);
          String actual = LogFormatter.swapIdsForNames(new StringBuilder(value)).toString();
-         System.out.println("TESTING \""+key+"\"; EXPECTING \""+value+"\"; GOT \""+actual+"\"");
+//         System.out.println("TESTING \""+key+"\"; EXPECTING \""+value+"\"; GOT \""+actual+"\"");
          assertEquals(value, actual);
       }
+   }
+   
+   @Test
+   public void collectionFormatting() {
+      String result = LogFormatter.constructListOfLoggableVms(new HashSet(Arrays.asList(new String[]{vmId1, vmId2})));
+      result = LogFormatter.swapIdsForNames(new StringBuilder(result)).toString();
+      assertEquals(vmName1+", "+vmName2, result);
+      
+      result = LogFormatter.constructListOfLoggableVms(new HashSet(Arrays.asList(new String[]{vmId1})));
+      result = LogFormatter.swapIdsForNames(new StringBuilder(result)).toString();
+      assertEquals(vmName1, result);
+      
+      result = LogFormatter.constructListOfLoggableVms(new HashSet(Arrays.asList(new String[]{})));
+      result = LogFormatter.swapIdsForNames(new StringBuilder(result)).toString();
+      assertEquals("[]", result);
+      
+      result = LogFormatter.constructListOfLoggableVms(null);
+      result = LogFormatter.swapIdsForNames(new StringBuilder(result)).toString();
+      assertEquals("null", result);
    }
 }
