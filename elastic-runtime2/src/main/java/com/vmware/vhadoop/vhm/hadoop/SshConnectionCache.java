@@ -23,9 +23,13 @@ public class SshConnectionCache implements SshUtilities
 {
    private static final Logger _log = Logger.getLogger(SshConnectionCache.class.getName());
 
-   private static final int NUM_SSH_RETRIES = ExternalizedParameters.get().getInt("SSH_INITIAL_CONNECTION_NUMBER_OF_RETRIES");
-   private static final int RETRY_DELAY_MILLIS = ExternalizedParameters.get().getInt("SSH_INITIAL_CONNECTION_RETRY_DELAY_MILLIS");
-   private static final int INPUTSTREAM_TIMEOUT_MILLIS = ExternalizedParameters.get().getInt("SSH_REMOTE_EXECUTION_TIMEOUT_MILLIS");
+   private final int NUM_SSH_RETRIES = ExternalizedParameters.get().getInt("SSH_INITIAL_CONNECTION_NUMBER_OF_RETRIES");
+   private final int RETRY_DELAY_MILLIS = ExternalizedParameters.get().getInt("SSH_INITIAL_CONNECTION_RETRY_DELAY_MILLIS");
+   private final int INPUTSTREAM_TIMEOUT_MILLIS = ExternalizedParameters.get().getInt("SSH_REMOTE_EXECUTION_TIMEOUT_MILLIS");
+   private final int SESSION_READ_TIMEOUT = ExternalizedParameters.get().getInt("SSH_SESSION_READ_TIMEOUT");
+   private final int NUM_KEEP_ALIVE = ExternalizedParameters.get().getInt("SSH_DROPPED_KEEP_ALIVE_GRACE");
+   private final int REMOTE_PROC_WAIT_FOR_DELAY = ExternalizedParameters.get().getInt("SSH_REMOTE_PROC_WAIT_FOR_DELAY");
+   private final String STRICT_HOST_KEY_CHECKING = ExternalizedParameters.get().getString("SSH_STRICT_HOST_KEY_CHECKING").trim();
 
    private static final String SCP_COMMAND = "scp  -t  ";
 
@@ -135,7 +139,7 @@ public class SshConnectionCache implements SshUtilities
                return exitStatus;
             }
 
-            this.wait(100);
+            this.wait(REMOTE_PROC_WAIT_FOR_DELAY);
          } while (true);
       }
 
@@ -160,7 +164,7 @@ public class SshConnectionCache implements SshUtilities
                return exitStatus;
             }
 
-            this.wait(100);
+            this.wait(REMOTE_PROC_WAIT_FOR_DELAY);
          } while (deadline > System.currentTimeMillis());
 
          return exitStatus;
@@ -311,10 +315,11 @@ public class SshConnectionCache implements SshUtilities
          Session session = _jsch.getSession(connection.credentials.username, connection.hostname, connection.port);
 
          java.util.Properties config = new java.util.Properties();
-         config.put("StrictHostKeyChecking", "no"); /* TODO: Necessary? Hack? Security hole?? */
+         config.put("StrictHostKeyChecking", STRICT_HOST_KEY_CHECKING);
          session.setConfig(config);
 
-         session.setTimeout(15000);
+         session.setTimeout(SESSION_READ_TIMEOUT);
+         session.setServerAliveCountMax(NUM_KEEP_ALIVE);
 
          return session;
       } catch (JSchException e) {
