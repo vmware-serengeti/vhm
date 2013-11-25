@@ -89,6 +89,8 @@ public class SshConnectionCache implements SshUtilities
       InputStream stderr;
       OutputStream stdin;
 
+      private int exitStatus = -1;;
+
       public RemoteProcess(ChannelExec channel) throws IOException, JSchException {
          this.channel = channel;
          this.stdin = channel.getOutputStream();
@@ -120,16 +122,20 @@ public class SshConnectionCache implements SshUtilities
       }
 
       @Override
-      public int waitFor() throws InterruptedException {
+      public synchronized int waitFor() throws InterruptedException {
+         if (channel == null) {
+            return exitStatus;
+         }
+
          do {
-            int status = channel.getExitStatus();
-            if (status != -1) {
+            exitStatus = channel.getExitStatus();
+            if (exitStatus != -1) {
                cleanup();
 
-               return status;
+               return exitStatus;
             }
 
-            Thread.sleep(100);
+            this.wait(100);
          } while (true);
       }
 
@@ -139,55 +145,72 @@ public class SshConnectionCache implements SshUtilities
        * @return the return code for the process or -1 if the wait times out
        * @throws InterruptedException
        */
-      public int waitFor(int timeout) throws InterruptedException {
+      public synchronized int waitFor(int timeout) throws InterruptedException {
+         if (channel == null) {
+            return exitStatus;
+         }
+
          long deadline = System.currentTimeMillis() + timeout;
 
          do {
-            int status = channel.getExitStatus();
-            if (status != -1) {
+            exitStatus = channel.getExitStatus();
+            if (exitStatus != -1) {
                cleanup();
 
-               return status;
+               return exitStatus;
             }
 
-            Thread.sleep(100);
+            this.wait(100);
          } while (deadline > System.currentTimeMillis());
 
-         return -1;
+         return exitStatus;
       }
 
       @Override
-      public int exitValue() {
-         return channel.getExitStatus();
+      public synchronized int exitValue() {
+         if (channel == null) {
+            return exitStatus;
+         }
+
+         exitStatus = channel.getExitStatus();
+         if (exitStatus != -1) {
+            cleanup();
+         }
+
+         return exitStatus;
       }
 
       @Override
-      public void destroy() {
+      public synchronized void destroy() {
+         if (channel == null) {
+            return;
+         }
+
          try {
             channel.sendSignal("SIGKILL");
          } catch (Exception e) {
             _log.log(Level.INFO, "VHM: unable to send kill signal to remote process", e);
          }
 
+         exitStatus = channel.getExitStatus();
+
          cleanup();
       }
 
-      public synchronized void cleanup() {
+      private void cleanup() {
          if (channel == null) {
             return;
          }
 
          channel.disconnect();
          synchronized (cache) {
-            synchronized (channelMap) {
-               Set<Channel> channels = channelMap.get(session);
-               if (channels != null) {
-                  channels.remove(channel);
-                  if (channels.isEmpty() && !cache.containsValue(session)) {
-                     channelMap.remove(session);
-                     _log.fine("Disconnecting session during RemoteProcess cleanup for "+session.getUserName()+"@"+session.getHost());
-                     session.disconnect();
-                  }
+            Set<Channel> channels = channelMap.get(session);
+            if (channels != null) {
+               channels.remove(channel);
+               if (channels.isEmpty() && !cache.containsValue(session)) {
+                  channelMap.remove(session);
+                  _log.fine("Disconnecting session during RemoteProcess cleanup for "+session.getUserName()+"@"+session.getHost());
+                  session.disconnect();
                }
             }
          }
@@ -214,22 +237,28 @@ public class SshConnectionCache implements SshUtilities
       }
    }
 
+   /**
+    * This does NOT leave channels and sessions connected if they're in use.
+    * It explicitly disconnects everything then clears the cache.
+    *
+    * Should be used for only for explicit shutdown of all sessions and connections that
+    * this cache has served.
+    */
    protected void clearCache() {
       synchronized (cache) {
-         synchronized (channelMap) {
-            for (Set<Channel> channelSet : channelMap.values()) {
-               /* no need to disconnect channels as they are tied to the underlying session */
-               channelSet.clear();
+         for (Set<Channel> channelSet : channelMap.values()) {
+            for (Channel channel : channelSet) {
+               channel.disconnect();
             }
-            channelMap.clear();
-
-            for (Session session : cache.values()) {
-               if (session.isConnected()) {
-                  session.disconnect();
-               }
-            }
-            cache.clear();
          }
+
+         for (Session session : cache.values()) {
+            if (session.isConnected()) {
+               session.disconnect();
+            }
+         }
+
+         cache.clear();
       }
    }
 
@@ -248,13 +277,12 @@ public class SshConnectionCache implements SshUtilities
                Session session = eldest.getValue();
 
                if (session != null) {
-                  synchronized (channelMap) {
-                     _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
-                     Set<Channel> channels = channelMap.get(session);
-                     /* if there are no incomplete channels associated with this session then evict it */
-                     if (channels == null || channels.isEmpty()) {
-                        session.disconnect();
-                     }
+                  _log.fine("Disconnecting session during cache eviction for "+session.getUserName()+"@"+session.getHost());
+                  Set<Channel> channels = channelMap.get(session);
+                  /* if there are no incomplete channels associated with this session then evict it */
+                  if (channels == null || channels.isEmpty()) {
+                     channelMap.remove(session);
+                     session.disconnect();
                   }
                }
             }
@@ -327,13 +355,20 @@ public class SshConnectionCache implements SshUtilities
             return true;
 
          } catch (JSchException e) {
-            _log.info("VHM: "+session.getHost()+" - could not create ssh channel to host - " + e.getMessage());
-            if (i < NUM_SSH_RETRIES - 1) {
-               try {
-                  _log.info("VHM: "+session.getHost()+" - retrying ssh connection to host after delay");
-                  Thread.sleep(RETRY_DELAY_MILLIS);
-               } catch (InterruptedException e1) {
-                  _log.info("VHM: unexpected interruption while waiting to retry ssh connection");
+            if (e.getMessage().equals("Packet corrupt")) {
+               _log.info("VHM: "+session.getHost()+" - connection to host dropped");
+               /* pretty log message if we're trying to reconnect a session that's been previously connected and now needs discarding */
+               return false;
+
+            } else {
+               _log.info("VHM: "+session.getHost()+" - could not create ssh channel to host - " + e.getMessage());
+               if (i < NUM_SSH_RETRIES - 1) {
+                  try {
+                     _log.info("VHM: "+session.getHost()+" - retrying ssh connection to host after delay");
+                     Thread.sleep(RETRY_DELAY_MILLIS);
+                  } catch (InterruptedException e1) {
+                     _log.info("VHM: unexpected interruption while waiting to retry ssh connection");
+                  }
                }
             }
          }
@@ -351,8 +386,11 @@ public class SshConnectionCache implements SshUtilities
     */
    protected Session getSession(Connection connection) {
       synchronized (cache) {
-         synchronized (channelMap) {
-            Session session = cache.get(connection);
+         Session session = cache.get(connection);
+
+         /* we try this twice because if the cached connection's dropped then we'll need to discard it and
+          * try again with a new one. */
+         for (int i = 0; i < 2; i++) {
             if (session == null) {
                session = createSession(connection);
                if (session == null) {
@@ -364,15 +402,16 @@ public class SshConnectionCache implements SshUtilities
 
             if (!connectSession(session, connection.credentials)) {
                cache.remove(connection);
-               channelMap.remove(connection);
+               channelMap.remove(session);
                if (session != null) {
                   /* ensure that even if it's something odd causing connectSession to fail we clean up */
                   session.disconnect();
                }
                session = null;
             }
-            return session;
          }
+
+         return session;
       }
    }
 
@@ -514,24 +553,20 @@ public class SshConnectionCache implements SshUtilities
       /* we synchronize on cache so that we don't have the potential to evict and disconnect a session in between confirming that
        * it's functional and recording an opening in the channel map */
       synchronized (cache) {
-         synchronized (channelMap) {
-            Session session = getSession(connection);
-            if (session == null) {
-               throw new IOException("unable to establish session to remote host "+connection.hostname);
-            }
+         Session session = getSession(connection);
+         if (session == null) {
+            throw new IOException("unable to establish session to remote host "+connection.hostname);
+         }
 
-            /* open a new exec channel - this is tightly coupled to the execution of the command and will be closed on command completion */
-            try {
-               channel = (ChannelExec) session.openChannel("exec");
-               Set<Channel> channels = channelMap.get(session);
-               if (channels != null) {
-                  channels.add(channel);
-               }
-            } catch (JSchException e) {
-               String msg = "VHM: "+connection.hostname+" - exception opening SSH execution channel to host";
-               _log.log(Level.INFO, msg, e);
-               throw new IOException(msg);
-            }
+         /* open a new exec channel - this is tightly coupled to the execution of the command and will be closed on command completion */
+         try {
+            channel = (ChannelExec) session.openChannel("exec");
+            Set<Channel> channels = channelMap.get(session);
+            channels.add(channel);
+         } catch (JSchException e) {
+            String msg = "VHM: "+connection.hostname+" - exception opening SSH execution channel to host";
+            _log.log(Level.INFO, msg, e);
+            throw new IOException(msg);
          }
       }
 
