@@ -184,7 +184,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if ((result._isElastic != null) && (isMaster != null)) {
          result._vmType = result._isElastic ? VmType.COMPUTE : (isMaster ? VmType.MASTER : VmType.OTHER);
       }
-      _log.fine("Returning new CachedVMConstantData: "+result+"; cachedConstant: "+cachedConstant);
+      _log.finer("Returning "+((cachedConstant == null) ? "new" : "cached")+
+            " VMConstantData: "+result);
       return result;
    }
 
@@ -216,7 +217,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       if (rawData._vCPUs != null) {
          result._vCPUs = rawData._vCPUs;
       }
-      _log.fine("Returning new VMVariableData: "+result+"; cachedVariable: "+cachedVariable);
+      _log.finer("Returning "+((cachedVariable == null) ? "new" : "cached")+
+            " VMVariableData: "+result);
       return result;
    }
 
@@ -234,10 +236,11 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          if ((mved != null) && (mved._clusterName != null)) {
             result._clusterName = mved._clusterName;
          }
-         _log.fine("Returning new SerengetiClusterConstantData: "+result+"; cachedConstant: "+cachedConstant);
+         _log.finer("Returning "+((cachedConstant == null) ? "new" : "cached")+
+               " ClusterConstantData: "+result);
          return result;
       }
-      _log.finest("Returning "+cachedConstant+". rawData: "+rawData+" ");
+      _log.finer("Returning "+((cachedConstant == null) ? "null" : "cached ClusterConstantData: "+cachedConstant));
       return cachedConstant;
    }
 
@@ -257,10 +260,11 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          if (mved._maxInstances != null) {
             result._maxInstances = mved._maxInstances;
          }
-         _log.fine("Returning new SerengetiClusterVariableData: "+result+"; cachedConstant: "+cachedVariable);
+         _log.finer("Returning "+((cachedVariable == null) ? "new" : "cached")+
+               " ClusterVariableData: "+result);
          return result;
       }
-      _log.finest("Returning "+cachedVariable+". rawData: "+rawData+" ");
+      _log.finer("Returning "+((cachedVariable == null) ? "null" : "cached ClusterVariableData: "+cachedVariable));
       return cachedVariable;
    }
 
