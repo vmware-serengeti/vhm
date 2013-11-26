@@ -13,25 +13,26 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.jcraft.jsch.Session;
 import com.vmware.vhadoop.vhm.hadoop.SshConnectionCache.Connection;
+import com.vmware.vhadoop.vhm.hadoop.SshConnectionCache.RemoteProcess;
 import com.vmware.vhadoop.vhm.hadoop.SshUtilities.Credentials;
 
 public class SshConnectionCacheTest
 {
-   private static int MINIMUM_REQUIRED_HOST_ALIASES = 3;
+   private static int MINIMUM_REQUIRED_HOST_ALIASES = 4;
 
-   private static String aliases[];
-   private static String username;
-   /* this will need to be set in the environment for the test. */
-   private static String password = System.getProperty("user.password");
-   private static String privateKeyFile;
-
-   private static String userHomePath;
+//   private static String aliases[];
+//   private static String username;*/
+//   /* this will need to be set in the environment for the test. *//*
+//   private static String password = System.getProperty("user.password");
+//   private static String privateKeyFile;
+//   private static String userHomePath;
 
    static File authorizedKeysBackup = null;
    static File authorizedKeysName = null;
@@ -39,6 +40,14 @@ public class SshConnectionCacheTest
 
    TestSshConnectionCache cache;
    Credentials credentials;
+   RemoteProcess remoteProc;
+
+   //local test setting
+   private static final String aliases[] = new String[] {"sshtest1", "sshtest2", "sshtest3", "sshtest4"};
+   private static final String username = "ess";
+   private static final String password = "ca$hc0w";
+   private static final String privateKeyFile = "/home/ess/.ssh/id_rsa";
+   private static final String userHomePath = "/home/"+username;
 
 //   @AfterClass
 //   public static void cleanup() throws IOException {
@@ -169,41 +178,117 @@ public class SshConnectionCacheTest
       }
 
       void assertSessionCachedAndConnected(Connection connection) {
+         if (connection == null)
+            fail("connection object is null.");
 
          Map<Connection,Session> cache = getCache();
+         Session session = cache.get(connection);
 
-         if (connection == null) {
-            fail("connection object is null.");
-         } else {
-            Session session = cache.get(connection);
+         if (session == null)
+            fail("Session is not in the cache.");
 
-            if (session == null)
-               fail("Session is not in the cache.");
-
-            if (!session.isConnected())
-               fail("Session is cached but not connected.");
-         }
+         if (!session.isConnected())
+            fail("Session is cached but not connected.");
       }
 
-      void assertSessionEvicted(Connection connection, Session session) {
+      void assertSessionCachedButDisconnected(Connection connection) {
+         if (connection == null)
+            fail("connection object is null.");
 
          Map<Connection,Session> cache = getCache();
+         Session session = cache.get(connection);
 
-         if (connection == null) {
+         if (session == null)
+            fail("Session is not in the cache.");
+
+         if (session.isConnected())
+            fail("Session is still connected.");
+      }
+      
+      void dropConnectionInCache(Connection connection) {
+         if (connection == null)
+            fail("connection object is null.");
+
+         Map<Connection,Session> cache = getCache();
+         Session session = cache.get(connection);
+
+         if (session == null)
+            fail("Session is not in the cache.");
+         
+         session.disconnect();         
+      }
+      
+      void assertSessionEvicted(Connection connection, Session session) {      
+         if (connection == null)
             fail("argument: connection object is null.");
 
-         } else if (session == null) {
+         if (session == null)
             fail("argument: session object is null.");
 
-         } else {
-            assertNull(cache.get(connection));
-            assertTrue(!session.isConnected());
-         }
+         Map<Connection,Session> cache = getCache();
+         assertNull(cache.get(connection));
+         assertTrue(!session.isConnected());
       }
 
       int getCacheSize() {
          return getCache().size();
       }
+      
+      void runInvokeNotReturn(Connection connection) throws IOException {
+         String remoteDirectory =  System.getProperty("java.io.tmpdir");
+         
+         /*delete any file named 'invokeReturn' first*/
+         remoteProc = invoke(connection, "cd " + remoteDirectory + "&& rm -f invokeReturn && while [ ! -f invokeReturn ]; do sleep 1; done", null, null);
+         assertEquals(-1, remoteProc.exitValue());
+      }
+      
+      /*make previous runInvokeNotReturn(.) return now*/
+      void runInvokeResume(Connection connection) throws IOException, InterruptedException {
+         if (connection == null)
+            fail("connection object is null.");
+         
+         String remoteDirectory =  System.getProperty("java.io.tmpdir");
+         String path = remoteDirectory + "/invokeReturn";
+         File file = new File(path);
+         file.createNewFile();
+         
+         /*ensure invoke returns from sleep*/
+         Thread.sleep(2000);
+        
+         /*ensure not in cache*/
+         Map<Connection,Session> cache = getCache();
+         assertNull(cache.get(connection));
+         
+         /*previous invoke should return successfully and session should be disconnected.*/      
+         assertNotNull(remoteProc);
+         assertNotNull(remoteProc.session);
+         assertTrue(remoteProc.exitValue() != -1);
+         assertTrue(!remoteProc.session.isConnected());
+         
+         remoteProc = null;
+      }
+      
+      void assertEvictedConnectionDoesntClose(Connection connection) {
+         if (connection == null)
+            fail("connection object is null.");
+
+         Map<Connection,Session> cache = getCache();
+         assertNull(cache.get(connection));
+         
+         /*channel is still in use*/
+         assertNotNull(remoteProc);
+         assertEquals(-1, remoteProc.exitValue());
+         
+         /*session does not close*/
+         assertNotNull(remoteProc.session);
+         assertTrue(remoteProc.session.isConnected());
+      }
+      
+      void cleanupUnclosedEvictedConnection() {
+         assertNotNull(remoteProc);
+         remoteProc.destroy();
+         remoteProc = null;
+      }     
    }
 
 
@@ -211,13 +296,17 @@ public class SshConnectionCacheTest
    public void populateCredentials() {
       credentials = new Credentials(username, password, privateKeyFile);
    }
+   
+   @After
+   public void cacheCleanup() {
+      cache.clearCache();
+   }
 
-   @Ignore // issues being addressed in sshcache branch
+
    @Test
    /*basic sanity check, no cache operation*/
    public void connectionSanityCheck() throws IOException {
-
-      TestSshConnectionCache cache = new TestSshConnectionCache(aliases.length);
+      cache = new TestSshConnectionCache(aliases.length);
 
       for (String alias : aliases) {
          Connection connection = new Connection(alias, SshUtilities.DEFAULT_SSH_PORT, credentials);
@@ -257,10 +346,10 @@ public class SshConnectionCacheTest
       }
    }
 
-   @Ignore // issues being addressed in sshcache branch
+
    @Test
    public void cachedConnectionIsReused() throws IOException {
-      TestSshConnectionCache cache = new TestSshConnectionCache(aliases.length);
+      cache = new TestSshConnectionCache(aliases.length);
       assertEquals(0, cache.getCacheSize());
 
       /*initial connection with hosts*/
@@ -303,16 +392,16 @@ public class SshConnectionCacheTest
       }
    }
 
-   @Ignore // issues being addressed in sshcache branch
+
    @Test
    public void leastRecentlyUsedIsEvicted() throws IOException {
-
       int cacheCapacity = aliases.length/2;
-      TestSshConnectionCache cache = new TestSshConnectionCache(cacheCapacity);
+      cache = new TestSshConnectionCache(cacheCapacity);
       assertEquals(0, cache.getCacheSize());
 
       int index;
-      /*auxiliary data structure to record the order in which sessions are put into cache*/
+      /*auxiliary data structure to record the order in which sessions are put into cache
+        the head of the list is the eldest one currently in the cache*/
       List<Connection> connectionList = new LinkedList<Connection>();
       List<Session> sessionList = new LinkedList<Session>();
 
@@ -323,13 +412,12 @@ public class SshConnectionCacheTest
          int returnVal = cache.execute(connection, "date", null);
          assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
 
-         /*session should be in cache now*/
+         /* new session should be in cache now*/
          cache.assertSessionCachedAndConnected(connection);
 
          /*record the order in which this session is put into cache*/
-         Session session = cache.getSession(connection);
          connectionList.add(connection);
-         sessionList.add(session);
+         sessionList.add(cache.getSession(connection));
       }
 
       assertEquals(cacheCapacity, cache.getCacheSize());
@@ -365,9 +453,8 @@ public class SshConnectionCacheTest
          cache.assertSessionCachedAndConnected(connection);
 
          /*record the order in which this session is put into cache*/
-         Session session = cache.getSession(connection);
          connectionList.add(connection);
-         sessionList.add(session);
+         sessionList.add(cache.getSession(connection));
 
          /*whether we have evicted the right (the eldest) Session (with index 0, head of the list) out of cache*/
          cache.assertSessionEvicted(connectionList.get(0), sessionList.get(0));
@@ -378,27 +465,287 @@ public class SshConnectionCacheTest
    }
 
 
-   @Ignore
    @Test
-   public void evictedConnectionIsRecreated() {
+   /*require the number of host aliases >= 4*/
+   public void evictedConnectionIsRecreated() throws IOException {
+      int cacheCapacity = aliases.length - 2;
+      cache = new TestSshConnectionCache(cacheCapacity);
+      assertEquals(0, cache.getCacheSize());
 
+      int index;
+      
+      /*auxiliary data structure to record the order in which sessions are put into cache.
+        the head of the list is the eldest one currently in the cache.*/
+      List<Connection> connectionList = new LinkedList<Connection>();
+      List<Session> sessionList = new LinkedList<Session>();
+      
+      /*connections evicted*/
+      List<Connection> evictedConnectionList = new LinkedList<Connection>();
+
+      /*populate the cache. When the last two sessions come into cache,
+        the first two sessions are expected to be evicted*/
+      for(index = 0; index < aliases.length; index++) {
+         Connection connection = new Connection(aliases[index], SshUtilities.DEFAULT_SSH_PORT, credentials);
+
+         int returnVal = cache.execute(connection, "date", null);
+         assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
+
+         /* new session should be in cache now*/
+         cache.assertSessionCachedAndConnected(connection);
+
+         /*record the order in which this session is put into cache*/
+         connectionList.add(connection);
+         sessionList.add(cache.getSession(connection));
+         
+         /*cache size should not change when it gets full, since the eldest one will be evicted when a new one comes*/
+         if(index >= cacheCapacity - 1) {
+            assertEquals(cacheCapacity, cache.getCacheSize());
+         }
+         
+         /*eldest session is kicked out*/
+         if(index >= cacheCapacity) {
+            cache.assertSessionEvicted(connectionList.get(0), sessionList.get(0));
+            
+            evictedConnectionList.add(connectionList.get(0));
+            connectionList.remove(0);
+            sessionList.remove(0);
+         }
+      }
+
+      /*re-visit evicted connections, exercise execute(.) and copy(.)*/
+      for(index = 0; index < 2; index++) {
+         if(index == 0) {
+            int returnVal = cache.execute(evictedConnectionList.get(index), "date", null);
+            assertEquals("Expected ssh'd date command to return without error", 0, returnVal);            
+         } else {
+            String dataWritten = "test data";
+            byte[] data = dataWritten.getBytes();
+            String remoteDirectory =  System.getProperty("java.io.tmpdir") + "/";
+            String remoteName = evictedConnectionList.get(index).hostname + ".dat";
+            String permissions = "774";
+
+            int returnVal = cache.copy(evictedConnectionList.get(index), data, remoteDirectory, remoteName, permissions);
+            assertEquals("Expected scp command to return without error", 0, returnVal);
+
+            File testFile = new File(remoteDirectory + "/" + remoteName);
+            assertTrue(testFile.exists());            
+         }
+         
+         /*evicted connections should be recreated and put into cache again*/
+         assertEquals(cacheCapacity, cache.getCacheSize());
+         cache.assertSessionCachedAndConnected(evictedConnectionList.get(index));
+         
+         /*ensure the session currently with index 0 has been evicted*/
+         cache.assertSessionEvicted(connectionList.get(0), sessionList.get(0));         
+         connectionList.remove(0);
+         sessionList.remove(0);
+      }
    }
 
-   @Ignore
+   
    @Test
-   public void previouslyEvictedCachedConnectionIsReused() {
+   public void previouslyEvictedCachedConnectionIsReused() throws IOException {
+      int cacheCapacity = aliases.length - 1;
+      cache = new TestSshConnectionCache(cacheCapacity);
+      assertEquals(0, cache.getCacheSize());
 
+      int index;
+      
+      /*auxiliary data structure to record the order in which sessions are put into cache.
+        the head of the list is the eldest one currently in the cache.*/
+      List<Connection> connectionList = new LinkedList<Connection>();
+      List<Session> sessionList = new LinkedList<Session>();
+      
+      /*populate the cache. When the last session comes into cache,
+        the first one is expected to be evicted*/
+      for(index = 0; index < aliases.length; index++) {
+         Connection connection = new Connection(aliases[index], SshUtilities.DEFAULT_SSH_PORT, credentials);
+
+         int returnVal = cache.execute(connection, "date", null);
+         assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
+
+         /* new session should be in cache now*/
+         cache.assertSessionCachedAndConnected(connection);
+
+         /*record the order in which this session is put into cache*/
+         connectionList.add(connection);
+         sessionList.add(cache.getSession(connection));
+         
+         /*cache size should not change when it gets full, since the eldest one will be evicted when a new one comes*/
+         if(index >= cacheCapacity - 1) {
+            assertEquals(cacheCapacity, cache.getCacheSize());
+         }
+      }
+
+      /*ensure the eldest session is kicked out*/
+      Connection eldestConnection = connectionList.get(0);
+      cache.assertSessionEvicted(connectionList.get(0), sessionList.get(0));
+      connectionList.remove(0);
+      sessionList.remove(0);
+      
+      /*re-visit previously evicted connection*/ 
+      int returnVal = cache.execute(eldestConnection, "date", null);
+      assertEquals("Expected ssh'd date command to return without error", 0, returnVal); 
+      
+      /*previously evicted connection should be recreated and put into cache again*/
+      assertEquals(cacheCapacity, cache.getCacheSize());
+      cache.assertSessionCachedAndConnected(eldestConnection);
+      
+      /*ensure the session currently with index 0 has been evicted*/
+      cache.assertSessionEvicted(connectionList.get(0), sessionList.get(0));         
+
+      /*reuse that "eldest connection"*/
+      String dataWritten = "test data";
+      byte[] data = dataWritten.getBytes();
+      String remoteDirectory =  System.getProperty("java.io.tmpdir") + "/";
+      String remoteName = eldestConnection.hostname + ".dat";
+      String permissions = "774";
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+      returnVal = cache.copy(eldestConnection, data, remoteDirectory, remoteName, permissions);
+      assertEquals("Expected scp command to return without error", 0, returnVal);
+
+      File testFile = new File(remoteDirectory + "/" + remoteName);
+      assertTrue(testFile.exists());
+
+      /*check data integrity*/
+      out.reset();
+      returnVal = cache.execute(eldestConnection, "cat "+ remoteDirectory + "/" + remoteName, out);
+
+      assertEquals("Expected ssh'd cat command to return without error", 0, returnVal);
+      assertTrue(out.toString().equals(dataWritten));
+
+      assertEquals(cacheCapacity, cache.getCacheSize());
    }
 
-   @Ignore
+   
    @Test
-   public void evictedConnectionDoesntCloseWhileInUse() {
+   public void evictedConnectionDoesntCloseWhileInUse() throws IOException {
+      int cacheCapacity = 1;
+      cache = new TestSshConnectionCache(cacheCapacity);
+      assertEquals(0, cache.getCacheSize());
+      
+      /*create a session in use*/
+      Connection firstConnection = new Connection(aliases[0], SshUtilities.DEFAULT_SSH_PORT, credentials);
+      cache.runInvokeNotReturn(firstConnection);
+      
+      assertEquals(1, cache.getCacheSize());
+      cache.assertSessionCachedAndConnected(firstConnection);
+      
+      /*evict firstConnection*/
+      Connection secondConnection = new Connection(aliases[1], SshUtilities.DEFAULT_SSH_PORT, credentials);
+      
+      int returnVal = cache.execute(secondConnection, "date", null);
+      assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
 
+      /* secondConnection should be in cache now*/
+      cache.assertSessionCachedAndConnected(secondConnection);
+      assertEquals(1, cache.getCacheSize());
+      
+      /*ensure firstConnection is evicted but does not close while it's still in use */
+      cache.assertEvictedConnectionDoesntClose(firstConnection);
+      cache.cleanupUnclosedEvictedConnection();
    }
 
-   @Ignore
-   @Test
-   public void cachedDroppedConnectionIsRecreated() {
 
+   @Test
+   public void evictedConnectionCloseAfterUse() throws IOException, InterruptedException {
+      int cacheCapacity = 1;
+      cache = new TestSshConnectionCache(cacheCapacity);
+      assertEquals(0, cache.getCacheSize());
+      
+      /*create a session in use*/
+      Connection firstConnection = new Connection(aliases[0], SshUtilities.DEFAULT_SSH_PORT, credentials);
+      cache.runInvokeNotReturn(firstConnection);
+      
+      assertEquals(1, cache.getCacheSize());
+      cache.assertSessionCachedAndConnected(firstConnection);
+      
+      /*evict firstConnection*/
+      Connection secondConnection = new Connection(aliases[1], SshUtilities.DEFAULT_SSH_PORT, credentials);
+      
+      int returnVal = cache.execute(secondConnection, "date", null);
+      assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
+
+      /* secondConnection should be in cache now*/
+      cache.assertSessionCachedAndConnected(secondConnection);
+      assertEquals(1, cache.getCacheSize());
+      
+      /*ensure firstConnection is evicted but does not close while it's still in use */
+      cache.assertEvictedConnectionDoesntClose(firstConnection);
+      
+      /*close firstConnection which is evicted*/
+      cache.runInvokeResume(firstConnection);
+   }
+
+   
+   @Test
+   public void cachedDroppedConnectionIsRecreated() throws IOException {
+      int cacheCapacity = 2;
+      cache = new TestSshConnectionCache(cacheCapacity);
+      assertEquals(0, cache.getCacheSize());
+      
+      Connection[] connection = new Connection[cacheCapacity];
+
+      /*populate the cache*/
+      for(int index = 0; index < cacheCapacity; index++) {
+         connection[index] = new Connection(aliases[index], SshUtilities.DEFAULT_SSH_PORT, credentials);
+
+         int returnVal = cache.execute(connection[index], "date", null);
+         assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
+         
+         assertEquals(index + 1, cache.getCacheSize());         
+      }
+
+      /*two sessions are cached and connected*/
+      for(int index = 0; index < cacheCapacity; index++) {
+         cache.assertSessionCachedAndConnected(connection[index]);
+      }
+      
+      /*drop both connections*/
+      for(int index = 0; index < cacheCapacity; index++) {
+         cache.dropConnectionInCache(connection[index]);
+      }
+      
+      /*two sessions are still cached but dropped*/
+      assertEquals(cacheCapacity, cache.getCacheSize());
+      
+      for(int index = 0; index < cacheCapacity; index++) {
+         cache.assertSessionCachedButDisconnected(connection[index]);
+      }
+      
+      /*exercise execute(.) with the first dropped connection*/
+      int returnVal = cache.execute(connection[0], "date", null);
+      assertEquals("Expected ssh'd date command to return without error", 0, returnVal);
+      
+      assertEquals(cacheCapacity, cache.getCacheSize());         
+      
+      /*exercise copy(.) with the second dropped connection*/
+      String dataWritten = "test data";
+      byte[] data = dataWritten.getBytes();
+      String remoteDirectory =  System.getProperty("java.io.tmpdir") + "/";
+      String remoteName = aliases[1] + ".dat";
+      String permissions = "774";
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+      returnVal = cache.copy(connection[1], data, remoteDirectory, remoteName, permissions);
+      assertEquals("Expected scp command to return without error", 0, returnVal);
+
+      File testFile = new File(remoteDirectory + "/" + remoteName);
+      assertTrue(testFile.exists());
+
+      /*check data integrity*/
+      out.reset();
+      returnVal = cache.execute(connection[1], "cat "+ remoteDirectory + "/" + remoteName, out);
+
+      assertEquals("Expected ssh'd cat command to return without error", 0, returnVal);
+      assertTrue(out.toString().equals(dataWritten));
+      
+      assertEquals(cacheCapacity, cache.getCacheSize());  
+      
+      /*two sessions are cached and connected now*/
+      for(int index = 0; index < cacheCapacity; index++) {
+         cache.assertSessionCachedAndConnected(connection[index]);
+      }
    }
 }
