@@ -297,12 +297,13 @@ public class SshConnectionCacheTest
       credentials = new Credentials(username, password, privateKeyFile);
    }
    
+   
    @After
    public void cacheCleanup() {
       cache.clearCache();
    }
 
-
+   @Ignore
    @Test
    /*basic sanity check, no cache operation*/
    public void connectionSanityCheck() throws IOException {
@@ -346,7 +347,7 @@ public class SshConnectionCacheTest
       }
    }
 
-
+   @Ignore
    @Test
    public void cachedConnectionIsReused() throws IOException {
       cache = new TestSshConnectionCache(aliases.length);
@@ -392,7 +393,7 @@ public class SshConnectionCacheTest
       }
    }
 
-
+   @Ignore
    @Test
    public void leastRecentlyUsedIsEvicted() throws IOException {
       int cacheCapacity = aliases.length/2;
@@ -464,7 +465,7 @@ public class SshConnectionCacheTest
       }
    }
 
-
+   @Ignore
    @Test
    /*require the number of host aliases >= 4*/
    public void evictedConnectionIsRecreated() throws IOException {
@@ -542,7 +543,7 @@ public class SshConnectionCacheTest
       }
    }
 
-   
+   @Ignore
    @Test
    public void previouslyEvictedCachedConnectionIsReused() throws IOException {
       int cacheCapacity = aliases.length - 1;
@@ -618,7 +619,7 @@ public class SshConnectionCacheTest
       assertEquals(cacheCapacity, cache.getCacheSize());
    }
 
-   
+   @Ignore
    @Test
    public void evictedConnectionDoesntCloseWhileInUse() throws IOException {
       int cacheCapacity = 1;
@@ -647,7 +648,7 @@ public class SshConnectionCacheTest
       cache.cleanupUnclosedEvictedConnection();
    }
 
-
+   @Ignore
    @Test
    public void evictedConnectionCloseAfterUse() throws IOException, InterruptedException {
       int cacheCapacity = 1;
@@ -678,7 +679,7 @@ public class SshConnectionCacheTest
       cache.runInvokeResume(firstConnection);
    }
 
-   
+   @Ignore
    @Test
    public void cachedDroppedConnectionIsRecreated() throws IOException {
       int cacheCapacity = 2;
