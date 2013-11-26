@@ -30,6 +30,7 @@ public interface VCActions {
    public static final String VC_POWER_OFF_STATUS_KEY = "powerOffVM";
 
    public class MasterVmEventData {
+      public String _clusterName;
       public Boolean _enableAutomation;
       public Integer _minInstances;
       public Integer _maxInstances;
@@ -37,7 +38,7 @@ public interface VCActions {
 
       @Override
       public String toString() {
-         return "enableAutomation="+_enableAutomation+", minInstances="+_minInstances+", maxInstances="+_maxInstances+", jobTrackerPort="+_jobTrackerPort;
+         return "clusterName="+_clusterName+", enableAutomation="+_enableAutomation+", minInstances="+_minInstances+", maxInstances="+_maxInstances+", jobTrackerPort="+_jobTrackerPort;
       }
    }
 

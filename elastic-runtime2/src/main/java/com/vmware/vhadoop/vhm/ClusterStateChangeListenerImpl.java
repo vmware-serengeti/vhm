@@ -77,13 +77,14 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
    private class InterimVmData extends VmCreatedData {
       private String _clusterId;
+      private String _clusterName;
       private CachedVMConstantData _vmConstantData;
       private VMVariableData _vmVariableData;
       private SerengetiClusterConstantData _clusterConstantData;
       private SerengetiClusterVariableData _clusterVariableData;
 
       protected String getVariableValues() {
-         return "_clusterId="+_clusterId+", _vmConstantData="+_vmConstantData+", _vmVariableData="+_vmVariableData+
+         return "_clusterId="+_clusterId+", _clusterName="+_clusterName+", _vmConstantData="+_vmConstantData+", _vmVariableData="+_vmVariableData+
                ", _clusterConstantData="+_clusterConstantData+", _clusterVariableData="+_clusterVariableData;
       }
 
@@ -165,26 +166,6 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
       }
    }
 
-   /* Map this as early as possible to help our log messages */
-   private String mapClusterIdToClusterName(VMConstantData vmConstantData, VMVariableData variableData, SerengetiClusterConstantData clusterConstantData) {
-      if ((vmConstantData != null) && (clusterConstantData != null) && (vmConstantData.isComplete())) {
-         if (vmConstantData._vmType.equals(VmType.MASTER)) {
-            String masterVmName = null;
-            if ((variableData != null) && (variableData._myName != null)) {
-               masterVmName = variableData._myName;
-               int masterIndex = masterVmName.indexOf(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX);
-               String clusterName = (masterIndex >= 0) ? masterVmName.substring(0, masterIndex) : masterVmName;
-               String clusterId = vmConstantData._myUUID;
-               clusterConstantData._clusterName = clusterName;
-               LogFormatter._clusterIdToNameMapper.put(clusterId, clusterName);
-               _log.log(VhmLevel.USER, "VHM: mapping cluster id "+clusterId+" to cluster name "+clusterName);
-               return clusterId;
-            }
-         }
-      }
-      return null;
-   }
-
    private CachedVMConstantData getVmConstantData(VMEventData rawData, CachedVMConstantData cachedConstant) {
       CachedVMConstantData result = (cachedConstant != null) ? cachedConstant : new CachedVMConstantData();
       if (rawData._myUUID != null) {
@@ -240,7 +221,9 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
    }
 
    private SerengetiClusterConstantData getClusterConstantData(VMEventData rawData, SerengetiClusterConstantData cachedConstant) {
-      if ((rawData._masterMoRef != null) || (rawData._serengetiFolder != null)) {
+      MasterVmEventData mved = rawData._masterVmData;
+      if ((rawData._masterMoRef != null) || (rawData._serengetiFolder != null) ||
+            ((mved != null) && (mved._clusterName != null))) {
          SerengetiClusterConstantData result = (cachedConstant != null) ? cachedConstant : new SerengetiClusterConstantData();
          if (rawData._masterMoRef != null) {
             result._masterMoRef = rawData._masterMoRef;
@@ -248,11 +231,14 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          if (rawData._serengetiFolder != null) {
             result._serengetiFolder = rawData._serengetiFolder;
          }
+         if ((mved != null) && (mved._clusterName != null)) {
+            result._clusterName = mved._clusterName;
+         }
          _log.fine("Returning new SerengetiClusterConstantData: "+result+"; cachedConstant: "+cachedConstant);
          return result;
       }
-      _log.finest("Returning null. rawData: "+rawData+" ");
-      return null;
+      _log.finest("Returning "+cachedConstant+". rawData: "+rawData+" ");
+      return cachedConstant;
    }
 
    private SerengetiClusterVariableData getClusterVariableData(VMEventData rawData, SerengetiClusterVariableData cachedVariable) {
@@ -274,8 +260,8 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          _log.fine("Returning new SerengetiClusterVariableData: "+result+"; cachedConstant: "+cachedVariable);
          return result;
       }
-      _log.finest("Returning null. rawData: "+rawData+" ");
-      return null;
+      _log.finest("Returning "+cachedVariable+". rawData: "+rawData+" ");
+      return cachedVariable;
    }
 
    private InterimVmData processInterimVmData(String vmId, VMEventData rawData) {
@@ -289,24 +275,75 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
          /* If this is not the first time we've heard about it, but we already have some interim data, just retrieve what we have and update it */
          interimVmData = (InterimVmData)nullData;
       } else {
-         /* Returns null for a VM which the system already knows about - one which doesn't have "interim" data associated with it */
+         /* Return null for a VM that has a VmCreatedData - one which doesn't have "interim" data associated with it */
       }
       if (interimVmData != null) {
          interimVmData._vmConstantData = getVmConstantData(rawData, interimVmData._vmConstantData);
          interimVmData._vmVariableData = getVmVariableData(rawData, interimVmData._vmVariableData);
          interimVmData._clusterConstantData = getClusterConstantData(rawData, interimVmData._clusterConstantData);
          interimVmData._clusterVariableData = getClusterVariableData(rawData, interimVmData._clusterVariableData);
-         String derivedClusterId = mapClusterIdToClusterName(interimVmData._vmConstantData, interimVmData._vmVariableData, interimVmData._clusterConstantData);
-         if (interimVmData._clusterId == null) {
-            if (derivedClusterId != null) {
-               interimVmData._clusterId = derivedClusterId;
-            } else if (rawData._masterUUID != null) {
-               interimVmData._clusterId = rawData._masterUUID;
-            }
+         String clusterId = findClusterId(interimVmData._vmConstantData, interimVmData._vmVariableData);
+         String clusterName = findClusterName(interimVmData._clusterConstantData);
+         String derivedClusterName = deriveClusterName(interimVmData._vmConstantData, interimVmData._vmVariableData, interimVmData._clusterConstantData);
+
+         if ((interimVmData._clusterId == null) && (clusterId != null)) {
+            interimVmData._clusterId = clusterId;
+         }
+         clusterId = interimVmData._clusterId;
+         
+         /* Cluster name can come from two places - either from extraInfo, or derived through the master VM name
+          * TODO: Once we stop deriving the name, future code should look like the clusterId code above */
+         if (clusterName != null) {
+            interimVmData._clusterName = clusterName;
+         } else if ((interimVmData._clusterName == null) && (derivedClusterName != null)) {
+            interimVmData._clusterName = derivedClusterName;
+         }
+         clusterName = interimVmData._clusterName;
+
+         /* Make the association in the logging as soon as possible */
+         if ((clusterId != null) && (clusterName != null)) {
+            LogFormatter._clusterIdToNameMapper.put(clusterId, clusterName);
+            _log.log(VhmLevel.USER, "VHM: mapping cluster id "+clusterId+" to cluster name "+clusterName);
          }
       }
       _log.finer("Processed interim VM data: "+interimVmData);
       return interimVmData;
+   }
+
+   private String deriveClusterName(CachedVMConstantData vmConstantData, VMVariableData vmVariableData, SerengetiClusterConstantData clusterConstantData) {
+      String derivedClusterName = null;
+      if ((vmConstantData != null) && (vmConstantData.isComplete()) && vmConstantData._vmType.equals(VmType.MASTER)) {
+         String masterVmName = null;
+         if ((vmVariableData != null) && (vmVariableData._myName != null)) {
+            masterVmName = vmVariableData._myName;
+            int masterIndex = masterVmName.indexOf(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX);
+            int masterGuiIndex = masterVmName.indexOf(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX_GUI);
+            if (masterGuiIndex > 0) {
+               derivedClusterName = masterVmName.substring(0, masterGuiIndex);
+            } else if (masterIndex > 0) {
+               derivedClusterName = masterVmName.substring(0, masterIndex);
+            }
+         }
+      }
+      return derivedClusterName;
+   }
+   
+   private String findClusterName(SerengetiClusterConstantData clusterConstantData) {
+      if (clusterConstantData != null) {
+         return clusterConstantData._clusterName;
+      }
+      return null;
+   }
+
+   private String findClusterId(CachedVMConstantData vmConstantData, VMVariableData vmVariableData) {
+      if (vmConstantData != null) {
+         if (vmConstantData._masterUUID != null) {
+            return vmConstantData._masterUUID;
+         } else if (vmConstantData.isComplete() && vmConstantData._vmType.equals(VmType.MASTER)) {
+            return vmConstantData._myUUID;
+         }
+      }
+      return null;
    }
 
    /* Turn the raw data from VcVlsi into a rich event hierarchy.
@@ -343,6 +380,10 @@ public class ClusterStateChangeListenerImpl extends AbstractClusterMapReader imp
 
                if ((clusterConstantData != null) && (clusterConstantData.isComplete()) &&
                      (clusterVariableData != null) && (clusterVariableData.isComplete())) {
+                  /* TODO: Remove this clause when we stop deriving cluster names and add clusterName to SerengetiClusterConstantData isComplete() */
+                  if (clusterConstantData._clusterName == null) {
+                     clusterConstantData._clusterName = interimData._clusterName;
+                  }
                   _log.finer("Generating NewMasterVMEvent for VM <%V"+vmId+"%V> in cluster <%C"+clusterId);
                   result = new NewMasterVMEvent(vmId, clusterId, vmConstantData, vmVariableData, clusterConstantData, clusterVariableData);
                }

@@ -22,6 +22,7 @@ import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_ELASTIC;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_JOB_TRACKER_PORT;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_MASTER_MOREF;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_MASTER_UUID;
+import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_MASTER_CLUSTERNAME;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_PREFIX;
 import static com.vmware.vhadoop.vhm.vc.VcVlsi.VHM_EXTRA_CONFIG_UUID;
 
@@ -67,6 +68,8 @@ public class VcVlsiHelper {
             getMasterVmData(vmData)._maxInstances = Integer.parseInt(value.substring(separatorIndex+1, value.length()));;
          } else if (key.equals(VHM_EXTRA_CONFIG_JOB_TRACKER_PORT)) {
             getMasterVmData(vmData)._jobTrackerPort = Integer.valueOf(value);
+         } else if (key.equals(VHM_EXTRA_CONFIG_MASTER_CLUSTERNAME)) {
+            getMasterVmData(vmData)._clusterName = value;
          }
       }
    }

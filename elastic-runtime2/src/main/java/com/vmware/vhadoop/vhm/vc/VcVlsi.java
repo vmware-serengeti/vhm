@@ -105,7 +105,8 @@ import com.vmware.vim.vmomi.core.types.VmodlContext;
 public class VcVlsi {
 
    public static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master-";
-
+   public static final String SERENGETI_MASTERVM_NAME_POSTFIX_GUI = "-ComputeMaster-";
+   
    private static final Logger _log = Logger.getLogger(VcVlsi.class.getName());
 
    static final String VC_PROP_VM_NAME = "name";
@@ -132,6 +133,7 @@ public class VcVlsi {
    static final String VHM_EXTRA_CONFIG_UUID = "vhmInfo.serengeti.uuid";
    static final String VHM_EXTRA_CONFIG_MASTER_UUID = "vhmInfo.masterVM.uuid";
    static final String VHM_EXTRA_CONFIG_MASTER_MOREF = "vhmInfo.masterVM.moid";
+   static final String VHM_EXTRA_CONFIG_MASTER_CLUSTERNAME = "vhmInfo.masterVM.clusterName";
    static final String VHM_EXTRA_CONFIG_ELASTIC = "vhmInfo.elastic";
    static final String VHM_EXTRA_CONFIG_AUTOMATION_ENABLE = "vhmInfo.vhm.enable";
    static final String VHM_EXTRA_CONFIG_AUTOMATION_MIN_INSTANCES = "vhmInfo.min.computeNodeNum";

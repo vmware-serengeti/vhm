@@ -92,15 +92,6 @@ public class VHMIntegrationTest extends AbstractJUnitTest implements EventProduc
       _vcActions.addVMToFolder(eventData._serengetiFolder, eventData._vmMoRef);
    }
 
-   /* Generated whenever particular data in a particular cluster changes */
-   private class ClusterDataChangedEvent extends TrivialClusterScaleEvent {
-      int _newData;
-      public ClusterDataChangedEvent(String clusterId, int newData) {
-         super(clusterId, true);
-         _newData = newData;
-      }
-   }
-
    /* Generated whenever a cluster is discovered that has a non-manual strategy, or if the strategy is switched */
    private class ClusterScaleStrategyNotManualEvent extends TrivialClusterScaleEvent {
       boolean _isNewCluster;

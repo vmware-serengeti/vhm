@@ -43,6 +43,7 @@ public abstract class AbstractJUnitTest {
    final String MOREF_PREFIX = "MOREF_";
    final String FOLDER_PREFIX = "FOLDER_";
    final String HOST_PREFIX = "HOST_";
+   final String MASTER_VM_NAME_POSTFIX = VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX;
    
    final String OTHER_SCALE_STRATEGY_KEY = "otherScaleStrategy";
    final String DEFAULT_SCALE_STRATEGY_KEY = "defaultScaleStrategy";
@@ -87,6 +88,7 @@ public abstract class AbstractJUnitTest {
          result._masterVmData._minInstances = minClusterInstances;
          result._masterVmData._maxInstances = maxClusterInstances;
          result._masterVmData._jobTrackerPort = DEFAULT_PORT;
+         result._masterVmData._clusterName = clusterName;
       }
       result._powerState = powerState;
       result._isLeaving = false;
@@ -99,7 +101,7 @@ public abstract class AbstractJUnitTest {
       for (int i=0; i<numVms; i++) {
          String vmName;
          if (i==0) {
-            vmName = masterVmName = clusterName+VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX+"_"+VM_NAME_PREFIX+i;
+            vmName = masterVmName = clusterName+MASTER_VM_NAME_POSTFIX+"_"+VM_NAME_PREFIX+i;
             _masterVmNames.add(masterVmName);
          } else {
             vmName = clusterName+"_"+VM_NAME_PREFIX+i;
@@ -163,7 +165,7 @@ public abstract class AbstractJUnitTest {
    }
 
    String getMasterVmNameForCluster(String clusterName) {
-      return clusterName+VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX+"_"+VM_NAME_PREFIX+0;
+      return clusterName+MASTER_VM_NAME_POSTFIX+"_"+VM_NAME_PREFIX+0;
    }
 
    String deriveClusterIdFromClusterName(String clusterName) {
@@ -194,7 +196,7 @@ public abstract class AbstractJUnitTest {
 
    String deriveClusterIdFromVmName(String vmName) {
       String temp;
-      if (vmName.contains(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX)) {
+      if (vmName.contains(MASTER_VM_NAME_POSTFIX)) {
          temp = getClusterIdForMasterVmName(vmName);
       } else {
          temp = deriveClusterIdForComputeVmName(vmName);
@@ -206,8 +208,8 @@ public abstract class AbstractJUnitTest {
    String deriveHostIdFromVmName(String vmName) {
       int firstUnderscore = vmName.indexOf('_');
       String clusterNumber;
-      if (vmName.contains(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX)) {
-         clusterNumber = vmName.substring(firstUnderscore+1, vmName.lastIndexOf(VcVlsi.SERENGETI_MASTERVM_NAME_POSTFIX));
+      if (vmName.contains(MASTER_VM_NAME_POSTFIX)) {
+         clusterNumber = vmName.substring(firstUnderscore+1, vmName.lastIndexOf(MASTER_VM_NAME_POSTFIX));
       } else {
          clusterNumber = vmName.substring(firstUnderscore+1, vmName.indexOf('_', firstUnderscore+1));
       }
