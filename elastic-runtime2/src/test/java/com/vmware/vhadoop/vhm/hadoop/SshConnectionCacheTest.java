@@ -1,31 +1,19 @@
 package com.vmware.vhadoop.vhm.hadoop;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.AfterClass;
-import org.junit.Assume;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -52,107 +40,107 @@ public class SshConnectionCacheTest
    TestSshConnectionCache cache;
    Credentials credentials;
 
-   @AfterClass
-   public static void cleanup() throws IOException {
-      /* make sure that backup exists */
-      if (authorizedKeysBackup != null) {
-         Files.move(authorizedKeysBackup.toPath(), authorizedKeysName.toPath(), REPLACE_EXISTING);
-      }
-   }
+//   @AfterClass
+//   public static void cleanup() throws IOException {
+//      /* make sure that backup exists */
+//      if (authorizedKeysBackup != null) {
+//         Files.move(authorizedKeysBackup.toPath(), authorizedKeysName.toPath(), REPLACE_EXISTING);
+//      }
+//   }
 
-   @BeforeClass
-   public static void setup() throws IOException, InterruptedException {
-      /* we've got assumptions that we're on a unix distro, but go with linux */
-      Assume.assumeTrue("Test setup assumes certain things, which I've rolled up into - must be linux", "linux".equalsIgnoreCase(System.getProperty("os.name")));
-
-      username = System.getProperty("user.name");
-      assertNotNull("system property user.name", username);
-
-      userHomePath = System.getProperty("user.home");
-      assertNotNull("system property user.home", userHomePath);
-
-      sshDir = new File(userHomePath+"/.ssh");
-      File keyBase = File.createTempFile("sshtest", "", sshDir);
-      keyBase.deleteOnExit();
-
-//      Process keygen = Runtime.getRuntime().exec("ssh-keygen -b 2048 -t rsa -N '' -C 'ssh test key' -f "+keyBase.getAbsolutePath());
-      Process keygen = Runtime.getRuntime().exec(new String[] {"ssh-keygen", "-q", "-b", "2048", "-t", "rsa", "-N", "", "-C", "ssh test key", "-f", keyBase.getAbsolutePath()});
-      /* shouldn't hurt to provide input for the overwrite prompt to overwrite the empty tempFile, -o not supported on some distros */
-      keygen.getOutputStream().write('y');
-      keygen.getOutputStream().write('\n');
-      keygen.getOutputStream().flush();
-
-      long deadline = System.currentTimeMillis() + 10000;
-      int ret = -1;
-      do {
-         try {
-            /* don't want to hang if this command doesn't return */
-            ret = keygen.exitValue();
-         } catch (IllegalThreadStateException e) { /* not finished yet */ }
-      } while (ret != 0 && System.currentTimeMillis() < deadline);
-
-      /* tidy up if it hung */
-      if (ret == -1) {
-         keygen.destroy();
-      }
-
-      BufferedReader stdout = new BufferedReader(new InputStreamReader(keygen.getInputStream()));
-      BufferedReader stderr = new BufferedReader(new InputStreamReader(keygen.getErrorStream()));
-
-      /* dump output for debugging */
-      for (String line = stdout.readLine(); line != null; line = stdout.readLine()) {
-         System.err.println(line);
-      }
-      for (String line = stderr.readLine(); line != null; line = stderr.readLine()) {
-         System.err.println(line);
-      }
-
-      assertEquals("keygen process didn't complete successfully", 0, ret);
-
-      /* add key to authorized hosts */
-      authorizedKeysName = new File(sshDir.getAbsolutePath()+"/authorized_keys");
-      authorizedKeysBackup = File.createTempFile("authorized_keys", "ssh_test_backup", sshDir);
-      try {
-         Files.copy(authorizedKeysName.toPath(), authorizedKeysBackup.toPath(), REPLACE_EXISTING);
-      } catch (java.nio.file.NoSuchFileException e) {
-         authorizedKeysBackup.delete();
-         authorizedKeysBackup = null;
-      }
-
-      File pub = new File(keyBase.getAbsoluteFile()+".pub");
-      String signature = Files.readAllLines(pub.toPath(), Charset.defaultCharset()).get(0);
-
-      OutputStreamWriter out = new FileWriter(authorizedKeysName, true);
-      out.write(signature);
-      out.flush();
-      out.close();
-
-      /* get the host aliases we have available */
-      List<String> hosts = Files.readAllLines(Paths.get("/etc/hosts"), Charset.defaultCharset());
-      for (String entry : hosts) {
-         /* expect ip name alias1 alias2 alias3 ... */
-         if (entry.charAt(0) == '#') {
-            continue;
-         }
-
-         if (entry.indexOf('#') != -1) {
-            entry = entry.substring(0, entry.indexOf('#'));
-         }
-
-         /* get rid of leading and trailing white space */
-         entry = entry.trim();
-
-         if (!entry.startsWith("127.0.0.1")) {
-            continue;
-         }
-
-         String details[] = entry.split("\\s");
-         assertTrue("expected at least "+MINIMUM_REQUIRED_HOST_ALIASES+" aliases in hosts entry", details.length > MINIMUM_REQUIRED_HOST_ALIASES);
-
-         aliases = Arrays.copyOfRange(details, 1, details.length);
-         break;
-      }
-   }
+//   @BeforeClass
+//   public static void setup() throws IOException, InterruptedException {
+//      /* we've got assumptions that we're on a unix distro, but go with linux */
+//      Assume.assumeTrue("Test setup assumes certain things, which I've rolled up into - must be linux", "linux".equalsIgnoreCase(System.getProperty("os.name")));
+//
+//      username = System.getProperty("user.name");
+//      assertNotNull("system property user.name", username);
+//
+//      userHomePath = System.getProperty("user.home");
+//      assertNotNull("system property user.home", userHomePath);
+//
+//      sshDir = new File(userHomePath+"/.ssh");
+//      File keyBase = File.createTempFile("sshtest", "", sshDir);
+//      keyBase.deleteOnExit();
+//
+////      Process keygen = Runtime.getRuntime().exec("ssh-keygen -b 2048 -t rsa -N '' -C 'ssh test key' -f "+keyBase.getAbsolutePath());
+//      Process keygen = Runtime.getRuntime().exec(new String[] {"ssh-keygen", "-q", "-b", "2048", "-t", "rsa", "-N", "", "-C", "ssh test key", "-f", keyBase.getAbsolutePath()});
+//      /* shouldn't hurt to provide input for the overwrite prompt to overwrite the empty tempFile, -o not supported on some distros */
+//      keygen.getOutputStream().write('y');
+//      keygen.getOutputStream().write('\n');
+//      keygen.getOutputStream().flush();
+//
+//      long deadline = System.currentTimeMillis() + 10000;
+//      int ret = -1;
+//      do {
+//         try {
+//            /* don't want to hang if this command doesn't return */
+//            ret = keygen.exitValue();
+//         } catch (IllegalThreadStateException e) { /* not finished yet */ }
+//      } while (ret != 0 && System.currentTimeMillis() < deadline);
+//
+//      /* tidy up if it hung */
+//      if (ret == -1) {
+//         keygen.destroy();
+//      }
+//
+//      BufferedReader stdout = new BufferedReader(new InputStreamReader(keygen.getInputStream()));
+//      BufferedReader stderr = new BufferedReader(new InputStreamReader(keygen.getErrorStream()));
+//
+//      /* dump output for debugging */
+//      for (String line = stdout.readLine(); line != null; line = stdout.readLine()) {
+//         System.err.println(line);
+//      }
+//      for (String line = stderr.readLine(); line != null; line = stderr.readLine()) {
+//         System.err.println(line);
+//      }
+//
+//      assertEquals("keygen process didn't complete successfully", 0, ret);
+//
+//      /* add key to authorized hosts */
+//      authorizedKeysName = new File(sshDir.getAbsolutePath()+"/authorized_keys");
+//      authorizedKeysBackup = File.createTempFile("authorized_keys", "ssh_test_backup", sshDir);
+//      try {
+//         Files.copy(authorizedKeysName.toPath(), authorizedKeysBackup.toPath(), REPLACE_EXISTING);
+//      } catch (java.nio.file.NoSuchFileException e) {
+//         authorizedKeysBackup.delete();
+//         authorizedKeysBackup = null;
+//      }
+//
+//      File pub = new File(keyBase.getAbsoluteFile()+".pub");
+//      String signature = Files.readAllLines(pub.toPath(), Charset.defaultCharset()).get(0);
+//
+//      OutputStreamWriter out = new FileWriter(authorizedKeysName, true);
+//      out.write(signature);
+//      out.flush();
+//      out.close();
+//
+//      /* get the host aliases we have available */
+//      List<String> hosts = Files.readAllLines(Paths.get("/etc/hosts"), Charset.defaultCharset());
+//      for (String entry : hosts) {
+//         /* expect ip name alias1 alias2 alias3 ... */
+//         if (entry.charAt(0) == '#') {
+//            continue;
+//         }
+//
+//         if (entry.indexOf('#') != -1) {
+//            entry = entry.substring(0, entry.indexOf('#'));
+//         }
+//
+//         /* get rid of leading and trailing white space */
+//         entry = entry.trim();
+//
+//         if (!entry.startsWith("127.0.0.1")) {
+//            continue;
+//         }
+//
+//         String details[] = entry.split("\\s");
+//         assertTrue("expected at least "+MINIMUM_REQUIRED_HOST_ALIASES+" aliases in hosts entry", details.length > MINIMUM_REQUIRED_HOST_ALIASES);
+//
+//         aliases = Arrays.copyOfRange(details, 1, details.length);
+//         break;
+//      }
+//   }
 
    class TestSshConnectionCache extends SshConnectionCache {
 
