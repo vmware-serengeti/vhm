@@ -74,6 +74,7 @@ public class HadoopAdaptor implements HadoopActions {
    private final String JOB_TRACKER_RECOM_LIST_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_LIST_FILE_NAME");
    private final String JOB_TRACKER_RECOM_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_RECOM_SCRIPT_FILE_NAME");
    private final String JOB_TRACKER_CHECK_SCRIPT_FILE_NAME = ExternalizedParameters.get().getString("JOB_TRACKER_CHECK_SCRIPT_FILE_NAME");
+   private final long JOB_TRACKER_CHECK_SCRIPT_MIN_RETRY_MILLIS = ExternalizedParameters.get().getLong("JOB_TRACKER_CHECK_SCRIPT_MIN_RETRY_MILLIS");
 
    private final String DEFAULT_SCRIPT_SRC_PATH = ExternalizedParameters.get().getString("DEFAULT_SCRIPT_SRC_PATH");
    private final String JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH = ExternalizedParameters.get().getString("JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH");
@@ -353,15 +354,26 @@ public class HadoopAdaptor implements HadoopActions {
       CompoundStatus getActiveStatus = null;
       int rc = UNKNOWN_ERROR;
       Set<String> allActiveTTs = null;
+      long lastCheckAttemptTime = Long.MAX_VALUE;
       do {
     	   if (iterations > 0) {
-       	   _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
-       	   _log.log(Level.INFO, "Affected TTs: "+ttDnsNames);
+    	      /* 1141429: Ensure that if the script fails, there is a minimum wait before the next retry attempt */
+       	   long millisSinceLastCheck = (System.currentTimeMillis() - lastCheckAttemptTime);
+       	   long underWaitMillis = JOB_TRACKER_CHECK_SCRIPT_MIN_RETRY_MILLIS - millisSinceLastCheck;
+       	   if (underWaitMillis > 0) {
+       	      try {
+       	         _log.fine("Sleeping for underWaitMillis = "+underWaitMillis);
+                  Thread.sleep(underWaitMillis);
+               } catch (InterruptedException e) {}
+       	   }
+            _log.log(Level.INFO, "Target TTs not yet achieved...checking again - " + iterations);
+            _log.log(Level.INFO, "Affected TTs: "+ttDnsNames);
          }
 
          getActiveStatus = new CompoundStatus(ACTIVE_TTS_STATUS_KEY);
 
-    	   allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
+         lastCheckAttemptTime = System.currentTimeMillis();
+         allActiveTTs = getActiveTTs(cluster, totalTargetEnabled, getActiveStatus);
 
     	   //Declare success as long as the we manage to de/recommission only the TTs we set out to handle (rather than checking correctness for all TTs)
     	   if ((allActiveTTs != null) &&
