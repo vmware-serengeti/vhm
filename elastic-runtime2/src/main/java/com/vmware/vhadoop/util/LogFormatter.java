@@ -81,7 +81,7 @@ public class LogFormatter extends Formatter {
 
       // timestamp prefix (e.g. 2012 Sep 17 17:20:20.852)
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy MMM dd HH:mm:ss.SSS");
-      result.append(sdf.format(new Date()));
+      result.append(sdf.format(new Date(record.getMillis())));
 
       if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
          result.append(" **");
