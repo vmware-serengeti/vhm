@@ -27,18 +27,18 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
       actionSetTarget("SetTarget"),
       actionUnlimit("Unlimit"),
       actionWaitForManual("WaitForManual");
-      
+
       String _value;
       private SerengetiLimitAction(String value) {
          _value = value;
       }
-      
+
       @Override
       public String toString() {
          return _value;
       }
    };
-   
+
    private static final String reason = "serengeti limit instruction";
 
    private final SerengetiLimitAction _action;
@@ -89,7 +89,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportError(String message) throws CannotConnectException {
       if (_messageCallback != null) {
-         _log.warning(_clusterName+" - error while attempting to "+toString()+" - "+message+";");
+         _log.warning(_clusterName+": error while attempting to "+toString()+" - "+message+";");
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, false, 100, 0, message, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());
@@ -98,7 +98,7 @@ public class SerengetiLimitInstruction extends AbstractClusterScaleEvent {
 
    public void reportCompletion() throws CannotConnectException {
       if (_messageCallback != null) {
-         _log.log(VhmLevel.USER, "VHM: "+_clusterName+" - completed instruction to "+toString());
+         _log.log(VhmLevel.USER, _clusterName+": completed instruction to "+toString());
          VHMJsonReturnMessage msg = new VHMJsonReturnMessage(true, true, 100, 0, null, null);
          /* Note RouteKey is encaspulated in messageCallback */
          _messageCallback.sendMessage(msg.getRawPayload());

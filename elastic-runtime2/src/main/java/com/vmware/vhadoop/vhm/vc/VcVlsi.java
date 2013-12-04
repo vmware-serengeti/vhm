@@ -59,9 +59,9 @@ import com.vmware.vim.binding.vim.VirtualMachine;
 import com.vmware.vim.binding.vim.VirtualMachine.PowerState;
 import com.vmware.vim.binding.vim.alarm.Alarm;
 import com.vmware.vim.binding.vim.alarm.AlarmManager;
+import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.event.EventEx;
 import com.vmware.vim.binding.vim.event.EventManager;
-import com.vmware.vim.binding.vim.event.Event.EventSeverity;
 import com.vmware.vim.binding.vim.fault.HostConnectFault;
 import com.vmware.vim.binding.vim.fault.InvalidEvent;
 import com.vmware.vim.binding.vim.fault.VimFault;
@@ -106,7 +106,7 @@ public class VcVlsi {
 
    public static final String SERENGETI_MASTERVM_NAME_POSTFIX = "-master-";
    public static final String SERENGETI_MASTERVM_NAME_POSTFIX_GUI = "-ComputeMaster-";
-   
+
    private static final Logger _log = Logger.getLogger(VcVlsi.class.getName());
 
    static final String VC_PROP_VM_NAME = "name";
@@ -307,7 +307,7 @@ public class VcVlsi {
          /* We don't really care what the exception was, we just don't want it propogating */
       } finally {
          if (vcTime == null) {
-            _log.log(Level.WARNING, "testConnection found VC connection dropped; caller will reconnect");
+            _log.log(Level.INFO, "testConnection found VC connection dropped; caller will reconnect");
          }
       }
       return (vcTime != null);
@@ -911,7 +911,7 @@ public class VcVlsi {
       }
       return false;
    }
-   
+
 
    private Alarm getAlarm(Client client, String rootFolderName) {
       synchronized(_alarmLock) {
@@ -922,11 +922,11 @@ public class VcVlsi {
          if (manager == null) {
             return null;
          }
-   
+
          Folder root;
          try {
             root = getFolderForName(client, null, rootFolderName);
-   
+
             ManagedObjectReference[] existing = manager.getAlarm(root._getRef());
             for (ManagedObjectReference m : existing) {
                Alarm a = client.createStub(Alarm.class, m);
@@ -967,7 +967,7 @@ public class VcVlsi {
          alarmMgr.acknowledgeAlarm(alarm._getRef(), moRef);
       }
    }
-   
+
 }
    /*
 

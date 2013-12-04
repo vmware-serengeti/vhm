@@ -46,11 +46,11 @@ import com.vmware.vhadoop.util.CompoundStatus;
 
 /**
  * Error codes here represent values which can be returned from execution of remote scripts
- * 
+ *
  */
 public class HadoopErrorCodes {
    private Map<Integer, ErrorCode> _errorCodes;
-   
+
    public static final int UNKNOWN_ERROR = -1;
    public static final int SUCCESS = 0;
    public static final int ERROR_CATCHALL = 1;
@@ -73,12 +73,12 @@ public class HadoopErrorCodes {
 
    /* These are the parameter names of variables that can be printed in the log messages */
    public static enum ParamTypes{COMMAND, DRSCRIPT, EXCLUDE_FILE, DRLIST, HADOOP_HOME, JOBTRACKER};
-   
+
    public HadoopErrorCodes() {
       _errorCodes = new HashMap<Integer, ErrorCode>();
       initErrorCodes();
    }
-   
+
    class ErrorCode {
       int _code;
       String _logError;
@@ -92,7 +92,7 @@ public class HadoopErrorCodes {
          _params = params;
       }
    }
-   
+
    private void initErrorCodes() {
       addErrorCode(UNKNOWN_ERROR, true, "Unknown exit status during %s;", COMMAND);
       addErrorCode(SUCCESS, false, "Successfully executed %s script (%s);", COMMAND, DRSCRIPT);
@@ -128,8 +128,16 @@ public class HadoopErrorCodes {
       ErrorCode rc = _errorCodes.get(code);
       String[] paramValues = null;
       if (rc == null) {
-         log.log(Level.WARNING, "Unknown error code!");
+         log.log(Level.WARNING, "VHM: unrecognised error code - "+code);
+         /* we need an rc value and a parameter to insert into the string - we can't be sure what if anything is in the paramValuesMap so just be generic with the default msg */
          rc = _errorCodes.get(-1);
+         paramValues = new String[] {"operation"};
+         if (paramValuesMap != null) {
+            String cmd = paramValuesMap.get(rc._params[0]);
+            if (cmd != null) {
+               paramValues[0] = cmd;
+            }
+         }
       } else {
          if (paramValuesMap != null) {
             paramValues = new String[rc._params.length];
@@ -142,8 +150,7 @@ public class HadoopErrorCodes {
       if (rc._code == SUCCESS) {
          status.registerTaskSucceeded();
       } else if (rc._isMajor) {
-         String formattedString = (paramValues == null) ?
-               rc._logError : String.format(rc._logError, (Object[])paramValues);
+         String formattedString = (paramValues == null) ? rc._logError : String.format(rc._logError, (Object[])paramValues);
          /* Currently all of these errors are considered non-fatal to subsequent operations */
          status.registerTaskFailed(false, formattedString, rc._code);
       }
