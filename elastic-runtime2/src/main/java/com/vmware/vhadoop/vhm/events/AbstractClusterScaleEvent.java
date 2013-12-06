@@ -99,14 +99,14 @@ public abstract class AbstractClusterScaleEvent extends AbstractNotificationEven
          return false;
       return true;
    }
-   
+
    @Override
    public String toString() {
       return this.getClass().getSimpleName()+
             ((_clusterId != null) ? " clusterId=<%C"+_clusterId+"%C>, " : "")+
-            ((_vmId != null) ? " vmId=<%C"+_vmId+"%C>, " : "")+
+            ((_vmId != null) ? " vmId=<%V"+_vmId+"%V>, " : "")+
             ((_hostId != null) ? " hostId="+_hostId+"," : "")+
             ((_reason != null) ? " reason=\""+_reason+"\"" : "");
-            
+
    }
 }
