@@ -413,6 +413,9 @@ public class SshConnectionCache implements SshUtilities
                   session.disconnect();
                }
                session = null;
+            } else {
+               /* the session is valid and connected */
+               break;
             }
          }
 
