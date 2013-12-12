@@ -450,7 +450,13 @@ public class SshConnectionCache implements SshUtilities
 
    protected int copy(Connection connection, byte[] data, String remoteDirectory, String remoteName, String permissions) {
       int exitCode = RemoteProcess.UNDEFINED_EXIT_STATUS;
-      String command = SCP_COMMAND + remoteDirectory + remoteName;
+      String command = SCP_COMMAND + remoteDirectory;
+      /* ensure there's a path separator between directory and name */
+      String sep = System.getProperty("path.separator");
+      if (!remoteDirectory.endsWith(sep)) {
+         command+= sep;
+      }
+      command+= remoteName;
       RemoteProcess proc = null;
 
       try {
