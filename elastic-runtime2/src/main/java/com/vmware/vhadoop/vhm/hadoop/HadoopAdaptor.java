@@ -25,7 +25,6 @@ import static com.vmware.vhadoop.vhm.hadoop.HadoopErrorCodes.UNKNOWN_ERROR;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -232,9 +231,12 @@ public class HadoopAdaptor implements HadoopActions {
    }
 */
 
-   private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs, OutputStream out) {
+   private int executeScriptWithCopyRetryOnFailure(HadoopConnection connection, String scriptFileName, String[] scriptArgs, ByteArrayOutputStream out) {
       int rc = -1;
       for (int i = 0; i < 2; i++) {
+         /* ensure that we're operating with a clean output buffer */
+         out.reset();
+
          rc = connection.executeScript(scriptFileName, JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH, scriptArgs, out);
          if (i == 0 && (rc == ERROR_COMMAND_NOT_FOUND || rc == ERROR_CATCHALL)) {
             _log.log(Level.INFO, scriptFileName + " not found...");
@@ -269,7 +271,7 @@ public class HadoopAdaptor implements HadoopActions {
       if (connection != null) {
          setErrorParamsForCommand(cluster, opDesc.toLowerCase(), scriptRemoteFilePath, listRemoteFilePath);
 
-         OutputStream out = new ByteArrayOutputStream();
+         ByteArrayOutputStream out = new ByteArrayOutputStream();
          String operationList = createVMList(ttDnsNames);
          int rc = connection.copyDataToJobTracker(operationList.getBytes(), JOB_TRACKER_DEFAULT_SCRIPT_DEST_PATH, listFileName, false);
          if (rc == 0) {
@@ -303,7 +305,7 @@ public class HadoopAdaptor implements HadoopActions {
       if (connection == null) {
          return null;
       }
-      OutputStream out = new ByteArrayOutputStream();
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
       int rc = executeScriptWithCopyRetryOnFailure(connection, JOB_TRACKER_CHECK_SCRIPT_FILE_NAME, new String[]{""+totalTargetEnabled, connection.getExcludeFilePath(), connection.getHadoopHome()}, out);
 
       _log.info("Error code from executing script " + rc);
