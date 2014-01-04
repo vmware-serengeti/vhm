@@ -452,7 +452,7 @@ public class SshConnectionCache implements SshUtilities
       int exitCode = RemoteProcess.UNDEFINED_EXIT_STATUS;
       String command = SCP_COMMAND + remoteDirectory;
       /* ensure there's a path separator between directory and name */
-      String sep = System.getProperty("path.separator");
+      String sep = System.getProperty("file.separator");
       if (!remoteDirectory.endsWith(sep)) {
          command+= sep;
       }
