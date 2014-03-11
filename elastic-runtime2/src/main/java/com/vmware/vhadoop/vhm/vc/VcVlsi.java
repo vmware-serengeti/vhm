@@ -257,7 +257,7 @@ public class VcVlsi {
          sessionTicket = getSessionTicket(credentials.vcIP, credentials.keyStoreFile, credentials.keyStorePwd, credentials.vcExtKey, credentials.vcThumbprint, timeoutMillis);
       }
 
-      URI uri = new URI("https://"+credentials.vcIP+":443/sdk");
+      URI uri = new URI("https", null, credentials.vcIP, 443, "/sdk", null, null);
 
       // each VLSI call consumes an executor thread for the duration of the blocking call
       ThreadPoolExecutor executor =
